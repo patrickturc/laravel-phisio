@@ -83,6 +83,11 @@ class AclSeeder extends Seeder
             // Calendar Sync
             'calendar.sync.manage',
 
+            // Marks a user as a treating professional: appears in the
+            // "Profissional Responsável" selector and in the earnings-by-
+            // professional report. Independent of the role's name.
+            'professional.attend',
+
             // Settings
             'settings.users.view',
             'settings.users.create',
@@ -132,6 +137,7 @@ class AclSeeder extends Seeder
             'treatment_plans.manage.create',
             'treatment_plans.manage.edit',
             'calendar.sync.manage',
+            'professional.attend',
         ]);
 
         // Assign 'Administrador' role to the admin user

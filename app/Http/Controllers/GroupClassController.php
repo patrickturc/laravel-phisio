@@ -32,7 +32,9 @@ class GroupClassController extends Controller
             ->values();
 
         $patients = Patient::orderBy('name')->get(['id', 'name']);
-        $users = User::orderBy('name')->get(['id', 'name']);
+        // Only users flagged as treating professionals (permission-based, so it
+        // survives renaming the role) can be the "Profissional Responsável".
+        $users = User::permission('professional.attend')->orderBy('name')->get(['id', 'name']);
 
         return Inertia::render('group-classes/index', [
             'groupClasses' => $groupClasses,
@@ -72,7 +74,9 @@ class GroupClassController extends Controller
             });
 
         $patients = Patient::orderBy('name')->get(['id', 'name']);
-        $users = User::orderBy('name')->get(['id', 'name']);
+        // Only users flagged as treating professionals (permission-based, so it
+        // survives renaming the role) can be the "Profissional Responsável".
+        $users = User::permission('professional.attend')->orderBy('name')->get(['id', 'name']);
 
         return Inertia::render('group-classes/show', [
             'groupClass' => $groupClass,

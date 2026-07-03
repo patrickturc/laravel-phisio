@@ -11,11 +11,12 @@ interface CalendarViewProps {
     onDateSelect?: (startDate: string, startTime: string, durationMinutes?: number) => void;
     onEventDrop?: (eventId: string, newDate: string, newTime: string, isGroup?: boolean) => void;
     refreshTrigger?: any;
+    userId?: string;
 }
 
 let isCalendarRestoring = false;
 
-export default function CalendarView({ onEventClick, onDateSelect, onEventDrop, refreshTrigger }: CalendarViewProps) {
+export default function CalendarView({ onEventClick, onDateSelect, onEventDrop, refreshTrigger, userId }: CalendarViewProps) {
     const calendarRef = useRef<FullCalendar>(null);
 
     useEffect(() => {
@@ -28,6 +29,11 @@ export default function CalendarView({ onEventClick, onDateSelect, onEventDrop, 
             calendarRef.current.getApi().refetchEvents();
         }
     }, [refreshTrigger]);
+
+    // Refetch when the professional filter changes (extraParams sends user_id).
+    useEffect(() => {
+        calendarRef.current?.getApi().refetchEvents();
+    }, [userId]);
 
     const handleEventClick = (clickInfo: any) => {
         const eventId = clickInfo.event.id;
@@ -227,7 +233,10 @@ export default function CalendarView({ onEventClick, onDateSelect, onEventDrop, 
                     right: 'dayGridMonth,timeGridWeek,timeGridDay'
                 }}
                 locale={ptBrLocale}
-                events="/api/appointments/events"
+                events={{
+                    url: '/api/appointments/events',
+                    extraParams: () => (userId ? { user_id: userId } : {}),
+                }}
                 selectable={true}
                 editable={!!onEventDrop}
                 eventDrop={(info) => {

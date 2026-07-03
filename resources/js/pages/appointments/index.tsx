@@ -31,6 +31,7 @@ export default function AppointmentsIndex({ appointments, filters = {}, patients
     const [statusFilter, setStatusFilter] = useState(filters.status || '');
     const [dateFrom, setDateFrom] = useState(filters.date_from || '');
     const [dateTo, setDateTo] = useState(filters.date_to || '');
+    const [professionalFilter, setProfessionalFilter] = useState(filters.user_id || '');
 
     const [sheetOpen, setSheetOpen] = useState(false);
     const [editingAppointment, setEditingAppointment] = useState<any>(null);
@@ -87,13 +88,22 @@ export default function AppointmentsIndex({ appointments, filters = {}, patients
         const st = overrides?.status ?? statusFilter;
         const df = overrides?.date_from ?? dateFrom;
         const dt = overrides?.date_to ?? dateTo;
+        const up = overrides?.user_id ?? professionalFilter;
 
         if (s) params.search = s;
         if (st) params.status = st;
         if (df) params.date_from = df;
         if (dt) params.date_to = dt;
+        if (up) params.user_id = up;
 
         router.get('/appointments', params, { preserveState: true, replace: true });
+    }
+
+    function handleProfessionalChange(val: string) {
+        setProfessionalFilter(val);
+        // List view is server-paginated, so reload it; calendar/slots refetch
+        // client-side via the userId prop.
+        if (viewMode === 'list') applyFilters({ user_id: val });
     }
 
     function handleSearchKeyDown(e: React.KeyboardEvent) {
@@ -105,6 +115,7 @@ export default function AppointmentsIndex({ appointments, filters = {}, patients
         setStatusFilter('');
         setDateFrom('');
         setDateTo('');
+        setProfessionalFilter('');
         router.get('/appointments', {}, { preserveState: true, replace: true });
     }
 
@@ -123,6 +134,17 @@ export default function AppointmentsIndex({ appointments, filters = {}, patients
                     </div>
 
                     <div className="flex items-center gap-3">
+                        <select
+                            value={professionalFilter}
+                            onChange={e => handleProfessionalChange(e.target.value)}
+                            className="h-10 px-3 border border-border rounded-xl bg-card text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all shadow-sm"
+                            title="Filtrar por profissional"
+                        >
+                            <option value="">Todos os profissionais</option>
+                            {users.map((u: any) => (
+                                <option key={u.id} value={u.id}>{u.name}</option>
+                            ))}
+                        </select>
                         <div className="relative w-full md:w-48">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
                             <input
@@ -246,8 +268,9 @@ export default function AppointmentsIndex({ appointments, filters = {}, patients
                             transition={{ duration: 0.2 }}
                             className="flex-1 w-full"
                         >
-                            <CalendarView 
+                            <CalendarView
                                 refreshTrigger={appointments}
+                                userId={professionalFilter}
                                 onEventClick={(eventId) => {
                                     axios.get(`/api/appointments/${eventId}`)
                                         .then(res => {
@@ -296,6 +319,7 @@ export default function AppointmentsIndex({ appointments, filters = {}, patients
                         >
                             <SlotsView
                                 refreshTrigger={appointments}
+                                userId={professionalFilter}
                                 onEventClick={(eventId) => {
                                     axios.get(`/api/appointments/${eventId}`)
                                         .then(res => {

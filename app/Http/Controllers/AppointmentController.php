@@ -38,15 +38,21 @@ class AppointmentController extends Controller
             });
         }
 
+        if ($request->filled('user_id')) {
+            $query->where('user_id', $request->user_id);
+        }
+
         $appointments = $query->paginate(15)->withQueryString();
 
         $patients = Patient::orderBy('name')->get(['id', 'name']);
         $groupClasses = GroupClass::orderBy('name')->get(['id', 'name', 'color', 'max_participants']);
-        $users = User::orderBy('name')->get(['id', 'name']);
+        // Only users flagged as treating professionals (permission-based, so it
+        // survives renaming the role) can be the "Profissional Responsável".
+        $users = User::permission('professional.attend')->orderBy('name')->get(['id', 'name']);
 
         return Inertia::render('appointments/index', [
             'appointments' => $appointments,
-            'filters' => $request->only(['date_from', 'date_to', 'search']),
+            'filters' => $request->only(['date_from', 'date_to', 'search', 'user_id']),
             'patients' => $patients,
             'groupClasses' => $groupClasses,
             'users' => $users,
@@ -216,6 +222,10 @@ class AppointmentController extends Controller
             $query->where('appointment_date', '<', substr($request->end, 0, 10));
         }
 
+        if ($request->filled('user_id')) {
+            $query->where('user_id', $request->user_id);
+        }
+
         $appointments = $query->get();
 
         $events = $appointments->map(function ($app) {
@@ -352,7 +362,9 @@ class AppointmentController extends Controller
         $appointment->load('patients');
         $protocols = ClinicalProtocol::orderBy('name')->get(['id', 'name']);
         $patients = Patient::orderBy('name')->get(['id', 'name']);
-        $users = User::orderBy('name')->get(['id', 'name']);
+        // Only users flagged as treating professionals (permission-based, so it
+        // survives renaming the role) can be the "Profissional Responsável".
+        $users = User::permission('professional.attend')->orderBy('name')->get(['id', 'name']);
         $groupClasses = GroupClass::orderBy('name')->get(['id', 'name', 'color', 'max_participants']);
 
         return Inertia::render('appointments/show', [
@@ -640,12 +652,17 @@ class AppointmentController extends Controller
 
         $endDate = $startDate->copy()->endOfWeek(Carbon::SATURDAY);
 
+        $userId = $request->input('user_id');
+
         // 1. Load all active group class schedules with their class info
         $schedules = GroupClassSchedule::with(['groupClass' => function ($q) {
             $q->withTrashed(); // include soft-deleted so we don't break existing slots
         }])
-            ->whereHas('groupClass', function ($q) {
+            ->whereHas('groupClass', function ($q) use ($userId) {
                 $q->where('status', 'active')->withTrashed();
+                if ($userId) {
+                    $q->where('user_id', $userId);
+                }
             })
             ->orderBy('start_time')
             ->get();
@@ -655,6 +672,7 @@ class AppointmentController extends Controller
             ->where('appointment_date', '>=', $startDate->format('Y-m-d'))
             ->where('appointment_date', '<=', $endDate->format('Y-m-d'))
             ->where('status', '!=', 'cancelled')
+            ->when($userId, fn ($q) => $q->where('user_id', $userId))
             ->orderBy('start_time')
             ->get();
 

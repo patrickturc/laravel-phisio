@@ -33,6 +33,7 @@ interface SlotsViewProps {
     onEventClick?: (eventId: string) => void;
     onDateSelect?: (date: string, time: string, durationMinutes?: number) => void;
     refreshTrigger?: any;
+    userId?: string;
 }
 
 const DAY_NAMES = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
@@ -57,7 +58,7 @@ function addDays(dateStr: string, days: number): string {
     return d.toISOString().split('T')[0];
 }
 
-export default function SlotsView({ onEventClick, onDateSelect, refreshTrigger }: SlotsViewProps) {
+export default function SlotsView({ onEventClick, onDateSelect, refreshTrigger, userId }: SlotsViewProps) {
     const [weekStart, setWeekStart] = useState<string>(() => {
         const monday = getMonday(new Date());
         return monday.toISOString().split('T')[0];
@@ -67,13 +68,13 @@ export default function SlotsView({ onEventClick, onDateSelect, refreshTrigger }
 
     const fetchData = useCallback((startDate: string) => {
         setLoading(true);
-        axios.get('/api/appointments/slots-view', { params: { start_date: startDate } })
+        axios.get('/api/appointments/slots-view', { params: { start_date: startDate, user_id: userId || undefined } })
             .then(res => {
                 setData(res.data);
                 setLoading(false);
             })
             .catch(() => setLoading(false));
-    }, []);
+    }, [userId]);
 
     useEffect(() => {
         fetchData(weekStart);
