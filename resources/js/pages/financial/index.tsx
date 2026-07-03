@@ -39,13 +39,14 @@ interface Props {
     summary: any;
     chartData: Array<{ label: string; income: number; expense: number }>;
     categoryBreakdown: { income: Array<{ category: string; total: number }>; expense: Array<{ category: string; total: number }> };
+    professionalEarnings?: Array<{ name: string; total: number; count: number }>;
     filters: any;
     currentMonth: number;
     currentYear: number;
     patients: any[];
 }
 
-export default function FinancialIndex({ transactions, summary, chartData, categoryBreakdown, filters = {}, currentMonth, currentYear, patients }: Props) {
+export default function FinancialIndex({ transactions, summary, chartData, categoryBreakdown, professionalEarnings = [], filters = {}, currentMonth, currentYear, patients }: Props) {
     const [typeFilter, setTypeFilter] = useState(filters.type || '');
     const [statusFilter, setStatusFilter] = useState(filters.status || '');
     const [searchQuery, setSearchQuery] = useState(filters.search || '');
@@ -156,6 +157,16 @@ export default function FinancialIndex({ transactions, summary, chartData, categ
         if (confirmed) router.delete(`/financial/${t.id}`, { preserveState: true });
     }
 
+    function openReceipt(id: string) {
+        const a = document.createElement('a');
+        a.href = `/financial/${id}/receipt`;
+        a.target = '_blank';
+        a.rel = 'noopener';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+    }
+
     async function handleMarkPaid(t: any) {
         const verb = t.type === 'income' ? 'recebido' : 'pago';
         const confirmed = await confirm({
@@ -164,12 +175,20 @@ export default function FinancialIndex({ transactions, summary, chartData, categ
             confirmLabel: 'Confirmar',
             variant: 'warning',
         });
-        if (confirmed) router.post(`/financial/${t.id}/mark-paid`, {}, {
+        if (!confirmed) return;
+
+        router.post(`/financial/${t.id}/mark-paid`, {}, {
             preserveState: true,
             preserveScroll: true,
-            onSuccess: () => {
-                // Recibo is only for received payments (income).
-                if (t.type === 'income') window.open(`/financial/${t.id}/receipt`, '_blank');
+            onSuccess: async () => {
+                // Recibo only for received payments (income), and only if asked.
+                if (t.type !== 'income') return;
+                const wantsReceipt = await confirm({
+                    title: 'Gerar recibo?',
+                    message: 'Deseja gerar o recibo deste pagamento para o paciente?',
+                    confirmLabel: 'Gerar recibo',
+                });
+                if (wantsReceipt) openReceipt(t.id);
             },
         });
     }
@@ -379,6 +398,38 @@ export default function FinancialIndex({ transactions, summary, chartData, categ
                     </div>
                 </div>
 
+                {/* Ganho por Profissional */}
+                <div className="bg-card/60 backdrop-blur-xl border border-border/50 rounded-2xl p-6 shadow-sm">
+                    <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-sm font-semibold text-foreground">Ganho por Profissional</h3>
+                        <span className="text-xs text-muted-foreground">Receita recebida no mês</span>
+                    </div>
+                    {professionalEarnings.length > 0 ? (
+                        <div className="space-y-3">
+                            {professionalEarnings.map((p) => {
+                                const maxPro = professionalEarnings[0]?.total || 1;
+                                const pct = (p.total / maxPro) * 100;
+                                return (
+                                    <div key={p.name}>
+                                        <div className="flex justify-between text-sm mb-1">
+                                            <span className="text-foreground font-medium">
+                                                {p.name}
+                                                <span className="text-xs text-muted-foreground font-normal ml-2">({p.count} pagamento{p.count === 1 ? '' : 's'})</span>
+                                            </span>
+                                            <span className="text-emerald-600 font-semibold">{formatCurrency(p.total)}</span>
+                                        </div>
+                                        <div className="h-2 bg-muted/50 rounded-full overflow-hidden">
+                                            <div className="h-full rounded-full bg-emerald-500 transition-all duration-500" style={{ width: `${pct}%` }} />
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    ) : (
+                        <p className="text-sm text-muted-foreground text-center py-6">Nenhuma receita recebida neste mês.</p>
+                    )}
+                </div>
+
                 {/* Filters + Search */}
                 <div className="flex flex-wrap items-center gap-3">
                     <form onSubmit={handleSearch} className="relative flex-1 min-w-[200px]">
@@ -495,7 +546,7 @@ export default function FinancialIndex({ transactions, summary, chartData, categ
                                                         )
                                                     )}
                                                     {t.status === 'paid' && t.type === 'income' && (
-                                                        <button onClick={() => window.open(`/financial/${t.id}/receipt`, '_blank')} className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-blue-100 text-blue-700 hover:bg-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:hover:bg-blue-900/50 transition-colors">
+                                                        <button onClick={() => openReceipt(t.id)} className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-blue-100 text-blue-700 hover:bg-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:hover:bg-blue-900/50 transition-colors">
                                                             Recibo
                                                         </button>
                                                     )}

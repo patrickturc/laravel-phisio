@@ -98,6 +98,10 @@ class FinancialTransactionController extends Controller
                 ->values(),
         ];
 
+        // Ganho por profissional: receita PAGA do mês atribuída ao profissional
+        // que mais atendeu o paciente no mês (via agendamentos não cancelados).
+        $professionalEarnings = $this->earningsByProfessional($month, $year);
+
         $patients = Patient::orderBy('name')->get(['id', 'name']);
 
         return Inertia::render('financial/index', [
@@ -105,11 +109,71 @@ class FinancialTransactionController extends Controller
             'summary' => $summary,
             'chartData' => $chartData,
             'categoryBreakdown' => $categoryBreakdown,
+            'professionalEarnings' => $professionalEarnings,
             'filters' => $request->only(['type', 'status', 'search', 'month', 'year']),
             'currentMonth' => (int) $month,
             'currentYear' => (int) $year,
             'patients' => $patients,
         ]);
+    }
+
+    /**
+     * Sum the month's PAID income per professional. Each paid income charge is
+     * attributed to the professional who attended that patient the most times
+     * during the month (via non-cancelled appointments). Charges with no patient
+     * or no sessions in the month fall under "Não atribuído".
+     *
+     * @return \Illuminate\Support\Collection<int, array{name:string, total:float, count:int}>
+     */
+    private function earningsByProfessional(int $month, int $year)
+    {
+        $paidIncome = FinancialTransaction::where('type', 'income')
+            ->where('status', 'paid')
+            ->whereMonth('date', $month)
+            ->whereYear('date', $year)
+            ->get(['amount', 'patient_id']);
+
+        $patientIds = $paidIncome->pluck('patient_id')->filter()->unique()->values();
+
+        // patient_id => user_id of the professional with most sessions that month.
+        $dominantPro = [];
+        if ($patientIds->isNotEmpty()) {
+            DB::table('appointment_patient')
+                ->join('appointments', 'appointments.id', '=', 'appointment_patient.appointment_id')
+                ->whereIn('appointment_patient.patient_id', $patientIds)
+                ->where('appointment_patient.status', '!=', 'cancelled')
+                ->whereNotNull('appointments.user_id')
+                ->whereMonth('appointments.appointment_date', $month)
+                ->whereYear('appointments.appointment_date', $year)
+                ->groupBy('appointment_patient.patient_id', 'appointments.user_id')
+                ->select('appointment_patient.patient_id', 'appointments.user_id', DB::raw('count(*) as cnt'))
+                ->get()
+                ->groupBy('patient_id')
+                ->each(function ($rows, $patientId) use (&$dominantPro) {
+                    $dominantPro[$patientId] = $rows->sortByDesc('cnt')->first()->user_id;
+                });
+        }
+
+        $names = \App\Models\User::whereIn('id', array_values(array_unique($dominantPro)))->pluck('name', 'id');
+
+        $earnings = [];
+        foreach ($paidIncome as $tx) {
+            $userId = $tx->patient_id ? ($dominantPro[$tx->patient_id] ?? null) : null;
+            $key = $userId ?? 'none';
+
+            if (! isset($earnings[$key])) {
+                $earnings[$key] = [
+                    'name' => $userId ? ($names[$userId] ?? 'Profissional') : 'Não atribuído',
+                    'total' => 0.0,
+                    'count' => 0,
+                ];
+            }
+
+            $earnings[$key]['total'] += (float) $tx->amount;
+            $earnings[$key]['count']++;
+        }
+
+        return collect($earnings)->sortByDesc('total')->values();
     }
 
 

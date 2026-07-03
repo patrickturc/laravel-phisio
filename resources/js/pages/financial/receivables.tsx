@@ -53,6 +53,16 @@ export default function Receivables({ groups, totals }: Props) {
         return diff > 0 ? diff : 0;
     };
 
+    function openReceipt(id: string) {
+        const a = document.createElement('a');
+        a.href = `/financial/${id}/receipt`;
+        a.target = '_blank';
+        a.rel = 'noopener';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+    }
+
     async function handleMarkPaid(t: TxItem) {
         const confirmed = await confirm({
             title: 'Confirmar recebimento',
@@ -60,9 +70,18 @@ export default function Receivables({ groups, totals }: Props) {
             confirmLabel: 'Confirmar',
             variant: 'warning',
         });
-        if (confirmed) router.post(`/financial/${t.id}/mark-paid`, {}, {
+        if (!confirmed) return;
+
+        router.post(`/financial/${t.id}/mark-paid`, {}, {
             preserveScroll: true,
-            onSuccess: () => window.open(`/financial/${t.id}/receipt`, '_blank'),
+            onSuccess: async () => {
+                const wantsReceipt = await confirm({
+                    title: 'Gerar recibo?',
+                    message: 'Deseja gerar o recibo deste pagamento para o paciente?',
+                    confirmLabel: 'Gerar recibo',
+                });
+                if (wantsReceipt) openReceipt(t.id);
+            },
         });
     }
 
