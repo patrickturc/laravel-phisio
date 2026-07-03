@@ -119,9 +119,10 @@ class FinancialTransactionController extends Controller
 
     /**
      * Sum the month's PAID income per professional. Each paid income charge is
-     * attributed to the professional who attended that patient the most times
-     * during the month (via non-cancelled appointments). Charges with no patient
-     * or no sessions in the month fall under "Não atribuído".
+     * split EQUALLY among the distinct professionals who attended that patient
+     * during the month (via non-cancelled appointments) — e.g. two professionals
+     * → 50% each, regardless of how many sessions each gave. Charges with no
+     * patient or no sessions in the month fall under "Não atribuído".
      *
      * @return \Illuminate\Support\Collection<int, array{name:string, total:float, count:int}>
      */
@@ -135,8 +136,8 @@ class FinancialTransactionController extends Controller
 
         $patientIds = $paidIncome->pluck('patient_id')->filter()->unique()->values();
 
-        // patient_id => user_id of the professional with most sessions that month.
-        $dominantPro = [];
+        // patient_id => [distinct user_ids who attended that patient this month]
+        $prosByPatient = [];
         if ($patientIds->isNotEmpty()) {
             DB::table('appointment_patient')
                 ->join('appointments', 'appointments.id', '=', 'appointment_patient.appointment_id')
@@ -145,32 +146,40 @@ class FinancialTransactionController extends Controller
                 ->whereNotNull('appointments.user_id')
                 ->whereMonth('appointments.appointment_date', $month)
                 ->whereYear('appointments.appointment_date', $year)
-                ->groupBy('appointment_patient.patient_id', 'appointments.user_id')
-                ->select('appointment_patient.patient_id', 'appointments.user_id', DB::raw('count(*) as cnt'))
-                ->get()
+                ->distinct()
+                ->get(['appointment_patient.patient_id', 'appointments.user_id'])
                 ->groupBy('patient_id')
-                ->each(function ($rows, $patientId) use (&$dominantPro) {
-                    $dominantPro[$patientId] = $rows->sortByDesc('cnt')->first()->user_id;
+                ->each(function ($rows, $patientId) use (&$prosByPatient) {
+                    $prosByPatient[$patientId] = $rows->pluck('user_id')->unique()->values()->all();
                 });
         }
 
-        $names = \App\Models\User::whereIn('id', array_values(array_unique($dominantPro)))->pluck('name', 'id');
+        $names = \App\Models\User::whereIn('id', collect($prosByPatient)->flatten()->unique()->values())
+            ->pluck('name', 'id');
 
         $earnings = [];
-        foreach ($paidIncome as $tx) {
-            $userId = $tx->patient_id ? ($dominantPro[$tx->patient_id] ?? null) : null;
-            $key = $userId ?? 'none';
-
+        $add = function (string $key, string $name, float $amount) use (&$earnings) {
             if (! isset($earnings[$key])) {
-                $earnings[$key] = [
-                    'name' => $userId ? ($names[$userId] ?? 'Profissional') : 'Não atribuído',
-                    'total' => 0.0,
-                    'count' => 0,
-                ];
+                $earnings[$key] = ['name' => $name, 'total' => 0.0, 'count' => 0];
+            }
+            $earnings[$key]['total'] += $amount;
+            $earnings[$key]['count']++;
+        };
+
+        foreach ($paidIncome as $tx) {
+            $amount = (float) $tx->amount;
+            $pros = $tx->patient_id ? ($prosByPatient[$tx->patient_id] ?? []) : [];
+
+            if (empty($pros)) {
+                $add('none', 'Não atribuído', $amount);
+                continue;
             }
 
-            $earnings[$key]['total'] += (float) $tx->amount;
-            $earnings[$key]['count']++;
+            // Equal split among the professionals who attended the patient.
+            $share = $amount / count($pros);
+            foreach ($pros as $userId) {
+                $add((string) $userId, $names[$userId] ?? 'Profissional', $share);
+            }
         }
 
         return collect($earnings)->sortByDesc('total')->values();
