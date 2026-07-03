@@ -178,6 +178,16 @@ export default function PatientShow({ patient, protocols = [], commercialPlans =
     const formatCurrency = (val: string | number) => Number(val).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
     const isTxOverdue = (t: { status: string; due_date: string | null }) => t.status === 'pending' && !!t.due_date && new Date(t.due_date) < new Date();
 
+    function openReceipt(id: string) {
+        const a = document.createElement('a');
+        a.href = `/financial/${id}/receipt`;
+        a.target = '_blank';
+        a.rel = 'noopener';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+    }
+
     async function handleMarkPaid(t: { id: string; description: string; amount: string; type: string }) {
         const verb = t.type === 'income' ? 'recebido' : 'pago';
         const confirmed = await confirm({
@@ -186,7 +196,20 @@ export default function PatientShow({ patient, protocols = [], commercialPlans =
             confirmLabel: 'Confirmar',
             variant: 'warning',
         });
-        if (confirmed) router.post(`/financial/${t.id}/mark-paid`, {}, { preserveScroll: true });
+        if (!confirmed) return;
+
+        router.post(`/financial/${t.id}/mark-paid`, {}, {
+            preserveScroll: true,
+            onSuccess: async () => {
+                if (t.type !== 'income') return;
+                const wantsReceipt = await confirm({
+                    title: 'Gerar recibo?',
+                    message: 'Deseja gerar o recibo deste pagamento para o paciente?',
+                    confirmLabel: 'Gerar recibo',
+                });
+                if (wantsReceipt) openReceipt(t.id);
+            },
+        });
     }
 
     async function handleRevert(t: { id: string; description: string; amount: string }) {
@@ -597,6 +620,11 @@ export default function PatientShow({ patient, protocols = [], commercialPlans =
                                                     )}
                                                 </div>
                                                 <div className="flex items-center gap-1">
+                                                    {t.status === 'paid' && t.type === 'income' && (
+                                                        <button onClick={() => openReceipt(t.id)} className="p-2 text-muted-foreground hover:text-blue-600 rounded-lg hover:bg-blue-500/10 transition-colors" title="Gerar/reimprimir recibo">
+                                                            <FileText className="size-4" />
+                                                        </button>
+                                                    )}
                                                     {t.status === 'pending' ? (
                                                         <button onClick={() => handleMarkPaid(t)} className="p-2 text-muted-foreground hover:text-emerald-600 rounded-lg hover:bg-emerald-500/10 transition-colors" title="Confirmar recebimento">
                                                             <CheckCircle className="size-4" />
