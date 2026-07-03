@@ -48,7 +48,7 @@ class AppointmentController extends Controller
         $groupClasses = GroupClass::orderBy('name')->get(['id', 'name', 'color', 'max_participants']);
         // Only users flagged as treating professionals (permission-based, so it
         // survives renaming the role) can be the "Profissional Responsável".
-        $users = User::permission('professional.attend')->orderBy('name')->get(['id', 'name']);
+        $users = User::professionals()->orderBy('name')->get(['id', 'name']);
 
         return Inertia::render('appointments/index', [
             'appointments' => $appointments,
@@ -364,7 +364,7 @@ class AppointmentController extends Controller
         $patients = Patient::orderBy('name')->get(['id', 'name']);
         // Only users flagged as treating professionals (permission-based, so it
         // survives renaming the role) can be the "Profissional Responsável".
-        $users = User::permission('professional.attend')->orderBy('name')->get(['id', 'name']);
+        $users = User::professionals()->orderBy('name')->get(['id', 'name']);
         $groupClasses = GroupClass::orderBy('name')->get(['id', 'name', 'color', 'max_participants']);
 
         return Inertia::render('appointments/show', [

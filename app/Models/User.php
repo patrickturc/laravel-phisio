@@ -53,4 +53,19 @@ class User extends Authenticatable
             'two_factor_confirmed_at' => 'datetime',
         ];
     }
+
+    /**
+     * Users flagged as treating professionals — those whose role (or direct
+     * grant) carries the "professional.attend" permission. Queried straight from
+     * the DB (roles/permissions tables) instead of Spatie's cached lookup, so it
+     * never throws PermissionDoesNotExist on a stale cache and survives renaming
+     * the role.
+     */
+    public function scopeProfessionals($query)
+    {
+        return $query->where(function ($q) {
+            $q->whereHas('roles.permissions', fn ($p) => $p->where('name', 'professional.attend'))
+                ->orWhereHas('permissions', fn ($p) => $p->where('name', 'professional.attend'));
+        });
+    }
 }
