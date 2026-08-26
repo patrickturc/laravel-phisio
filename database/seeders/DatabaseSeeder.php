@@ -23,21 +23,23 @@ class DatabaseSeeder extends Seeder
         ]);
 
         // 2. Create Dev Admin
-        $devAdmin = User::factory()->create([
+        $devAdmin = User::create([
             'name' => 'Patrick Turchetti',
             'email' => 'paturchette@gmail.com',
             'password' => bcrypt('password'),
             'is_dev_admin' => true,
             'tenant_id' => null,
+            'email_verified_at' => now(),
         ]);
 
         // 3. Create Tenant Admin
-        $tenantAdmin = User::factory()->create([
+        $tenantAdmin = User::create([
             'name' => 'Admin Phisio',
             'email' => 'admin@phisio.com',
             'password' => bcrypt('password'),
             'is_dev_admin' => false,
             'tenant_id' => $tenant->id,
+            'email_verified_at' => now(),
         ]);
 
         // 4. Create basic roles and permissions for the tenant admin
