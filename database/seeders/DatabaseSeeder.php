@@ -14,33 +14,39 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         // 1. Create Default Tenant
-        $tenant = \App\Models\Tenant::create([
-            'name' => 'Fisio Principal',
-            'slug' => 'fisio-principal',
-            'status' => 'active',
-            'plan' => 'pro',
-            'max_users' => 10,
-        ]);
+        $tenant = \App\Models\Tenant::firstOrCreate(
+            ['slug' => 'fisio-principal'],
+            [
+                'name' => 'Fisio Principal',
+                'status' => 'active',
+                'plan' => 'pro',
+                'max_users' => 10,
+            ]
+        );
 
         // 2. Create Dev Admin
-        $devAdmin = User::create([
-            'name' => 'Patrick Turchetti',
-            'email' => 'paturchette@gmail.com',
-            'password' => bcrypt('password'),
-            'is_dev_admin' => true,
-            'tenant_id' => null,
-            'email_verified_at' => now(),
-        ]);
+        $devAdmin = User::firstOrCreate(
+            ['email' => 'paturchette@gmail.com'],
+            [
+                'name' => 'Patrick Turchetti',
+                'password' => bcrypt('password'),
+                'is_dev_admin' => true,
+                'tenant_id' => null,
+                'email_verified_at' => now(),
+            ]
+        );
 
         // 3. Create Tenant Admin
-        $tenantAdmin = User::create([
-            'name' => 'Admin Phisio',
-            'email' => 'admin@phisio.com',
-            'password' => bcrypt('password'),
-            'is_dev_admin' => false,
-            'tenant_id' => $tenant->id,
-            'email_verified_at' => now(),
-        ]);
+        $tenantAdmin = User::firstOrCreate(
+            ['email' => 'admin@phisio.com'],
+            [
+                'name' => 'Admin Phisio',
+                'password' => bcrypt('password'),
+                'is_dev_admin' => false,
+                'tenant_id' => $tenant->id,
+                'email_verified_at' => now(),
+            ]
+        );
 
         // 4. Create basic roles and permissions for the tenant admin
         $adminRole = \Spatie\Permission\Models\Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
