@@ -1,6 +1,6 @@
 import { AppContent } from '@/components/app-content';
 import { AppShell } from '@/components/app-shell';
-import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarItem, SidebarMenu, SidebarProvider } from '@/components/ui/sidebar';
+import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenuItem, SidebarMenuButton, SidebarMenu, SidebarProvider } from '@/components/ui/sidebar';
 import type { AppLayoutProps } from '@/types';
 import { Toaster, toast } from 'sonner';
 import { usePage, Link } from '@inertiajs/react';
@@ -26,16 +26,20 @@ export default function DevAdminLayout({ children, breadcrumbs = [] }: AppLayout
                     </SidebarHeader>
                     <SidebarContent>
                         <SidebarMenu>
-                            <SidebarItem>
-                                <Link href={route('dev-admin.dashboard')} className="flex items-center gap-2 p-2 rounded-md hover:bg-muted">
-                                    <Home className="w-4 h-4" /> Dashboard
-                                </Link>
-                            </SidebarItem>
-                            <SidebarItem>
-                                <Link href={route('dev-admin.tenants.index')} className="flex items-center gap-2 p-2 rounded-md hover:bg-muted">
-                                    <Users className="w-4 h-4" /> Tenants
-                                </Link>
-                            </SidebarItem>
+                            <SidebarMenuItem>
+                                <SidebarMenuButton asChild>
+                                    <Link href={route('dev-admin.dashboard')}>
+                                        <Home className="w-4 h-4" /> <span>Dashboard</span>
+                                    </Link>
+                                </SidebarMenuButton>
+                            </SidebarMenuItem>
+                            <SidebarMenuItem>
+                                <SidebarMenuButton asChild>
+                                    <Link href={route('dev-admin.tenants.index')}>
+                                        <Users className="w-4 h-4" /> <span>Tenants</span>
+                                    </Link>
+                                </SidebarMenuButton>
+                            </SidebarMenuItem>
                         </SidebarMenu>
                     </SidebarContent>
                     <SidebarFooter>
