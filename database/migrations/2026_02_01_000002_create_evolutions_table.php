@@ -15,6 +15,7 @@ return new class extends Migration
         Schema::create('evolutions', function (Blueprint $table) {
             $isSqlite = DB::connection()->getDriverName() === 'sqlite';
             $table->uuid('id')->default($isSqlite ? null : DB::raw('gen_random_uuid()'))->primary();
+            $table->foreignUuid('tenant_id')->constrained()->cascadeOnDelete();
             $table->uuid('paciente_id')->index('idx_evolutions_patient');
             $table->uuid('agendamento_id')->nullable()->index('idx_evolutions_appointment');
             $table->foreignId('profissional_id');

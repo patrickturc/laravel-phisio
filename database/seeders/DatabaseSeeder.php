@@ -13,14 +13,36 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // Cria usuário Admin padrão
-        $admin = User::firstOrCreate(
-            ['email' => 'paturchette@gmail.com'],
-            [
-                'name' => 'Patrick Turchetti',
-                'password' => bcrypt('password'), // Senha padrão inicial
-            ]
-        );
+        // 1. Create Default Tenant
+        $tenant = \App\Models\Tenant::create([
+            'name' => 'Fisio Principal',
+            'slug' => 'fisio-principal',
+            'status' => 'active',
+            'plan' => 'pro',
+            'max_users' => 10,
+        ]);
+
+        // 2. Create Dev Admin
+        $devAdmin = User::factory()->create([
+            'name' => 'Patrick Turchetti',
+            'email' => 'paturchette@gmail.com',
+            'password' => bcrypt('password'),
+            'is_dev_admin' => true,
+            'tenant_id' => null,
+        ]);
+
+        // 3. Create Tenant Admin
+        $tenantAdmin = User::factory()->create([
+            'name' => 'Admin Phisio',
+            'email' => 'admin@phisio.com',
+            'password' => bcrypt('password'),
+            'is_dev_admin' => false,
+            'tenant_id' => $tenant->id,
+        ]);
+
+        // 4. Create basic roles and permissions for the tenant admin
+        $adminRole = \Spatie\Permission\Models\Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
+        $tenantAdmin->assignRole($adminRole);
 
         // Chama o seeder de permissões e perfis
         $this->call(AclSeeder::class);

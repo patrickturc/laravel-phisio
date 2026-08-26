@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Concerns\BelongsToTenant;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -9,9 +10,10 @@ use Illuminate\Notifications\Notifiable;
 
 class Patient extends Model
 {
-    use HasUuids, Notifiable, SoftDeletes;
+    use BelongsToTenant, HasUuids, Notifiable, SoftDeletes;
 
     protected $fillable = [
+        'tenant_id',
         'name',
         'nickname',
         'phone',

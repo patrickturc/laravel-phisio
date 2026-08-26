@@ -14,6 +14,7 @@ return new class extends Migration
         // 1. Create pivot table
         Schema::create('appointment_patient', function (Blueprint $table) {
             $table->id();
+            $table->foreignUuid('tenant_id')->constrained()->cascadeOnDelete();
             $table->uuid('appointment_id')->index();
             $table->uuid('patient_id')->index();
             $table->string('status')->default('scheduled'); // scheduled, attended, missed, cancelled

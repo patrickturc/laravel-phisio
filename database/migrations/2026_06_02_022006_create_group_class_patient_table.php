@@ -13,6 +13,7 @@ return new class extends Migration
     {
         Schema::create('group_class_patient', function (Blueprint $table) {
             $table->id();
+            $table->foreignUuid('tenant_id')->constrained()->cascadeOnDelete();
             $table->foreignUuid('group_class_id')->constrained()->cascadeOnDelete();
             $table->foreignUuid('patient_id')->constrained()->cascadeOnDelete();
             $table->timestamps();

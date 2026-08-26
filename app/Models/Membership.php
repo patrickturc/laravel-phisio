@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Concerns\BelongsToTenant;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -9,9 +10,10 @@ use Illuminate\Support\Facades\DB;
 
 class Membership extends Model
 {
-    use HasUuids, SoftDeletes;
+    use BelongsToTenant, HasUuids, SoftDeletes;
 
     protected $fillable = [
+        'tenant_id',
         'patient_id',
         'commercial_plan_id',
         'plan_name',
@@ -81,6 +83,7 @@ class Membership extends Model
     {
         return DB::table('appointment_patient')
             ->join('appointments', 'appointments.id', '=', 'appointment_patient.appointment_id')
+            ->where('appointments.tenant_id', $this->tenant_id)
             ->where('appointment_patient.status', 'attended')
             ->where(function ($query) {
                 $query->where('appointment_patient.membership_id', $this->id)
@@ -138,6 +141,7 @@ class Membership extends Model
 
         return DB::table('appointment_patient')
             ->join('appointments', 'appointments.id', '=', 'appointment_patient.appointment_id')
+            ->where('appointments.tenant_id', $this->tenant_id)
             ->where('appointment_patient.patient_id', $this->patient_id)
             ->whereYear('appointments.appointment_date', $now->year)
             ->whereMonth('appointments.appointment_date', $now->month)

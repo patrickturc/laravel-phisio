@@ -2,13 +2,14 @@
 
 namespace App\Models;
 
+use App\Concerns\BelongsToTenant;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Evolution extends Model
 {
-    use HasUuids, SoftDeletes;
+    use BelongsToTenant, HasUuids, SoftDeletes;
 
     protected $table = 'evolutions';
 
@@ -19,6 +20,7 @@ class Evolution extends Model
     public $timestamps = true;
 
     protected $fillable = [
+        'tenant_id',
         'paciente_id',
         'agendamento_id',
         'clinical_protocol_id',

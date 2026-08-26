@@ -13,6 +13,7 @@ return new class extends Migration
     {
         Schema::create('group_classes', function (Blueprint $table) {
             $table->uuid('id')->primary();
+            $table->foreignUuid('tenant_id')->constrained()->cascadeOnDelete();
             $table->foreignId('user_id')->constrained()->cascadeOnDelete();
             $table->string('name');
             $table->integer('max_participants')->default(1);

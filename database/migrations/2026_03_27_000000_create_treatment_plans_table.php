@@ -10,6 +10,7 @@ return new class extends Migration
     {
         Schema::create('treatment_plans', function (Blueprint $table) {
             $table->uuid('id')->primary();
+            $table->foreignUuid('tenant_id')->constrained()->cascadeOnDelete();
             $table->uuid('patient_id');
             $table->string('title');
             $table->text('objective')->nullable();

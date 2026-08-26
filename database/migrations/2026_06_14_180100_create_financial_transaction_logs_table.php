@@ -10,6 +10,7 @@ return new class extends Migration
     {
         Schema::create('financial_transaction_logs', function (Blueprint $table) {
             $table->uuid('id')->primary();
+            $table->foreignUuid('tenant_id')->constrained()->cascadeOnDelete();
             $table->foreignUuid('financial_transaction_id')->constrained('financial_transactions')->cascadeOnDelete();
             // created, marked_paid, reverted, updated, deleted
             $table->string('action');

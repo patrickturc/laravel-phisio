@@ -12,16 +12,14 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('patient_documents', function (Blueprint $table) {
+        Schema::create('evolution_photos', function (Blueprint $table) {
             $isSqlite = DB::connection()->getDriverName() === 'sqlite';
             $table->uuid('id')->default($isSqlite ? null : DB::raw('gen_random_uuid()'))->primary();
             $table->foreignUuid('tenant_id')->constrained()->cascadeOnDelete();
-            $table->foreignUuid('patient_id')->constrained('patients')->cascadeOnDelete();
-            $table->string('file_path');
-            $table->string('original_name');
-            $table->string('description')->nullable();
-            $table->foreignId('user_id')->nullable()->constrained('users')->nullOnDelete();
-            $table->timestamps();
+            $table->foreignUuid('evolucao_id')->constrained('evolutions')->cascadeOnDelete();
+            $table->text('caminho_arquivo');
+            $table->text('descricao')->nullable();
+            $table->timestampTz('data_upload')->nullable();
         });
     }
 
@@ -30,6 +28,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('patient_documents');
+        Schema::dropIfExists('evolution_photos');
     }
 };

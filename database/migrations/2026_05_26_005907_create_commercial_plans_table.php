@@ -13,6 +13,7 @@ return new class extends Migration
     {
         Schema::create('commercial_plans', function (Blueprint $table) {
             $table->uuid('id')->primary();
+            $table->foreignUuid('tenant_id')->constrained()->cascadeOnDelete();
             $table->string('name');
             $table->decimal('price', 10, 2);
             $table->integer('duration_months')->nullable();

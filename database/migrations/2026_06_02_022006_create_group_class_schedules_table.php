@@ -13,6 +13,7 @@ return new class extends Migration
     {
         Schema::create('group_class_schedules', function (Blueprint $table) {
             $table->uuid('id')->primary();
+            $table->foreignUuid('tenant_id')->constrained()->cascadeOnDelete();
             $table->foreignUuid('group_class_id')->constrained()->cascadeOnDelete();
             $table->integer('day_of_week'); // 0 = Sunday, 1 = Monday, etc.
             $table->time('start_time');

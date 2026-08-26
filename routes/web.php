@@ -73,7 +73,18 @@ $resourceWithPermissions = function (string $name, string $controller, string $p
     }
 };
 
-Route::middleware(['auth', 'verified'])->group(function () use ($resourceWithPermissions) {
+// Dev Admin routes
+Route::prefix('dev-admin')
+    ->middleware(['auth', 'verified', 'dev-admin'])
+    ->name('dev-admin.')
+    ->group(function () {
+        Route::get('/', [\App\Http\Controllers\DevAdmin\DashboardController::class, 'index'])->name('dashboard');
+        Route::resource('tenants', \App\Http\Controllers\DevAdmin\TenantController::class);
+        Route::post('tenants/{tenant}/toggle-status', [\App\Http\Controllers\DevAdmin\TenantController::class, 'toggleStatus'])
+            ->name('tenants.toggle-status');
+    });
+
+Route::middleware(['auth', 'verified', 'tenant.active'])->group(function () use ($resourceWithPermissions) {
     Route::get('dashboard', [DashboardController::class, 'index'])
         ->middleware('permission:dashboard.view')
         ->name('dashboard');

@@ -13,6 +13,7 @@ return new class extends Migration
     {
         Schema::create('financial_transactions', function (Blueprint $table) {
             $table->uuid('id')->primary();
+            $table->foreignUuid('tenant_id')->constrained()->cascadeOnDelete();
             $table->enum('type', ['income', 'expense']);
             $table->decimal('amount', 10, 2);
             $table->date('date');

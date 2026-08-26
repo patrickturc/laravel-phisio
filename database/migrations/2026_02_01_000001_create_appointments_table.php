@@ -15,6 +15,7 @@ return new class extends Migration
         Schema::create('appointments', function (Blueprint $table) {
             $isSqlite = DB::connection()->getDriverName() === 'sqlite';
             $table->uuid('id')->default($isSqlite ? null : DB::raw('gen_random_uuid()'))->primary();
+            $table->foreignUuid('tenant_id')->constrained()->cascadeOnDelete();
             $table->timestampTz('created_at')->default($isSqlite ? DB::raw('CURRENT_TIMESTAMP') : DB::raw("timezone('utc'::text, now())"));
             $table->timestamp("updated_at")->nullable();
             $table->uuid('patient_id')->index('idx_appointments_patient');

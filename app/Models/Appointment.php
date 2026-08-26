@@ -2,16 +2,18 @@
 
 namespace App\Models;
 
+use App\Concerns\BelongsToTenant;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 
 class Appointment extends Model
 {
-    use HasUuids;
+    use BelongsToTenant, HasUuids;
 
     public $timestamps = false;
 
     protected $fillable = [
+        'tenant_id',
         'user_id',
         'appointment_date',
         'start_time',

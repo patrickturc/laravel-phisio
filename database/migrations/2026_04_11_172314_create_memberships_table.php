@@ -13,6 +13,7 @@ return new class extends Migration
     {
         Schema::create('memberships', function (Blueprint $table) {
             $table->uuid('id')->primary();
+            $table->foreignUuid('tenant_id')->constrained()->cascadeOnDelete();
             $table->foreignUuid('patient_id')->constrained()->cascadeOnDelete();
             $table->string('plan_name');
             $table->date('start_date');

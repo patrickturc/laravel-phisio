@@ -2,14 +2,16 @@
 
 namespace App\Models;
 
+use App\Concerns\BelongsToTenant;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 
 class GroupClassSchedule extends Model
 {
-    use HasUuids;
+    use BelongsToTenant, HasUuids;
 
     protected $fillable = [
+        'tenant_id',
         'group_class_id',
         'day_of_week',
         'start_time',

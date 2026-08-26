@@ -2,15 +2,17 @@
 
 namespace App\Models;
 
+use App\Concerns\BelongsToTenant;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class RecurringExpense extends Model
 {
-    use HasUuids, SoftDeletes;
+    use BelongsToTenant, HasUuids, SoftDeletes;
 
     protected $fillable = [
+        'tenant_id',
         'description',
         'amount',
         'category',
