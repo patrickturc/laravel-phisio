@@ -42,8 +42,8 @@ class HandleInertiaRequests extends Middleware
                 'user' => $request->user() ? array_merge($request->user()->makeVisible('calendar_token')->toArray(), [
                     'roles' => $request->user()->getRoleNames(),
                     'permissions' => $request->user()->getAllPermissions()->pluck('name'),
-                    'tenant' => clone $request->user()->tenant,
-                    'is_dev_admin' => clone $request->user()->is_dev_admin,
+                    'tenant' => $request->user()->tenant,
+                    'is_dev_admin' => $request->user()->is_dev_admin,
                 ]) : null,
             ],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
