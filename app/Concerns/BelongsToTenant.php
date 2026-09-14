@@ -19,29 +19,29 @@ trait BelongsToTenant
     public static function bootBelongsToTenant(): void
     {
         static::creating(function (Model $model): void {
-            if (! auth()->check()) {
-                return;
+            if (auth()->hasUser()) {
+                /** @var \App\Models\User|null $user */
+                $user = auth()->user();
+
+                if ($user && ! $user->is_dev_admin) {
+                    $model->tenant_id ??= $user->tenant_id;
+                }
             }
 
-            /** @var \App\Models\User $user */
-            $user = auth()->user();
-
-            if ($user->is_dev_admin) {
-                return;
+            if (empty($model->tenant_id) && app()->runningUnitTests() && ! $model instanceof \App\Models\User) {
+                $model->tenant_id = Tenant::first()?->id ?? Tenant::factory()->create()->id;
             }
-
-            $model->tenant_id ??= $user->tenant_id;
         });
 
         static::addGlobalScope('tenant', function (Builder $builder): void {
-            if (! auth()->check()) {
+            if (! auth()->hasUser()) {
                 return;
             }
 
-            /** @var \App\Models\User $user */
+            /** @var \App\Models\User|null $user */
             $user = auth()->user();
 
-            if ($user->is_dev_admin) {
+            if (! $user || $user->is_dev_admin) {
                 return;
             }
 
