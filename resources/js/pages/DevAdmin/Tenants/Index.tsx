@@ -2,7 +2,7 @@ import DevAdminLayout from '@/layouts/DevAdminLayout';
 import { Head, Link, router } from '@inertiajs/react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, Search } from 'lucide-react';
+import { PlusCircle, LogIn } from 'lucide-react';
 
 interface IndexProps {
     tenants: {
@@ -17,6 +17,12 @@ export default function Index({ tenants }: IndexProps) {
     const handleToggleStatus = (id: string) => {
         if (confirm('Tem certeza que deseja alterar o status desta organização?')) {
             router.post(`/dev-admin/tenants/${id}/toggle-status`, {}, { preserveScroll: true });
+        }
+    };
+
+    const handleImpersonate = (tenant: any) => {
+        if (confirm(`Deseja acessar o sistema como a clínica "${tenant.name}"?`)) {
+            router.post(`/dev-admin/tenants/${tenant.id}/impersonate`);
         }
     };
 
@@ -60,6 +66,16 @@ export default function Index({ tenants }: IndexProps) {
                                 <TableCell>{tenant.max_users}</TableCell>
                                 <TableCell className="text-right">
                                     <div className="flex justify-end gap-2">
+                                        <Button
+                                            variant="secondary"
+                                            size="sm"
+                                            onClick={() => handleImpersonate(tenant)}
+                                            className="bg-indigo-50 text-indigo-700 hover:bg-indigo-100 dark:bg-indigo-950/60 dark:text-indigo-300 font-semibold gap-1"
+                                            title="Acessar como Clínica"
+                                        >
+                                            <LogIn className="h-3.5 w-3.5" />
+                                            Acessar
+                                        </Button>
                                         <Button variant="outline" size="sm" asChild>
                                             <Link href={`/dev-admin/tenants/${tenant.id}`}>Ver</Link>
                                         </Button>

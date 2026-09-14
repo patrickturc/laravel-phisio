@@ -5,7 +5,7 @@ import type { AppLayoutProps } from '@/types';
 import { Toaster, toast } from 'sonner';
 import { usePage, Link } from '@inertiajs/react';
 import { useEffect } from 'react';
-import { Home, Users, Settings, LogOut } from 'lucide-react';
+import { Home, Users, Settings, LogOut, Megaphone } from 'lucide-react';
 import { NavUser } from '@/components/nav-user';
 
 export default function DevAdminLayout({ children, breadcrumbs = [] }: AppLayoutProps) {
@@ -37,6 +37,13 @@ export default function DevAdminLayout({ children, breadcrumbs = [] }: AppLayout
                                 <SidebarMenuButton asChild>
                                     <Link href="/dev-admin/tenants">
                                         <Users className="w-4 h-4" /> <span>Tenants</span>
+                                    </Link>
+                                </SidebarMenuButton>
+                            </SidebarMenuItem>
+                            <SidebarMenuItem>
+                                <SidebarMenuButton asChild>
+                                    <Link href="/dev-admin/announcements">
+                                        <Megaphone className="w-4 h-4" /> <span>Comunicados</span>
                                     </Link>
                                 </SidebarMenuButton>
                             </SidebarMenuItem>

@@ -82,7 +82,28 @@ Route::prefix('dev-admin')
         Route::resource('tenants', \App\Http\Controllers\DevAdmin\TenantController::class);
         Route::post('tenants/{tenant}/toggle-status', [\App\Http\Controllers\DevAdmin\TenantController::class, 'toggleStatus'])
             ->name('tenants.toggle-status');
+        Route::post('tenants/{tenant}/impersonate', [\App\Http\Controllers\DevAdmin\ImpersonationController::class, 'impersonate'])
+            ->name('tenants.impersonate');
+        Route::get('tenants/{tenant}/export', [\App\Http\Controllers\DevAdmin\TenantController::class, 'export'])
+            ->name('tenants.export');
+        Route::post('tenants/{tenant}/users', [\App\Http\Controllers\DevAdmin\TenantController::class, 'storeUser'])
+            ->name('tenants.users.store');
+        Route::post('tenants/{tenant}/users/{user}/reset-password', [\App\Http\Controllers\DevAdmin\TenantController::class, 'resetUserPassword'])
+            ->name('tenants.users.reset-password');
+        Route::get('announcements', [\App\Http\Controllers\DevAdmin\AnnouncementController::class, 'index'])
+            ->name('announcements.index');
+        Route::post('announcements', [\App\Http\Controllers\DevAdmin\AnnouncementController::class, 'store'])
+            ->name('announcements.store');
+        Route::post('announcements/{announcement}/toggle-status', [\App\Http\Controllers\DevAdmin\AnnouncementController::class, 'toggleStatus'])
+            ->name('announcements.toggle-status');
+        Route::delete('announcements/{announcement}', [\App\Http\Controllers\DevAdmin\AnnouncementController::class, 'destroy'])
+            ->name('announcements.destroy');
     });
+
+// Leave impersonation (requires auth but not dev-admin, as user is temporarily impersonating)
+Route::post('dev-admin/leave-impersonation', [\App\Http\Controllers\DevAdmin\ImpersonationController::class, 'leave'])
+    ->middleware('auth')
+    ->name('dev-admin.leave-impersonation');
 
 Route::middleware(['auth', 'verified', 'tenant.active'])->group(function () use ($resourceWithPermissions) {
     Route::get('dashboard', [DashboardController::class, 'index'])

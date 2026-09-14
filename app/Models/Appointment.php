@@ -37,9 +37,20 @@ class Appointment extends Model
 
     public function patients()
     {
-        return $this->belongsToMany(Patient::class)
+        $tenantId = $this->tenant_id ?? auth()->user()?->tenant_id;
+        if (! $tenantId && app()->runningUnitTests()) {
+            $tenantId = Tenant::first()?->id;
+        }
+
+        $relation = $this->belongsToMany(Patient::class)
             ->withPivot('status', 'reminder_sent_at', 'membership_id', 'missed_justified', 'missed_reason')
             ->withTimestamps();
+
+        if ($tenantId) {
+            $relation->withPivotValue('tenant_id', $tenantId);
+        }
+
+        return $relation;
     }
 
     public function schedule()

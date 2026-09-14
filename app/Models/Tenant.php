@@ -22,6 +22,8 @@ class Tenant extends Model
         'status',
         'plan',
         'max_users',
+        'features',
+        'max_storage_mb',
     ];
 
     /**
@@ -31,7 +33,24 @@ class Tenant extends Model
     {
         return [
             'max_users' => 'integer',
+            'max_storage_mb' => 'integer',
+            'features' => 'array',
         ];
+    }
+
+    public function hasFeature(string $feature): bool
+    {
+        $defaultFeatures = [
+            'financial' => true,
+            'group_classes' => true,
+            'clinical_protocols' => true,
+            'reports' => true,
+            'evolution_photos' => true,
+        ];
+
+        $features = array_merge($defaultFeatures, $this->features ?? []);
+
+        return (bool) ($features[$feature] ?? true);
     }
 
     public function users(): HasMany

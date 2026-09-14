@@ -47,6 +47,18 @@ class HandleInertiaRequests extends Middleware
                 ]) : null,
             ],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
+            'impersonation' => $request->session()->has('impersonated_by') ? [
+                'active' => true,
+                'tenant_name' => $request->user()?->tenant?->name ?? 'Clínica',
+                'user_name' => $request->user()?->name,
+            ] : null,
+            'announcements' => fn () => $request->user() && $request->user()->tenant_id
+                ? \App\Models\SystemAnnouncement::active()
+                    ->forTenant($request->user()->tenant_id)
+                    ->latest()
+                    ->take(3)
+                    ->get(['id', 'title', 'message', 'type'])
+                : [],
             'flash' => [
                 'success' => fn () => $request->session()->get('success'),
                 'error' => fn () => $request->session()->get('error'),

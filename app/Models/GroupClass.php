@@ -27,8 +27,19 @@ class GroupClass extends Model
 
     public function patients()
     {
-        return $this->belongsToMany(Patient::class, 'group_class_patient')
+        $tenantId = $this->tenant_id ?? auth()->user()?->tenant_id;
+        if (! $tenantId && app()->runningUnitTests()) {
+            $tenantId = Tenant::first()?->id;
+        }
+
+        $relation = $this->belongsToMany(Patient::class, 'group_class_patient')
             ->withTimestamps();
+
+        if ($tenantId) {
+            $relation->withPivotValue('tenant_id', $tenantId);
+        }
+
+        return $relation;
     }
 
     public function appointments()

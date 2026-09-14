@@ -2,6 +2,8 @@ import { AppContent } from '@/components/app-content';
 import { AppShell } from '@/components/app-shell';
 import { AppSidebar } from '@/components/app-sidebar';
 import { AppSidebarHeader } from '@/components/app-sidebar-header';
+import { ImpersonationBanner } from '@/components/impersonation-banner';
+import { SystemAnnouncementBanner } from '@/components/system-announcement-banner';
 import type { AppLayoutProps } from '@/types';
 import { Toaster, toast } from 'sonner';
 import { usePage } from '@inertiajs/react';
@@ -23,7 +25,11 @@ export default function AppSidebarLayout({
         <AppShell variant="sidebar">
             <AppSidebar />
             <AppContent variant="sidebar">
+                <ImpersonationBanner />
                 <AppSidebarHeader breadcrumbs={breadcrumbs} />
+                <div className="px-4 sm:px-6 pt-2">
+                    <SystemAnnouncementBanner />
+                </div>
                 {children}
             </AppContent>
             <Toaster position="top-right" richColors closeButton theme="system" />

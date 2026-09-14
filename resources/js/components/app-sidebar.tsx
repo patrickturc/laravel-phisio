@@ -26,25 +26,27 @@ import {
 } from '@/components/ui/sidebar';
 import { usePermissions } from '@/hooks/use-permissions';
 import { useCurrentUrl } from '@/hooks/use-current-url';
+import { useTenantFeatures } from '@/hooks/use-tenant-features';
 
 export function AppSidebar() {
     const { can } = usePermissions();
     const { isCurrentUrl } = useCurrentUrl();
+    const { hasFeature } = useTenantFeatures();
 
-    // Dynamically build main navigation based on permissions
+    // Dynamically build main navigation based on permissions and tenant feature flags
     const mainNavItems = [
         { title: 'Dashboard', href: '/dashboard', icon: LayoutGrid, show: can('dashboard.view') },
         { title: 'Agenda', href: '/appointments', icon: CalendarRange, show: can('appointments.manage.view') },
         { title: 'Pacientes', href: '/patients', icon: Users, show: can('patients.manage.view') },
-        { title: 'Turmas', href: '/group-classes', icon: Users, show: can('group_classes.manage.view') },
+        { title: 'Turmas', href: '/group-classes', icon: Users, show: can('group_classes.manage.view') && hasFeature('group_classes') },
         { title: 'Evoluções', href: '/evolutions', icon: Activity, show: can('evolutions.manage.view') },
         { title: 'Matrículas', href: '/memberships', icon: CreditCard, show: can('memberships.manage.view') },
-        { title: 'Relatórios', href: '/reports', icon: BarChart3, show: can('reports.manage.view') },
+        { title: 'Relatórios', href: '/reports', icon: BarChart3, show: can('reports.manage.view') && hasFeature('reports') },
         {
             title: 'Financeiro',
             href: '/financial',
             icon: DollarSign,
-            show: can('financial.transactions.view'),
+            show: can('financial.transactions.view') && hasFeature('financial'),
             items: [
                 { title: 'Fluxo de Caixa', href: '/financial', show: can('financial.transactions.view') },
                 { title: 'Gastos Recorrentes', href: '/recurring-expenses', show: can('recurring_expenses.manage.view') },
@@ -53,7 +55,7 @@ export function AppSidebar() {
     ].filter(item => item.show);
 
     const settingsNavItems = [
-        { title: 'Protocolos Clínicos', href: '/clinical-protocols', icon: ClipboardList, show: can('treatment_plans.manage.view') },
+        { title: 'Protocolos Clínicos', href: '/clinical-protocols', icon: ClipboardList, show: can('treatment_plans.manage.view') && hasFeature('clinical_protocols') },
         { title: 'Planos e Pacotes', href: '/commercial-plans', icon: Tag, show: can('commercial_plans.manage.view') },
         { title: 'Usuários', href: '/settings/users', icon: Users, show: can('settings.users.view') },
         { title: 'Perfis de Acesso', href: '/settings/roles', icon: ShieldCheck, show: can('settings.roles.view') },
