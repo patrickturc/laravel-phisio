@@ -24,10 +24,10 @@ export default function Show({ tenant, usageLogs }: ShowProps) {
                 </div>
                 <div className="flex gap-2">
                     <Button variant="outline" asChild>
-                        <Link href={route('dev-admin.tenants.edit', tenant.id)}>Editar</Link>
+                        <Link href={`/dev-admin/tenants/${tenant.id}/edit`}>Editar</Link>
                     </Button>
                     <Button variant="outline" asChild>
-                        <Link href={route('dev-admin.tenants.index')}>Voltar</Link>
+                        <Link href="/dev-admin/tenants">Voltar</Link>
                     </Button>
                 </div>
             </div>

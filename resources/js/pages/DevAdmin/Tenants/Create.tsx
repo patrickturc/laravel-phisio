@@ -18,7 +18,7 @@ export default function Create() {
 
     const submit = (e: React.FormEvent) => {
         e.preventDefault();
-        post(route('dev-admin.tenants.store'));
+        post('/dev-admin/tenants');
     };
 
     return (
@@ -28,7 +28,7 @@ export default function Create() {
             <div className="flex items-center justify-between mb-6">
                 <h2 className="text-2xl font-bold">Nova Organização</h2>
                 <Button variant="outline" asChild>
-                    <Link href={route('dev-admin.tenants.index')}>Voltar</Link>
+                    <Link href="/dev-admin/tenants">Voltar</Link>
                 </Button>
             </div>
 

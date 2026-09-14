@@ -28,14 +28,14 @@ export default function DevAdminLayout({ children, breadcrumbs = [] }: AppLayout
                         <SidebarMenu>
                             <SidebarMenuItem>
                                 <SidebarMenuButton asChild>
-                                    <Link href={route('dev-admin.dashboard')}>
+                                    <Link href="/dev-admin">
                                         <Home className="w-4 h-4" /> <span>Dashboard</span>
                                     </Link>
                                 </SidebarMenuButton>
                             </SidebarMenuItem>
                             <SidebarMenuItem>
                                 <SidebarMenuButton asChild>
-                                    <Link href={route('dev-admin.tenants.index')}>
+                                    <Link href="/dev-admin/tenants">
                                         <Users className="w-4 h-4" /> <span>Tenants</span>
                                     </Link>
                                 </SidebarMenuButton>

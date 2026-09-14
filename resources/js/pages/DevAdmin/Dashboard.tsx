@@ -64,7 +64,7 @@ export default function Dashboard({ stats, recentTenants }: DashboardProps) {
                                     <span className={`px-2 py-1 text-xs rounded-full ${tenant.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
                                         {tenant.status}
                                     </span>
-                                    <Link href={route('dev-admin.tenants.show', tenant.id)} className="text-sm text-primary hover:underline">
+                                    <Link href={`/dev-admin/tenants/${tenant.id}`} className="text-sm text-primary hover:underline">
                                         Detalhes
                                     </Link>
                                 </div>

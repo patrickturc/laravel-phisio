@@ -16,7 +16,7 @@ interface IndexProps {
 export default function Index({ tenants }: IndexProps) {
     const handleToggleStatus = (id: string) => {
         if (confirm('Tem certeza que deseja alterar o status desta organização?')) {
-            router.post(route('dev-admin.tenants.toggle-status', id), {}, { preserveScroll: true });
+            router.post(`/dev-admin/tenants/${id}/toggle-status`, {}, { preserveScroll: true });
         }
     };
 
@@ -27,7 +27,7 @@ export default function Index({ tenants }: IndexProps) {
             <div className="flex justify-between items-center mb-6">
                 <h2 className="text-2xl font-bold tracking-tight">Organizações</h2>
                 <Button asChild>
-                    <Link href={route('dev-admin.tenants.create')}>
+                    <Link href="/dev-admin/tenants/create">
                         <PlusCircle className="mr-2 h-4 w-4" /> Nova Organização
                     </Link>
                 </Button>
@@ -61,10 +61,10 @@ export default function Index({ tenants }: IndexProps) {
                                 <TableCell className="text-right">
                                     <div className="flex justify-end gap-2">
                                         <Button variant="outline" size="sm" asChild>
-                                            <Link href={route('dev-admin.tenants.show', tenant.id)}>Ver</Link>
+                                            <Link href={`/dev-admin/tenants/${tenant.id}`}>Ver</Link>
                                         </Button>
                                         <Button variant="outline" size="sm" asChild>
-                                            <Link href={route('dev-admin.tenants.edit', tenant.id)}>Editar</Link>
+                                            <Link href={`/dev-admin/tenants/${tenant.id}/edit`}>Editar</Link>
                                         </Button>
                                         <Button 
                                             variant={tenant.status === 'active' ? 'destructive' : 'default'} 

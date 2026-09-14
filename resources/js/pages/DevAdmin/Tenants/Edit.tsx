@@ -22,7 +22,7 @@ export default function Edit({ tenant }: EditProps) {
 
     const submit = (e: React.FormEvent) => {
         e.preventDefault();
-        put(route('dev-admin.tenants.update', tenant.id));
+        put(`/dev-admin/tenants/${tenant.id}`);
     };
 
     return (
@@ -32,7 +32,7 @@ export default function Edit({ tenant }: EditProps) {
             <div className="flex items-center justify-between mb-6">
                 <h2 className="text-2xl font-bold">Editar Organização</h2>
                 <Button variant="outline" asChild>
-                    <Link href={route('dev-admin.tenants.index')}>Voltar</Link>
+                    <Link href="/dev-admin/tenants">Voltar</Link>
                 </Button>
             </div>
 
