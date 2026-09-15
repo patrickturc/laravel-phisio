@@ -17,6 +17,18 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Contact E-mail
+    |--------------------------------------------------------------------------
+    |
+    | E-mail comercial exibido na landing page para pedidos de demonstração.
+    | Quando vazio, os botões de contato levam para a tela de login.
+    |
+    */
+
+    'contact_email' => env('APP_CONTACT_EMAIL'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Application Environment
     |--------------------------------------------------------------------------
     |

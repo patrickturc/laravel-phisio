@@ -5,6 +5,9 @@ use App\Http\Controllers\CalendarFeedController;
 use App\Http\Controllers\ClinicalProtocolController;
 use App\Http\Controllers\CommercialPlanController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\DevAdmin\AnnouncementController;
+use App\Http\Controllers\DevAdmin\ImpersonationController;
+use App\Http\Controllers\DevAdmin\TenantController;
 use App\Http\Controllers\EvolutionController;
 use App\Http\Controllers\FinancialTransactionController;
 use App\Http\Controllers\GroupClassController;
@@ -13,21 +16,17 @@ use App\Http\Controllers\PatientController;
 use App\Http\Controllers\PatientDocumentController;
 use App\Http\Controllers\RecurringExpenseController;
 use App\Http\Controllers\ReportController;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
-use Laravel\Fortify\Features;
 
-Route::get('/', function (Request $request) {
+Route::get('/', function () {
     if (auth()->check()) {
         return redirect()->route('dashboard');
     }
 
-    return Inertia::render('auth/login', [
-        'canResetPassword' => Features::enabled(Features::resetPasswords()),
-        'canRegister' => Features::enabled(Features::registration()),
-        'status' => $request->session()->get('status'),
+    return Inertia::render('welcome', [
+        'contactEmail' => config('app.contact_email'),
     ]);
 })->name('home');
 
@@ -78,30 +77,30 @@ Route::prefix('dev-admin')
     ->middleware(['auth', 'verified', 'dev-admin'])
     ->name('dev-admin.')
     ->group(function () {
-        Route::get('/', [\App\Http\Controllers\DevAdmin\DashboardController::class, 'index'])->name('dashboard');
-        Route::resource('tenants', \App\Http\Controllers\DevAdmin\TenantController::class);
-        Route::post('tenants/{tenant}/toggle-status', [\App\Http\Controllers\DevAdmin\TenantController::class, 'toggleStatus'])
+        Route::get('/', [App\Http\Controllers\DevAdmin\DashboardController::class, 'index'])->name('dashboard');
+        Route::resource('tenants', TenantController::class);
+        Route::post('tenants/{tenant}/toggle-status', [TenantController::class, 'toggleStatus'])
             ->name('tenants.toggle-status');
-        Route::post('tenants/{tenant}/impersonate', [\App\Http\Controllers\DevAdmin\ImpersonationController::class, 'impersonate'])
+        Route::post('tenants/{tenant}/impersonate', [ImpersonationController::class, 'impersonate'])
             ->name('tenants.impersonate');
-        Route::get('tenants/{tenant}/export', [\App\Http\Controllers\DevAdmin\TenantController::class, 'export'])
+        Route::get('tenants/{tenant}/export', [TenantController::class, 'export'])
             ->name('tenants.export');
-        Route::post('tenants/{tenant}/users', [\App\Http\Controllers\DevAdmin\TenantController::class, 'storeUser'])
+        Route::post('tenants/{tenant}/users', [TenantController::class, 'storeUser'])
             ->name('tenants.users.store');
-        Route::post('tenants/{tenant}/users/{user}/reset-password', [\App\Http\Controllers\DevAdmin\TenantController::class, 'resetUserPassword'])
+        Route::post('tenants/{tenant}/users/{user}/reset-password', [TenantController::class, 'resetUserPassword'])
             ->name('tenants.users.reset-password');
-        Route::get('announcements', [\App\Http\Controllers\DevAdmin\AnnouncementController::class, 'index'])
+        Route::get('announcements', [AnnouncementController::class, 'index'])
             ->name('announcements.index');
-        Route::post('announcements', [\App\Http\Controllers\DevAdmin\AnnouncementController::class, 'store'])
+        Route::post('announcements', [AnnouncementController::class, 'store'])
             ->name('announcements.store');
-        Route::post('announcements/{announcement}/toggle-status', [\App\Http\Controllers\DevAdmin\AnnouncementController::class, 'toggleStatus'])
+        Route::post('announcements/{announcement}/toggle-status', [AnnouncementController::class, 'toggleStatus'])
             ->name('announcements.toggle-status');
-        Route::delete('announcements/{announcement}', [\App\Http\Controllers\DevAdmin\AnnouncementController::class, 'destroy'])
+        Route::delete('announcements/{announcement}', [AnnouncementController::class, 'destroy'])
             ->name('announcements.destroy');
     });
 
 // Leave impersonation (requires auth but not dev-admin, as user is temporarily impersonating)
-Route::post('dev-admin/leave-impersonation', [\App\Http\Controllers\DevAdmin\ImpersonationController::class, 'leave'])
+Route::post('dev-admin/leave-impersonation', [ImpersonationController::class, 'leave'])
     ->middleware('auth')
     ->name('dev-admin.leave-impersonation');
 
