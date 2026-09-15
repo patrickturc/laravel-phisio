@@ -3,20 +3,59 @@
 namespace App\Http\Controllers\DevAdmin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Appointment;
+use App\Models\ClinicalProtocol;
+use App\Models\CommercialPlan;
+use App\Models\Evolution;
+use App\Models\FinancialTransaction;
+use App\Models\GroupClass;
+use App\Models\Patient;
 use App\Models\Tenant;
+use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
-use Illuminate\Support\Str;
+use Spatie\Permission\Models\Role;
 
 class TenantController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $tenants = Tenant::latest()->paginate(10);
+        $filter = $request->string('filter')->toString();
+        $search = $request->string('search')->toString();
+
+        $tenants = Tenant::query()
+            ->when($search !== '', fn ($query) => $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                    ->orWhere('slug', 'like', "%{$search}%")
+                    ->orWhere('email', 'like', "%{$search}%");
+            }))
+            ->when($filter === 'trial', fn ($query) => $query->onTrial())
+            ->when($filter === 'trial_expired', fn ($query) => $query->trialExpired())
+            ->when($filter === 'plan_requests', fn ($query) => $query->pendingPlanRequest())
+            ->when($filter === 'self_registered', fn ($query) => $query->selfRegistered())
+            ->when($filter === 'paid', fn ($query) => $query->whereIn('plan', Tenant::PAID_PLANS))
+            ->latest()
+            ->paginate(10)
+            ->withQueryString();
 
         return Inertia::render('DevAdmin/Tenants/Index', [
             'tenants' => $tenants,
+            'filters' => [
+                'filter' => $filter ?: null,
+                'search' => $search ?: null,
+            ],
+            'counts' => [
+                'all' => Tenant::count(),
+                'trial' => Tenant::onTrial()->count(),
+                'trial_expired' => Tenant::trialExpired()->count(),
+                'plan_requests' => Tenant::pendingPlanRequest()->count(),
+                'self_registered' => Tenant::selfRegistered()->count(),
+                'paid' => Tenant::whereIn('plan', Tenant::PAID_PLANS)->count(),
+            ],
         ]);
     }
 
@@ -55,7 +94,7 @@ class TenantController extends Controller
             'admin_password' => ['nullable', 'string', 'min:8'],
         ]);
 
-        $validated['slug'] = Str::slug($validated['name']) . '-' . Str::random(4);
+        $validated['slug'] = Str::slug($validated['name']).'-'.Str::random(4);
         if (empty($validated['max_storage_mb'])) {
             $validated['max_storage_mb'] = 1024;
         }
@@ -64,16 +103,16 @@ class TenantController extends Controller
         $tenant = Tenant::create($tenantData);
 
         if (! empty($validated['admin_email']) && ! empty($validated['admin_password'])) {
-            $adminUser = \App\Models\User::create([
+            $adminUser = User::create([
                 'tenant_id' => $tenant->id,
                 'name' => $validated['admin_name'] ?: 'Administrador',
                 'email' => $validated['admin_email'],
-                'password' => \Illuminate\Support\Facades\Hash::make($validated['admin_password']),
+                'password' => Hash::make($validated['admin_password']),
                 'is_dev_admin' => false,
                 'email_verified_at' => now(),
             ]);
 
-            $role = \Spatie\Permission\Models\Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
+            $role = Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
             $adminUser->assignRole($role);
         }
 
@@ -85,20 +124,20 @@ class TenantController extends Controller
     {
         $tenant->load('users.roles');
 
-        $totalPatients = \App\Models\Patient::where('tenant_id', $tenant->id)->count();
-        $appointmentsThisMonth = \App\Models\Appointment::where('tenant_id', $tenant->id)
+        $totalPatients = Patient::where('tenant_id', $tenant->id)->count();
+        $appointmentsThisMonth = Appointment::where('tenant_id', $tenant->id)
             ->whereMonth('appointment_date', now()->month)
             ->whereYear('appointment_date', now()->year)
             ->count();
-        $totalEvolutions = \App\Models\Evolution::where('tenant_id', $tenant->id)->count();
+        $totalEvolutions = Evolution::where('tenant_id', $tenant->id)->count();
 
-        $lastAppointment = \App\Models\Appointment::where('tenant_id', $tenant->id)->latest('created_at')->value('created_at');
-        $lastEvolution = \App\Models\Evolution::where('tenant_id', $tenant->id)->latest('created_at')->value('created_at');
-        $lastPatient = \App\Models\Patient::where('tenant_id', $tenant->id)->latest('created_at')->value('created_at');
+        $lastAppointment = Appointment::where('tenant_id', $tenant->id)->latest('created_at')->value('created_at');
+        $lastEvolution = Evolution::where('tenant_id', $tenant->id)->latest('created_at')->value('created_at');
+        $lastPatient = Patient::where('tenant_id', $tenant->id)->latest('created_at')->value('created_at');
 
         $timestamps = array_filter([$lastAppointment, $lastEvolution, $lastPatient]);
         $lastActivityAt = ! empty($timestamps) ? max($timestamps) : null;
-        $daysInactive = $lastActivityAt ? now()->diffInDays(\Carbon\Carbon::parse($lastActivityAt)) : null;
+        $daysInactive = $lastActivityAt ? now()->diffInDays(Carbon::parse($lastActivityAt)) : null;
 
         $healthStatus = 'active';
         if ($daysInactive === null || $daysInactive > 20) {
@@ -111,7 +150,7 @@ class TenantController extends Controller
             'total_patients' => $totalPatients,
             'appointments_this_month' => $appointmentsThisMonth,
             'total_evolutions' => $totalEvolutions,
-            'last_activity_text' => $lastActivityAt ? \Carbon\Carbon::parse($lastActivityAt)->diffForHumans() : 'Sem atividade recente',
+            'last_activity_text' => $lastActivityAt ? Carbon::parse($lastActivityAt)->diffForHumans() : 'Sem atividade recente',
             'health_status' => $healthStatus,
             'days_inactive' => $daysInactive,
         ];
@@ -168,18 +207,18 @@ class TenantController extends Controller
         $data = [
             'tenant' => $tenant->makeHidden(['id'])->toArray(),
             'exported_at' => now()->toIso8601String(),
-            'users' => \App\Models\User::withoutGlobalScopes()->where('tenant_id', $tenant->id)->get(['name', 'email', 'created_at'])->toArray(),
-            'patients' => \App\Models\Patient::withoutGlobalScopes()->where('tenant_id', $tenant->id)->get()->toArray(),
-            'appointments' => \App\Models\Appointment::withoutGlobalScopes()->where('tenant_id', $tenant->id)->get()->toArray(),
-            'evolutions' => \App\Models\Evolution::withoutGlobalScopes()->where('tenant_id', $tenant->id)->get()->toArray(),
-            'financial_transactions' => \App\Models\FinancialTransaction::withoutGlobalScopes()->where('tenant_id', $tenant->id)->get()->toArray(),
-            'clinical_protocols' => \App\Models\ClinicalProtocol::withoutGlobalScopes()->where('tenant_id', $tenant->id)->get()->toArray(),
-            'group_classes' => \App\Models\GroupClass::withoutGlobalScopes()->where('tenant_id', $tenant->id)->get()->toArray(),
-            'commercial_plans' => \App\Models\CommercialPlan::withoutGlobalScopes()->where('tenant_id', $tenant->id)->get()->toArray(),
+            'users' => User::withoutGlobalScopes()->where('tenant_id', $tenant->id)->get(['name', 'email', 'created_at'])->toArray(),
+            'patients' => Patient::withoutGlobalScopes()->where('tenant_id', $tenant->id)->get()->toArray(),
+            'appointments' => Appointment::withoutGlobalScopes()->where('tenant_id', $tenant->id)->get()->toArray(),
+            'evolutions' => Evolution::withoutGlobalScopes()->where('tenant_id', $tenant->id)->get()->toArray(),
+            'financial_transactions' => FinancialTransaction::withoutGlobalScopes()->where('tenant_id', $tenant->id)->get()->toArray(),
+            'clinical_protocols' => ClinicalProtocol::withoutGlobalScopes()->where('tenant_id', $tenant->id)->get()->toArray(),
+            'group_classes' => GroupClass::withoutGlobalScopes()->where('tenant_id', $tenant->id)->get()->toArray(),
+            'commercial_plans' => CommercialPlan::withoutGlobalScopes()->where('tenant_id', $tenant->id)->get()->toArray(),
         ];
 
         $json = json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-        $filename = 'export-' . Str::slug($tenant->name) . '-' . now()->format('Y-m-d-His') . '.json';
+        $filename = 'export-'.Str::slug($tenant->name).'-'.now()->format('Y-m-d-His').'.json';
 
         return response()->streamDownload(function () use ($json) {
             echo $json;
@@ -188,10 +227,71 @@ class TenantController extends Controller
         ]);
     }
 
+    /**
+     * Approve a pending plan request: move the organization onto the paid plan
+     * and clear the trial, which is what unlocks the application again.
+     */
+    public function approvePlanRequest(Request $request, Tenant $tenant)
+    {
+        $validated = $request->validate([
+            'plan' => ['required', Rule::in(['basic', 'pro'])],
+            'max_users' => ['nullable', 'integer', 'min:1'],
+        ]);
+
+        $tenant->update([
+            'plan' => $validated['plan'],
+            'max_users' => $validated['max_users'] ?? max($tenant->max_users, 5),
+            'status' => 'active',
+            'trial_ends_at' => null,
+            'requested_plan' => null,
+            'plan_requested_at' => null,
+            'plan_request_notes' => null,
+        ]);
+
+        return back()->with('success', "Plano {$validated['plan']} ativado para {$tenant->name}.");
+    }
+
+    /**
+     * Dismiss a plan request without changing the plan. The organization stays
+     * where it is (trial or expired) and can request again.
+     */
+    public function rejectPlanRequest(Tenant $tenant)
+    {
+        $tenant->update([
+            'requested_plan' => null,
+            'plan_requested_at' => null,
+            'plan_request_notes' => null,
+        ]);
+
+        return back()->with('success', 'Solicitação de plano descartada.');
+    }
+
+    /**
+     * Give an organization more trial days, counted from today when the trial
+     * has already lapsed.
+     */
+    public function extendTrial(Request $request, Tenant $tenant)
+    {
+        $validated = $request->validate([
+            'days' => ['required', 'integer', 'min:1', 'max:180'],
+        ]);
+
+        $base = $tenant->trial_ends_at && $tenant->trial_ends_at->isFuture()
+            ? $tenant->trial_ends_at
+            : now();
+
+        $tenant->update([
+            'trial_started_at' => $tenant->trial_started_at ?? now(),
+            'trial_ends_at' => $base->copy()->addDays($validated['days']),
+        ]);
+
+        return back()->with('success', "Trial estendido em {$validated['days']} dias.");
+    }
+
     public function toggleStatus(Tenant $tenant)
     {
         $newStatus = $tenant->status === 'active' ? 'suspended' : 'active';
-        
+
         $tenant->update(['status' => $newStatus]);
 
         return back()->with('success', "Status da organização alterado para {$newStatus}.");
@@ -206,24 +306,24 @@ class TenantController extends Controller
             'role' => ['nullable', 'string'],
         ]);
 
-        $user = \App\Models\User::create([
+        $user = User::create([
             'tenant_id' => $tenant->id,
             'name' => $validated['name'],
             'email' => $validated['email'],
-            'password' => \Illuminate\Support\Facades\Hash::make($validated['password']),
+            'password' => Hash::make($validated['password']),
             'is_dev_admin' => false,
             'email_verified_at' => now(),
         ]);
 
         if (! empty($validated['role'])) {
-            $role = \Spatie\Permission\Models\Role::firstOrCreate(['name' => $validated['role'], 'guard_name' => 'web']);
+            $role = Role::firstOrCreate(['name' => $validated['role'], 'guard_name' => 'web']);
             $user->assignRole($role);
         }
 
         return back()->with('success', "Usuário {$user->name} cadastrado com sucesso para esta organização.");
     }
 
-    public function resetUserPassword(Request $request, Tenant $tenant, \App\Models\User $user)
+    public function resetUserPassword(Request $request, Tenant $tenant, User $user)
     {
         if ($user->tenant_id !== $tenant->id) {
             abort(403, 'Usuário não pertence a esta organização.');
@@ -234,7 +334,7 @@ class TenantController extends Controller
         ]);
 
         $user->update([
-            'password' => \Illuminate\Support\Facades\Hash::make($validated['password']),
+            'password' => Hash::make($validated['password']),
         ]);
 
         return back()->with('success', "Senha do usuário {$user->name} redefinida com sucesso.");

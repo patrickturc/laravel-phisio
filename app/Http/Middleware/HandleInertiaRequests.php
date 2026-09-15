@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\SystemAnnouncement;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -46,6 +47,19 @@ class HandleInertiaRequests extends Middleware
                     'is_dev_admin' => $request->user()->is_dev_admin,
                 ]) : null,
             ],
+            'trial' => function () use ($request) {
+                $tenant = $request->user()?->tenant;
+
+                if (! $tenant || ! $tenant->isOnTrial()) {
+                    return null;
+                }
+
+                return [
+                    'days_left' => $tenant->trialDaysLeft(),
+                    'ends_at' => $tenant->trial_ends_at?->toIso8601String(),
+                    'has_pending_request' => $tenant->hasPendingPlanRequest(),
+                ];
+            },
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
             'impersonation' => $request->session()->has('impersonated_by') ? [
                 'active' => true,
@@ -53,7 +67,7 @@ class HandleInertiaRequests extends Middleware
                 'user_name' => $request->user()?->name,
             ] : null,
             'announcements' => fn () => $request->user() && $request->user()->tenant_id
-                ? \App\Models\SystemAnnouncement::active()
+                ? SystemAnnouncement::active()
                     ->forTenant($request->user()->tenant_id)
                     ->latest()
                     ->take(3)

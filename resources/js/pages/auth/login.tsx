@@ -98,6 +98,19 @@ export default function Login({
                                 {processing && <Spinner className="mr-2" />}
                                 Entrar no Sistema
                             </Button>
+
+                            {canRegister && (
+                                <p className="text-center text-sm text-muted-foreground">
+                                    Ainda não tem conta?{' '}
+                                    <TextLink
+                                        href="/register"
+                                        className="font-medium text-primary hover:text-primary/80"
+                                        tabIndex={6}
+                                    >
+                                        Teste grátis por 15 dias
+                                    </TextLink>
+                                </p>
+                            )}
                         </div>
 
                     </>

@@ -1,5 +1,6 @@
 import { Head, Link, usePage } from '@inertiajs/react';
-import { motion } from 'framer-motion';
+import type { MotionValue } from 'framer-motion';
+import { motion, useReducedMotion, useScroll, useSpring, useTransform } from 'framer-motion';
 import {
     Activity,
     ArrowRight,
@@ -22,10 +23,13 @@ import {
     Users,
 } from 'lucide-react';
 import type { ComponentType, ReactNode } from 'react';
+import { useRef } from 'react';
 import { dashboard, login } from '@/routes';
 
 type Props = {
     contactEmail: string | null;
+    canRegister: boolean;
+    trialDays: number;
 };
 
 type Feature = {
@@ -165,6 +169,103 @@ function Reveal({
         >
             {children}
         </motion.div>
+    );
+}
+
+/**
+ * Scroll-scrubbed 3D reveal: the panel starts tilted back and slightly small,
+ * then straightens and settles as it rises through the viewport. The rotation
+ * is tied to scroll position rather than to time, so dragging the scrollbar
+ * backwards plays it in reverse.
+ */
+function ScrollTiltPanel({ children }: { children: ReactNode }) {
+    const ref = useRef<HTMLDivElement>(null);
+    const reduceMotion = useReducedMotion();
+
+    const { scrollYProgress } = useScroll({
+        target: ref,
+        offset: ['start end', 'center center'],
+    });
+
+    // A spring takes the jitter out of raw wheel/trackpad deltas.
+    const progress = useSpring(scrollYProgress, {
+        stiffness: 110,
+        damping: 28,
+        mass: 0.4,
+    });
+
+    const rotateX = useTransform(progress, [0, 1], [20, 0]);
+    const scale = useTransform(progress, [0, 1], [0.86, 1]);
+    const opacity = useTransform(progress, [0, 0.5], [0.45, 1]);
+    const translateY = useTransform(progress, [0, 1], [60, 0]);
+
+    if (reduceMotion) {
+        return <div ref={ref}>{children}</div>;
+    }
+
+    return (
+        <div ref={ref} style={{ perspective: 1600 }}>
+            <motion.div
+                style={{ rotateX, scale, opacity, y: translateY, transformOrigin: 'center top' }}
+                className="will-change-transform"
+            >
+                {children}
+            </motion.div>
+        </div>
+    );
+}
+
+function RevealWord({
+    progress,
+    range,
+    children,
+}: {
+    progress: MotionValue<number>;
+    range: [number, number];
+    children: string;
+}) {
+    const opacity = useTransform(progress, range, [0.12, 1]);
+    const y = useTransform(progress, range, [8, 0]);
+
+    return (
+        <motion.span style={{ opacity, y }} className="mr-[0.25em] inline-block">
+            {children}
+        </motion.span>
+    );
+}
+
+/**
+ * Word-by-word scroll reveal. Each word gets its own slice of the scroll range,
+ * so the sentence brightens left to right as the section comes up — the effect
+ * Apple uses for its statement lines.
+ */
+function ScrollRevealText({ text, className }: { text: string; className?: string }) {
+    const ref = useRef<HTMLParagraphElement>(null);
+    const reduceMotion = useReducedMotion();
+
+    const { scrollYProgress } = useScroll({
+        target: ref,
+        offset: ['start 0.9', 'start 0.35'],
+    });
+
+    const words = text.split(' ');
+
+    if (reduceMotion) {
+        return <p className={className}>{text}</p>;
+    }
+
+    return (
+        <p ref={ref} className={className}>
+            {words.map((word, i) => (
+                <RevealWord
+                    key={`${word}-${i}`}
+                    progress={scrollYProgress}
+                    range={[i / words.length, (i + 1) / words.length]}
+                >
+                    {word}
+                </RevealWord>
+            ))}
+        </p>
     );
 }
 
@@ -354,11 +455,15 @@ function ProductPreview() {
     );
 }
 
-export default function Welcome({ contactEmail }: Props) {
+export default function Welcome({ contactEmail, canRegister = true, trialDays = 15 }: Props) {
     const { auth } = usePage().props;
     const contactHref = contactEmail
         ? `mailto:${contactEmail}?subject=${encodeURIComponent('Quero conhecer o Phisio')}`
         : login().url;
+    // The trial signup is the primary call to action; when self-service signup
+    // is turned off the same buttons fall back to contacting the team.
+    const signupHref = canRegister ? '/register' : contactHref;
+    const signupLabel = canRegister ? `Teste grátis por ${trialDays} dias` : 'Solicitar demonstração';
     const year = new Date().getFullYear();
 
     return (
@@ -422,10 +527,10 @@ export default function Welcome({ contactEmail }: Props) {
                                         Entrar
                                     </Link>
                                     <a
-                                        href={contactHref}
+                                        href={signupHref}
                                         className="hidden h-9 items-center rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground shadow-xs transition-colors hover:bg-primary/90 sm:inline-flex"
                                     >
-                                        Solicitar demonstração
+                                        {canRegister ? 'Criar conta grátis' : 'Solicitar demonstração'}
                                     </a>
                                 </>
                             )}
@@ -444,7 +549,9 @@ export default function Welcome({ contactEmail }: Props) {
                                 className="mb-6 inline-flex items-center gap-2 rounded-full border border-border bg-card px-3.5 py-1.5 text-sm text-muted-foreground shadow-xs"
                             >
                                 <Sparkles className="size-3.5 text-primary" />
-                                Feito para fisioterapia e Pilates clínico
+                                {canRegister
+                                    ? `${trialDays} dias grátis para testar tudo`
+                                    : 'Feito para fisioterapia e Pilates clínico'}
                             </motion.div>
 
                             <motion.h1
@@ -476,10 +583,10 @@ export default function Welcome({ contactEmail }: Props) {
                                 className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row"
                             >
                                 <a
-                                    href={contactHref}
+                                    href={signupHref}
                                     className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary px-7 text-base font-semibold text-primary-foreground shadow-lg shadow-primary/25 transition-all hover:-translate-y-0.5 hover:bg-primary/90 sm:w-auto"
                                 >
-                                    Solicitar demonstração
+                                    {signupLabel}
                                     <ArrowRight className="size-4" />
                                 </a>
                                 <Link
@@ -496,7 +603,11 @@ export default function Welcome({ contactEmail }: Props) {
                                 transition={{ duration: 0.6, delay: 0.5 }}
                                 className="mt-8 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm text-muted-foreground"
                             >
-                                {['Sem instalação', 'Acesso pelo celular', 'Dados protegidos pela LGPD'].map((item) => (
+                                {[
+                                    'Sem cartão de crédito',
+                                    'Acesso completo no teste',
+                                    'Dados protegidos pela LGPD',
+                                ].map((item) => (
                                     <li key={item} className="flex items-center gap-1.5">
                                         <CheckCircle2 className="size-4 text-secondary-foreground" />
                                         {item}
@@ -511,7 +622,9 @@ export default function Welcome({ contactEmail }: Props) {
                             transition={{ duration: 0.8, delay: 0.4, ease: [0.22, 1, 0.36, 1] }}
                             className="mt-16 md:mt-20"
                         >
-                            <ProductPreview />
+                            <ScrollTiltPanel>
+                                <ProductPreview />
+                            </ScrollTiltPanel>
                         </motion.div>
                     </section>
 
@@ -660,15 +773,20 @@ export default function Welcome({ contactEmail }: Props) {
 
                     {/* How it works */}
                     <section id="como-funciona" className="mx-auto max-w-7xl scroll-mt-20 px-6 py-24 md:py-32">
-                        <Reveal className="mx-auto mb-16 max-w-2xl text-center">
-                            <SectionLabel>Como funciona</SectionLabel>
-                            <h2 className="mt-5 text-3xl font-bold tracking-tight text-balance text-foreground md:text-5xl">
-                                Do primeiro contato ao acompanhamento.
-                            </h2>
-                            <p className="mt-4 text-lg text-pretty text-muted-foreground">
-                                Um fluxo simples que conecta recepção, atendimento e gestão sem retrabalho.
-                            </p>
-                        </Reveal>
+                        <div className="mx-auto mb-16 max-w-3xl text-center">
+                            <Reveal>
+                                <SectionLabel>Como funciona</SectionLabel>
+                            </Reveal>
+                            <ScrollRevealText
+                                text="Do primeiro contato ao acompanhamento, sem retrabalho."
+                                className="mt-5 text-3xl font-bold tracking-tight text-balance text-foreground md:text-5xl"
+                            />
+                            <Reveal>
+                                <p className="mt-4 text-lg text-pretty text-muted-foreground">
+                                    Um fluxo simples que conecta recepção, atendimento e gestão.
+                                </p>
+                            </Reveal>
+                        </div>
 
                         <div className="relative grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-4">
                             <div className="absolute top-7 left-[12.5%] right-[12.5%] hidden border-t border-dashed border-border lg:block" />
@@ -731,17 +849,18 @@ export default function Welcome({ contactEmail }: Props) {
                                             Pronto para modernizar sua clínica?
                                         </h2>
                                         <p className="mt-4 max-w-xl text-lg text-pretty text-primary-foreground/80">
-                                            Agende uma demonstração guiada. Mostramos o Phisio funcionando com o fluxo da sua
-                                            clínica e respondemos todas as suas dúvidas.
+                                            {canRegister
+                                                ? `Crie sua conta em menos de um minuto e use o sistema completo por ${trialDays} dias. Sem cartão de crédito, sem compromisso.`
+                                                : 'Agende uma demonstração guiada. Mostramos o Phisio funcionando com o fluxo da sua clínica e respondemos todas as suas dúvidas.'}
                                         </p>
                                     </div>
                                     <div className="flex flex-col gap-3">
                                         <a
-                                            href={contactHref}
+                                            href={signupHref}
                                             className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-white px-6 text-base font-semibold text-primary shadow-lg transition-transform hover:-translate-y-0.5"
                                         >
-                                            <Mail className="size-4" />
-                                            Solicitar demonstração
+                                            {canRegister ? <Sparkles className="size-4" /> : <Mail className="size-4" />}
+                                            {signupLabel}
                                         </a>
                                         <Link
                                             href={login()}
@@ -749,7 +868,16 @@ export default function Welcome({ contactEmail }: Props) {
                                         >
                                             Já sou cliente
                                         </Link>
-                                        {contactEmail && (
+                                        {contactEmail && canRegister && (
+                                            <a
+                                                href={contactHref}
+                                                className="inline-flex items-center justify-center gap-1.5 text-center text-sm text-primary-foreground/80 underline-offset-4 hover:underline"
+                                            >
+                                                <Mail className="size-4" />
+                                                Prefere uma demonstração guiada? Fale com a equipe
+                                            </a>
+                                        )}
+                                        {contactEmail && !canRegister && (
                                             <p className="text-center text-sm text-primary-foreground/70">{contactEmail}</p>
                                         )}
                                     </div>

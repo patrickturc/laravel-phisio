@@ -16,9 +16,12 @@ use App\Http\Controllers\PatientController;
 use App\Http\Controllers\PatientDocumentController;
 use App\Http\Controllers\RecurringExpenseController;
 use App\Http\Controllers\ReportController;
+use App\Http\Controllers\SubscriptionController;
+use App\Models\Tenant;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
+use Laravel\Fortify\Features;
 
 Route::get('/', function () {
     if (auth()->check()) {
@@ -27,12 +30,26 @@ Route::get('/', function () {
 
     return Inertia::render('welcome', [
         'contactEmail' => config('app.contact_email'),
+        'canRegister' => Features::enabled(Features::registration()),
+        'trialDays' => Tenant::TRIAL_DAYS,
     ]);
 })->name('home');
 
 Route::get('/feed/calendar/{token}.ics', [CalendarFeedController::class, 'feed'])
     ->middleware('throttle:30,1')
     ->name('calendar.feed');
+
+/**
+ * Trial status and plan requests. Deliberately outside the "tenant.active"
+ * group: an organization whose trial expired is redirected here, so gating this
+ * page behind the same middleware would loop.
+ */
+Route::middleware(['auth', 'verified'])->group(function () {
+    Route::get('assinatura', [SubscriptionController::class, 'index'])->name('subscription.index');
+    Route::post('assinatura/solicitar', [SubscriptionController::class, 'store'])
+        ->middleware('throttle:10,1')
+        ->name('subscription.request');
+});
 
 /**
  * Register the seven standard resource routes, each guarded by the matching
@@ -81,6 +98,12 @@ Route::prefix('dev-admin')
         Route::resource('tenants', TenantController::class);
         Route::post('tenants/{tenant}/toggle-status', [TenantController::class, 'toggleStatus'])
             ->name('tenants.toggle-status');
+        Route::post('tenants/{tenant}/approve-plan', [TenantController::class, 'approvePlanRequest'])
+            ->name('tenants.approve-plan');
+        Route::post('tenants/{tenant}/reject-plan', [TenantController::class, 'rejectPlanRequest'])
+            ->name('tenants.reject-plan');
+        Route::post('tenants/{tenant}/extend-trial', [TenantController::class, 'extendTrial'])
+            ->name('tenants.extend-trial');
         Route::post('tenants/{tenant}/impersonate', [ImpersonationController::class, 'impersonate'])
             ->name('tenants.impersonate');
         Route::get('tenants/{tenant}/export', [TenantController::class, 'export'])

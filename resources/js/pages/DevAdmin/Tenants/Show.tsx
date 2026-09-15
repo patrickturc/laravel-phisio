@@ -27,6 +27,7 @@ import {
 import { useState } from 'react';
 
 import { TenantFormSheet } from './TenantFormSheet';
+import { TenantStatusBadge } from './TenantStatusBadge';
 
 interface ShowProps {
     tenant: any;
@@ -85,6 +86,30 @@ export default function Show({ tenant, metrics, usageLogs }: ShowProps) {
         });
     };
 
+    const handleApprovePlan = (plan: string) => {
+        if (confirm(`Ativar o plano "${plan}" para "${tenant.name}"? O período de teste será encerrado.`)) {
+            router.post(
+                `/dev-admin/tenants/${tenant.id}/approve-plan`,
+                { plan },
+                { preserveScroll: true },
+            );
+        }
+    };
+
+    const handleRejectPlan = () => {
+        if (confirm('Descartar a solicitação de plano? A organização poderá solicitar novamente.')) {
+            router.post(`/dev-admin/tenants/${tenant.id}/reject-plan`, {}, { preserveScroll: true });
+        }
+    };
+
+    const handleExtendTrial = (days: number) => {
+        router.post(
+            `/dev-admin/tenants/${tenant.id}/extend-trial`,
+            { days },
+            { preserveScroll: true },
+        );
+    };
+
     const getHealthBadge = (status: 'active' | 'attention' | 'risk') => {
         switch (status) {
             case 'active':
@@ -122,9 +147,7 @@ export default function Show({ tenant, metrics, usageLogs }: ShowProps) {
                         <h1 className="text-3xl font-bold tracking-tight text-foreground flex items-center gap-2">
                             <Building className="h-8 w-8 text-primary" /> {tenant.name}
                         </h1>
-                        <span className={`px-2.5 py-0.5 text-xs font-medium rounded-full ${tenant.status === 'active' ? 'bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300' : 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300'}`}>
-                            {tenant.status === 'active' ? 'Ativo' : 'Suspenso'}
-                        </span>
+                        <TenantStatusBadge tenant={tenant} />
                     </div>
                     <p className="text-sm text-muted-foreground mt-1">
                         {tenant.legal_name ? `${tenant.legal_name} • ` : ''}Slug: {tenant.slug} • ID: {tenant.id}
@@ -153,6 +176,91 @@ export default function Show({ tenant, metrics, usageLogs }: ShowProps) {
                     </Button>
                 </div>
             </div>
+
+            {/* Assinatura: trial, solicitação de plano e ativação */}
+            <Card className={`mb-8 ${tenant.has_pending_plan_request ? 'border-primary/40 bg-primary/5' : ''}`}>
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-base">
+                        <PackageCheck className="h-4 w-4 text-primary" />
+                        Assinatura e período de teste
+                    </CardTitle>
+                    <CardDescription>
+                        {tenant.self_registered
+                            ? 'Organização criada pelo próprio cliente na landing page.'
+                            : 'Organização criada manualmente pelo dev admin.'}
+                    </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-5">
+                    <div className="grid gap-4 sm:grid-cols-3">
+                        <div>
+                            <p className="text-xs text-muted-foreground">Plano atual</p>
+                            <p className="font-medium capitalize">{tenant.plan}</p>
+                        </div>
+                        <div>
+                            <p className="text-xs text-muted-foreground">Situação de acesso</p>
+                            <div className="mt-0.5">
+                                <TenantStatusBadge tenant={tenant} />
+                            </div>
+                        </div>
+                        <div>
+                            <p className="text-xs text-muted-foreground">Fim do teste</p>
+                            <p className="font-medium">
+                                {tenant.trial_ends_at
+                                    ? new Date(tenant.trial_ends_at).toLocaleDateString('pt-BR')
+                                    : 'Sem período de teste'}
+                            </p>
+                        </div>
+                    </div>
+
+                    {tenant.has_pending_plan_request && (
+                        <div className="rounded-lg border border-primary/30 bg-background p-4">
+                            <p className="text-sm font-semibold text-foreground">
+                                Solicitou o plano <span className="capitalize">{tenant.requested_plan}</span>
+                                {tenant.plan_requested_at
+                                    ? ` em ${new Date(tenant.plan_requested_at).toLocaleDateString('pt-BR')}`
+                                    : ''}
+                            </p>
+                            {tenant.plan_request_notes && (
+                                <p className="mt-2 text-sm whitespace-pre-line text-muted-foreground">
+                                    “{tenant.plan_request_notes}”
+                                </p>
+                            )}
+                            <div className="mt-4 flex flex-wrap gap-2">
+                                <Button size="sm" onClick={() => handleApprovePlan(tenant.requested_plan)}>
+                                    Ativar plano {tenant.requested_plan}
+                                </Button>
+                                <Button size="sm" variant="outline" onClick={handleRejectPlan}>
+                                    Descartar solicitação
+                                </Button>
+                            </div>
+                        </div>
+                    )}
+
+                    <div className="flex flex-wrap items-center gap-2 border-t pt-4">
+                        <span className="text-sm text-muted-foreground">Estender teste em</span>
+                        {[7, 15, 30].map((days) => (
+                            <Button
+                                key={days}
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleExtendTrial(days)}
+                            >
+                                +{days} dias
+                            </Button>
+                        ))}
+                        {!tenant.has_pending_plan_request && tenant.plan !== 'pro' && (
+                            <Button
+                                size="sm"
+                                variant="secondary"
+                                className="ml-auto"
+                                onClick={() => handleApprovePlan('pro')}
+                            >
+                                Ativar plano pro manualmente
+                            </Button>
+                        )}
+                    </div>
+                </CardContent>
+            </Card>
 
             {/* Health Score & Métricas de Engajamento */}
             <div className="grid gap-4 md:grid-cols-4 mb-8">
