@@ -29,13 +29,30 @@ class TenantController extends Controller
     {
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
+            'legal_name' => ['nullable', 'string', 'max:255'],
             'document' => ['nullable', 'string', 'max:255'],
+            'state_registration' => ['nullable', 'string', 'max:50'],
             'email' => ['nullable', 'email', 'max:255'],
             'phone' => ['nullable', 'string', 'max:255'],
+            'whatsapp' => ['nullable', 'string', 'max:255'],
+            'website' => ['nullable', 'string', 'max:255'],
+            'cep' => ['nullable', 'string', 'max:9'],
+            'street' => ['nullable', 'string', 'max:255'],
+            'number' => ['nullable', 'string', 'max:50'],
+            'complement' => ['nullable', 'string', 'max:255'],
+            'neighborhood' => ['nullable', 'string', 'max:255'],
+            'city' => ['nullable', 'string', 'max:255'],
+            'state' => ['nullable', 'string', 'max:2'],
+            'technical_manager_name' => ['nullable', 'string', 'max:255'],
+            'technical_manager_document' => ['nullable', 'string', 'max:50'],
+            'notes' => ['nullable', 'string'],
             'plan' => ['required', Rule::in(['free', 'basic', 'pro'])],
             'max_users' => ['required', 'integer', 'min:1'],
             'max_storage_mb' => ['nullable', 'integer', 'min:100'],
             'features' => ['nullable', 'array'],
+            'admin_name' => ['nullable', 'string', 'max:255'],
+            'admin_email' => ['nullable', 'email', 'max:255', 'unique:users,email'],
+            'admin_password' => ['nullable', 'string', 'min:8'],
         ]);
 
         $validated['slug'] = Str::slug($validated['name']) . '-' . Str::random(4);
@@ -43,7 +60,22 @@ class TenantController extends Controller
             $validated['max_storage_mb'] = 1024;
         }
 
-        Tenant::create($validated);
+        $tenantData = collect($validated)->except(['admin_name', 'admin_email', 'admin_password'])->toArray();
+        $tenant = Tenant::create($tenantData);
+
+        if (! empty($validated['admin_email']) && ! empty($validated['admin_password'])) {
+            $adminUser = \App\Models\User::create([
+                'tenant_id' => $tenant->id,
+                'name' => $validated['admin_name'] ?: 'Administrador',
+                'email' => $validated['admin_email'],
+                'password' => \Illuminate\Support\Facades\Hash::make($validated['admin_password']),
+                'is_dev_admin' => false,
+                'email_verified_at' => now(),
+            ]);
+
+            $role = \Spatie\Permission\Models\Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
+            $adminUser->assignRole($role);
+        }
 
         return redirect()->route('dev-admin.tenants.index')
             ->with('success', 'Organização criada com sucesso.');
@@ -102,9 +134,23 @@ class TenantController extends Controller
     {
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
+            'legal_name' => ['nullable', 'string', 'max:255'],
             'document' => ['nullable', 'string', 'max:255'],
+            'state_registration' => ['nullable', 'string', 'max:50'],
             'email' => ['nullable', 'email', 'max:255'],
             'phone' => ['nullable', 'string', 'max:255'],
+            'whatsapp' => ['nullable', 'string', 'max:255'],
+            'website' => ['nullable', 'string', 'max:255'],
+            'cep' => ['nullable', 'string', 'max:9'],
+            'street' => ['nullable', 'string', 'max:255'],
+            'number' => ['nullable', 'string', 'max:50'],
+            'complement' => ['nullable', 'string', 'max:255'],
+            'neighborhood' => ['nullable', 'string', 'max:255'],
+            'city' => ['nullable', 'string', 'max:255'],
+            'state' => ['nullable', 'string', 'max:2'],
+            'technical_manager_name' => ['nullable', 'string', 'max:255'],
+            'technical_manager_document' => ['nullable', 'string', 'max:50'],
+            'notes' => ['nullable', 'string'],
             'plan' => ['required', Rule::in(['free', 'basic', 'pro'])],
             'max_users' => ['required', 'integer', 'min:1'],
             'max_storage_mb' => ['nullable', 'integer', 'min:100'],

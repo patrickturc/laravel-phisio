@@ -4,6 +4,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Button } from '@/components/ui/button';
 import { PlusCircle, LogIn } from 'lucide-react';
 
+import { useState } from 'react';
+import { TenantFormSheet } from './TenantFormSheet';
+
 interface IndexProps {
     tenants: {
         data: any[];
@@ -14,6 +17,9 @@ interface IndexProps {
 }
 
 export default function Index({ tenants }: IndexProps) {
+    const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+    const [selectedTenant, setSelectedTenant] = useState<any | null>(null);
+
     const handleToggleStatus = (id: string) => {
         if (confirm('Tem certeza que deseja alterar o status desta organização?')) {
             router.post(`/dev-admin/tenants/${id}/toggle-status`, {}, { preserveScroll: true });
@@ -26,16 +32,29 @@ export default function Index({ tenants }: IndexProps) {
         }
     };
 
+    const handleOpenCreate = () => {
+        setSelectedTenant(null);
+        setIsDrawerOpen(true);
+    };
+
+    const handleOpenEdit = (tenant: any) => {
+        setSelectedTenant(tenant);
+        setIsDrawerOpen(true);
+    };
+
     return (
         <DevAdminLayout>
             <Head title="Gerenciar Organizações" />
 
             <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold tracking-tight">Organizações</h2>
-                <Button asChild>
-                    <Link href="/dev-admin/tenants/create">
-                        <PlusCircle className="mr-2 h-4 w-4" /> Nova Organização
-                    </Link>
+                <div>
+                    <h2 className="text-2xl font-bold tracking-tight">Organizações</h2>
+                    <p className="text-sm text-muted-foreground">
+                        Gerencie todas as clínicas cadastradas na plataforma.
+                    </p>
+                </div>
+                <Button onClick={handleOpenCreate} className="gap-2">
+                    <PlusCircle className="h-4 w-4" /> Nova Organização
                 </Button>
             </div>
 
@@ -79,8 +98,12 @@ export default function Index({ tenants }: IndexProps) {
                                         <Button variant="outline" size="sm" asChild>
                                             <Link href={`/dev-admin/tenants/${tenant.id}`}>Ver</Link>
                                         </Button>
-                                        <Button variant="outline" size="sm" asChild>
-                                            <Link href={`/dev-admin/tenants/${tenant.id}/edit`}>Editar</Link>
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => handleOpenEdit(tenant)}
+                                        >
+                                            Editar
                                         </Button>
                                         <Button 
                                             variant={tenant.status === 'active' ? 'destructive' : 'default'} 
@@ -96,6 +119,13 @@ export default function Index({ tenants }: IndexProps) {
                     </TableBody>
                 </Table>
             </div>
+
+            {/* Drawer Lateral de Cadastro e Edição de Organização */}
+            <TenantFormSheet
+                open={isDrawerOpen}
+                onOpenChange={setIsDrawerOpen}
+                tenant={selectedTenant}
+            />
         </DevAdminLayout>
     );
 }

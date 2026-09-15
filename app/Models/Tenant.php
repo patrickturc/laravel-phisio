@@ -13,11 +13,25 @@ class Tenant extends Model
 
     protected $fillable = [
         'name',
+        'legal_name',
         'slug',
         'document',
+        'state_registration',
         'email',
         'phone',
+        'whatsapp',
+        'website',
         'address',
+        'cep',
+        'street',
+        'number',
+        'complement',
+        'neighborhood',
+        'city',
+        'state',
+        'technical_manager_name',
+        'technical_manager_document',
+        'notes',
         'logo_path',
         'status',
         'plan',
@@ -25,6 +39,27 @@ class Tenant extends Model
         'features',
         'max_storage_mb',
     ];
+
+    protected $appends = [
+        'formatted_address',
+    ];
+
+    public function getFormattedAddressAttribute(): ?string
+    {
+        if ($this->street) {
+            $parts = array_filter([
+                $this->street . ($this->number ? ', ' . $this->number : ''),
+                $this->complement,
+                $this->neighborhood,
+                $this->city ? ($this->city . ($this->state ? ' - ' . $this->state : '')) : null,
+                $this->cep ? 'CEP: ' . $this->cep : null,
+            ]);
+
+            return implode(', ', $parts);
+        }
+
+        return $this->address;
+    }
 
     /**
      * @return array<string, string>

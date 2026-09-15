@@ -26,6 +26,8 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 
+import { TenantFormSheet } from './TenantFormSheet';
+
 interface ShowProps {
     tenant: any;
     metrics: {
@@ -41,6 +43,7 @@ interface ShowProps {
 
 export default function Show({ tenant, metrics, usageLogs }: ShowProps) {
     const [isAddUserOpen, setIsAddUserOpen] = useState(false);
+    const [isEditDrawerOpen, setIsEditDrawerOpen] = useState(false);
     const [resetPasswordUser, setResetPasswordUser] = useState<any | null>(null);
 
     const userForm = useForm({
@@ -123,7 +126,9 @@ export default function Show({ tenant, metrics, usageLogs }: ShowProps) {
                             {tenant.status === 'active' ? 'Ativo' : 'Suspenso'}
                         </span>
                     </div>
-                    <p className="text-sm text-muted-foreground mt-1">Slug: {tenant.slug} • ID: {tenant.id}</p>
+                    <p className="text-sm text-muted-foreground mt-1">
+                        {tenant.legal_name ? `${tenant.legal_name} • ` : ''}Slug: {tenant.slug} • ID: {tenant.id}
+                    </p>
                 </div>
 
                 <div className="flex items-center gap-2.5 flex-wrap">
@@ -140,8 +145,8 @@ export default function Show({ tenant, metrics, usageLogs }: ShowProps) {
                             Exportar (LGPD)
                         </a>
                     </Button>
-                    <Button variant="outline" asChild>
-                        <Link href={`/dev-admin/tenants/${tenant.id}/edit`}>Editar</Link>
+                    <Button variant="outline" onClick={() => setIsEditDrawerOpen(true)}>
+                        Editar
                     </Button>
                     <Button variant="outline" asChild>
                         <Link href="/dev-admin/tenants">Voltar</Link>
@@ -200,37 +205,98 @@ export default function Show({ tenant, metrics, usageLogs }: ShowProps) {
 
             {/* Grid com Informações Gerais e Usuários */}
             <div className="grid gap-6 md:grid-cols-3 mb-8">
-                {/* Informações Gerais */}
+                {/* Informações Cadastrais e Endereço */}
                 <Card className="shadow-xs">
                     <CardHeader>
-                        <CardTitle className="text-base font-semibold">Dados Cadastrais</CardTitle>
-                        <CardDescription>Parâmetros e contato da organização.</CardDescription>
+                        <CardTitle className="text-base font-semibold">Dados da Organização</CardTitle>
+                        <CardDescription>Parâmetros cadastrais, endereço e equipe técnica.</CardDescription>
                     </CardHeader>
-                    <CardContent className="space-y-3.5 text-sm">
+                    <CardContent className="space-y-3 text-xs sm:text-sm">
                         <div className="flex justify-between border-b pb-2">
                             <span className="text-muted-foreground">Plano Atual:</span>
                             <span className="font-semibold capitalize text-foreground">{tenant.plan}</span>
                         </div>
+
+                        {tenant.legal_name && (
+                            <div className="flex justify-between border-b pb-2">
+                                <span className="text-muted-foreground">Razão Social:</span>
+                                <span className="font-medium text-foreground text-right">{tenant.legal_name}</span>
+                            </div>
+                        )}
+
                         <div className="flex justify-between border-b pb-2">
-                            <span className="text-muted-foreground">Documento (CNPJ/CPF):</span>
+                            <span className="text-muted-foreground">CNPJ / CPF:</span>
                             <span className="font-medium text-foreground">{tenant.document || 'Não informado'}</span>
                         </div>
+
+                        {tenant.state_registration && (
+                            <div className="flex justify-between border-b pb-2">
+                                <span className="text-muted-foreground">Inscrição Est./Mun.:</span>
+                                <span className="font-medium text-foreground">{tenant.state_registration}</span>
+                            </div>
+                        )}
+
+                        {/* Endereço */}
+                        <div className="border-b pb-2">
+                            <span className="text-muted-foreground block mb-1">Endereço Físico:</span>
+                            <p className="font-medium text-foreground">
+                                {tenant.formatted_address || tenant.address || 'Não informado'}
+                            </p>
+                        </div>
+
+                        {/* Contatos */}
                         <div className="flex justify-between border-b pb-2">
                             <span className="text-muted-foreground">Email:</span>
                             <span className="font-medium text-foreground">{tenant.email || 'Não informado'}</span>
                         </div>
+
                         <div className="flex justify-between border-b pb-2">
                             <span className="text-muted-foreground">Telefone:</span>
                             <span className="font-medium text-foreground">{tenant.phone || 'Não informado'}</span>
                         </div>
+
+                        {tenant.whatsapp && (
+                            <div className="flex justify-between border-b pb-2">
+                                <span className="text-muted-foreground">WhatsApp:</span>
+                                <a
+                                    href={`https://wa.me/55${tenant.whatsapp.replace(/\D/g, '')}`}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="font-medium text-emerald-600 hover:underline"
+                                >
+                                    {tenant.whatsapp}
+                                </a>
+                            </div>
+                        )}
+
+                        {tenant.website && (
+                            <div className="flex justify-between border-b pb-2">
+                                <span className="text-muted-foreground">Website/Rede:</span>
+                                <span className="font-medium text-foreground truncate max-w-[180px]">{tenant.website}</span>
+                            </div>
+                        )}
+
+                        {/* Responsável Técnico */}
+                        {(tenant.technical_manager_name || tenant.technical_manager_document) && (
+                            <div className="border-b pb-2">
+                                <span className="text-muted-foreground block mb-1">Responsável Técnico (RT):</span>
+                                <p className="font-medium text-foreground">
+                                    {tenant.technical_manager_name || 'Profissional não especificado'}
+                                    {tenant.technical_manager_document ? ` (${tenant.technical_manager_document})` : ''}
+                                </p>
+                            </div>
+                        )}
+
                         <div className="flex justify-between border-b pb-2">
                             <span className="text-muted-foreground">Limite de Usuários:</span>
                             <span className="font-semibold text-foreground">{tenant.users?.length || 0} / {tenant.max_users}</span>
                         </div>
+
                         <div className="flex justify-between border-b pb-2">
                             <span className="text-muted-foreground">Limite de Armazenamento:</span>
                             <span className="font-semibold text-foreground">{tenant.max_storage_mb || 1024} MB</span>
                         </div>
+
                         <div className="pt-2">
                             <span className="text-xs text-muted-foreground block mb-2 font-medium">Módulos Habilitados:</span>
                             <div className="flex flex-wrap gap-1.5">
@@ -251,6 +317,13 @@ export default function Show({ tenant, metrics, usageLogs }: ShowProps) {
                                 )}
                             </div>
                         </div>
+
+                        {tenant.notes && (
+                            <div className="pt-2 border-t text-xs text-muted-foreground bg-muted/20 p-2.5 rounded">
+                                <span className="font-semibold text-foreground block mb-1">Notas Internas:</span>
+                                {tenant.notes}
+                            </div>
+                        )}
                     </CardContent>
                 </Card>
 
@@ -460,6 +533,13 @@ export default function Show({ tenant, metrics, usageLogs }: ShowProps) {
                     </form>
                 </DialogContent>
             </Dialog>
+
+            {/* Drawer Lateral de Edição da Organização */}
+            <TenantFormSheet
+                open={isEditDrawerOpen}
+                onOpenChange={setIsEditDrawerOpen}
+                tenant={tenant}
+            />
         </DevAdminLayout>
     );
 }

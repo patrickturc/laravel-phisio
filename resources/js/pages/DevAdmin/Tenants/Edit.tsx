@@ -15,9 +15,23 @@ interface EditProps {
 export default function Edit({ tenant }: EditProps) {
     const { data, setData, put, processing, errors } = useForm({
         name: tenant.name || '',
+        legal_name: tenant.legal_name || '',
         document: tenant.document || '',
+        state_registration: tenant.state_registration || '',
         email: tenant.email || '',
         phone: tenant.phone || '',
+        whatsapp: tenant.whatsapp || '',
+        website: tenant.website || '',
+        cep: tenant.cep || '',
+        street: tenant.street || '',
+        number: tenant.number || '',
+        complement: tenant.complement || '',
+        neighborhood: tenant.neighborhood || '',
+        city: tenant.city || '',
+        state: tenant.state || '',
+        technical_manager_name: tenant.technical_manager_name || '',
+        technical_manager_document: tenant.technical_manager_document || '',
+        notes: tenant.notes || '',
         plan: tenant.plan || 'free',
         max_users: tenant.max_users || 5,
         max_storage_mb: tenant.max_storage_mb || 1024,
@@ -53,54 +67,189 @@ export default function Edit({ tenant }: EditProps) {
                 </Button>
             </div>
 
-            <Card className="max-w-2xl">
+            <Card className="max-w-3xl">
                 <CardHeader>
                     <CardTitle>Detalhes da Organização</CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <form onSubmit={submit} className="space-y-4">
-                        <div className="space-y-2">
-                            <Label htmlFor="name">Nome da Empresa</Label>
-                            <Input
-                                id="name"
-                                value={data.name}
-                                onChange={(e) => setData('name', e.target.value)}
-                                required
-                            />
-                            {errors.name && <p className="text-sm text-red-500">{errors.name}</p>}
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                                <Label htmlFor="document">CNPJ / CPF</Label>
-                                <Input
-                                    id="document"
-                                    value={data.document}
-                                    onChange={(e) => setData('document', e.target.value)}
-                                />
-                                {errors.document && <p className="text-sm text-red-500">{errors.document}</p>}
+                    <form onSubmit={submit} className="space-y-6">
+                        {/* Identificação */}
+                        <div className="space-y-4">
+                            <h3 className="text-sm font-semibold border-b pb-1 text-foreground">Identificação & Fiscal</h3>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="name">Nome Fantasia *</Label>
+                                    <Input
+                                        id="name"
+                                        value={data.name}
+                                        onChange={(e) => setData('name', e.target.value)}
+                                        required
+                                    />
+                                    {errors.name && <p className="text-sm text-red-500">{errors.name}</p>}
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="legal_name">Razão Social</Label>
+                                    <Input
+                                        id="legal_name"
+                                        value={data.legal_name}
+                                        onChange={(e) => setData('legal_name', e.target.value)}
+                                    />
+                                </div>
                             </div>
 
-                            <div className="space-y-2">
-                                <Label htmlFor="phone">Telefone</Label>
-                                <Input
-                                    id="phone"
-                                    value={data.phone}
-                                    onChange={(e) => setData('phone', e.target.value)}
-                                />
-                                {errors.phone && <p className="text-sm text-red-500">{errors.phone}</p>}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="document">CNPJ / CPF</Label>
+                                    <Input
+                                        id="document"
+                                        value={data.document}
+                                        onChange={(e) => setData('document', e.target.value)}
+                                    />
+                                    {errors.document && <p className="text-sm text-red-500">{errors.document}</p>}
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="state_registration">Inscrição Estadual / Municipal</Label>
+                                    <Input
+                                        id="state_registration"
+                                        value={data.state_registration}
+                                        onChange={(e) => setData('state_registration', e.target.value)}
+                                    />
+                                </div>
                             </div>
                         </div>
 
-                        <div className="space-y-2">
-                            <Label htmlFor="email">Email</Label>
-                            <Input
-                                id="email"
-                                type="email"
-                                value={data.email}
-                                onChange={(e) => setData('email', e.target.value)}
-                            />
-                            {errors.email && <p className="text-sm text-red-500">{errors.email}</p>}
+                        {/* Endereço */}
+                        <div className="space-y-4 pt-2">
+                            <h3 className="text-sm font-semibold border-b pb-1 text-foreground">Endereço</h3>
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="cep">CEP</Label>
+                                    <Input
+                                        id="cep"
+                                        value={data.cep}
+                                        onChange={(e) => setData('cep', e.target.value)}
+                                    />
+                                </div>
+                                <div className="sm:col-span-2 space-y-2">
+                                    <Label htmlFor="street">Rua / Logradouro</Label>
+                                    <Input
+                                        id="street"
+                                        value={data.street}
+                                        onChange={(e) => setData('street', e.target.value)}
+                                    />
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="number">Número</Label>
+                                    <Input
+                                        id="number"
+                                        value={data.number}
+                                        onChange={(e) => setData('number', e.target.value)}
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="complement">Complemento</Label>
+                                    <Input
+                                        id="complement"
+                                        value={data.complement}
+                                        onChange={(e) => setData('complement', e.target.value)}
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="neighborhood">Bairro</Label>
+                                    <Input
+                                        id="neighborhood"
+                                        value={data.neighborhood}
+                                        onChange={(e) => setData('neighborhood', e.target.value)}
+                                    />
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                <div className="sm:col-span-2 space-y-2">
+                                    <Label htmlFor="city">Cidade</Label>
+                                    <Input
+                                        id="city"
+                                        value={data.city}
+                                        onChange={(e) => setData('city', e.target.value)}
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="state">UF (Estado)</Label>
+                                    <Input
+                                        id="state"
+                                        value={data.state}
+                                        onChange={(e) => setData('state', e.target.value)}
+                                        maxLength={2}
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Contatos */}
+                        <div className="space-y-4 pt-2">
+                            <h3 className="text-sm font-semibold border-b pb-1 text-foreground">Contatos & Redes</h3>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="email">Email</Label>
+                                    <Input
+                                        id="email"
+                                        type="email"
+                                        value={data.email}
+                                        onChange={(e) => setData('email', e.target.value)}
+                                    />
+                                    {errors.email && <p className="text-sm text-red-500">{errors.email}</p>}
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="phone">Telefone</Label>
+                                    <Input
+                                        id="phone"
+                                        value={data.phone}
+                                        onChange={(e) => setData('phone', e.target.value)}
+                                    />
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="whatsapp">WhatsApp</Label>
+                                    <Input
+                                        id="whatsapp"
+                                        value={data.whatsapp}
+                                        onChange={(e) => setData('whatsapp', e.target.value)}
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="website">Website / Instagram</Label>
+                                    <Input
+                                        id="website"
+                                        value={data.website}
+                                        onChange={(e) => setData('website', e.target.value)}
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Responsável Técnico */}
+                        <div className="space-y-4 pt-2">
+                            <h3 className="text-sm font-semibold border-b pb-1 text-foreground">Responsabilidade Técnica</h3>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="technical_manager_name">Nome do RT</Label>
+                                    <Input
+                                        id="technical_manager_name"
+                                        value={data.technical_manager_name}
+                                        onChange={(e) => setData('technical_manager_name', e.target.value)}
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="technical_manager_document">Registro Profissional (CREFITO)</Label>
+                                    <Input
+                                        id="technical_manager_document"
+                                        value={data.technical_manager_document}
+                                        onChange={(e) => setData('technical_manager_document', e.target.value)}
+                                    />
+                                </div>
+                            </div>
                         </div>
 
                         <div className="grid grid-cols-3 gap-4">

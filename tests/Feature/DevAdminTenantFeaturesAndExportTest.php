@@ -74,3 +74,62 @@ test('dev admin can update tenant feature flags and storage quota', function () 
     expect($tenant->hasFeature('group_classes'))->toBeTrue();
     expect($tenant->hasFeature('clinical_protocols'))->toBeFalse();
 });
+
+test('dev admin can create a tenant with complete address, clinic details and initial admin user', function () {
+    $devAdmin = User::factory()->create([
+        'is_dev_admin' => true,
+        'tenant_id' => null,
+    ]);
+
+    $this->actingAs($devAdmin);
+    $response = $this->post(route('dev-admin.tenants.store'), [
+        'name' => 'FisioVida Reabilitação',
+        'legal_name' => 'FisioVida Saúde e Reabilitação Ltda',
+        'document' => '12.345.678/0001-90',
+        'state_registration' => '987654321',
+        'email' => 'contato@fisiovida.com.br',
+        'phone' => '(11) 3333-4444',
+        'whatsapp' => '(11) 98888-7777',
+        'website' => 'https://fisiovida.com.br',
+        'cep' => '01310-100',
+        'street' => 'Avenida Paulista',
+        'number' => '1000',
+        'complement' => 'Conjunto 52',
+        'neighborhood' => 'Bela Vista',
+        'city' => 'São Paulo',
+        'state' => 'SP',
+        'technical_manager_name' => 'Dra. Roberta Santos',
+        'technical_manager_document' => 'CREFITO-3/99999-F',
+        'notes' => 'Cliente migrado de outro software.',
+        'plan' => 'pro',
+        'max_users' => 10,
+        'max_storage_mb' => 2048,
+        'admin_name' => 'Dra. Roberta Santos',
+        'admin_email' => 'roberta@fisiovida.com.br',
+        'admin_password' => 'segredo1234',
+    ]);
+
+    $response->assertRedirect(route('dev-admin.tenants.index'));
+
+    $this->assertDatabaseHas('tenants', [
+        'name' => 'FisioVida Reabilitação',
+        'legal_name' => 'FisioVida Saúde e Reabilitação Ltda',
+        'cep' => '01310-100',
+        'street' => 'Avenida Paulista',
+        'city' => 'São Paulo',
+        'state' => 'SP',
+        'whatsapp' => '(11) 98888-7777',
+        'technical_manager_name' => 'Dra. Roberta Santos',
+    ]);
+
+    $tenant = Tenant::where('name', 'FisioVida Reabilitação')->first();
+    expect($tenant->formatted_address)->toContain('Avenida Paulista, 1000');
+    expect($tenant->formatted_address)->toContain('São Paulo - SP');
+
+    // Admin user was created
+    $this->assertDatabaseHas('users', [
+        'tenant_id' => $tenant->id,
+        'email' => 'roberta@fisiovida.com.br',
+    ]);
+});
+
