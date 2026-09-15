@@ -1,6 +1,16 @@
 import { Head, Link, usePage } from '@inertiajs/react';
 import type { MotionValue } from 'framer-motion';
-import { motion, useReducedMotion, useScroll, useSpring, useTransform } from 'framer-motion';
+import {
+    motion,
+    useAnimationFrame,
+    useMotionValue,
+    useReducedMotion,
+    useScroll,
+    useSpring,
+    useTransform,
+    useVelocity,
+    wrap,
+} from 'framer-motion';
 import {
     Activity,
     ArrowRight,
@@ -22,7 +32,7 @@ import {
     Tag,
     Users,
 } from 'lucide-react';
-import type { ComponentType, ReactNode } from 'react';
+import type { ComponentType, MouseEvent, ReactNode } from 'react';
 import { useRef } from 'react';
 import { dashboard, login } from '@/routes';
 
@@ -96,6 +106,16 @@ const features: Feature[] = [
         description:
             'Defina exatamente o que recepção, fisioterapeutas e gestores podem ver e editar.',
     },
+];
+
+const modules = [
+    { icon: CalendarRange, label: 'Agenda' },
+    { icon: Users, label: 'Pacientes' },
+    { icon: FileText, label: 'Evoluções' },
+    { icon: Users, label: 'Turmas' },
+    { icon: CreditCard, label: 'Matrículas' },
+    { icon: DollarSign, label: 'Financeiro' },
+    { icon: BarChart3, label: 'Relatórios' },
 ];
 
 const steps = [
@@ -266,6 +286,129 @@ function ScrollRevealText({ text, className }: { text: string; className?: strin
                 </RevealWord>
             ))}
         </p>
+    );
+}
+
+/**
+ * Infinite marquee wired to scroll velocity. It drifts on its own, speeds up
+ * while the page is being scrolled and flips direction when the reader scrolls
+ * back up, so the strip feels physically linked to the wheel.
+ */
+function VelocityMarquee({
+    children,
+    baseVelocity = 2.4,
+}: {
+    children: ReactNode;
+    baseVelocity?: number;
+}) {
+    const reduceMotion = useReducedMotion();
+    const baseX = useMotionValue(0);
+    const { scrollY } = useScroll();
+    const scrollVelocity = useVelocity(scrollY);
+    const smoothVelocity = useSpring(scrollVelocity, { damping: 50, stiffness: 400 });
+
+    // clamp:false lets a hard flick push the strip well past its idle speed.
+    const velocityFactor = useTransform(smoothVelocity, [0, 1200], [0, 4], { clamp: false });
+
+    // The track carries four identical copies, so wrapping a quarter of its
+    // width lands the next copy exactly where the previous one was.
+    const x = useTransform(baseX, (value) => `${wrap(-25, 0, value)}%`);
+    const direction = useRef(-1);
+
+    useAnimationFrame((_, delta) => {
+        if (reduceMotion) {
+            return;
+        }
+
+        const factor = velocityFactor.get();
+
+        if (factor > 0) {
+            direction.current = -1;
+        } else if (factor < 0) {
+            direction.current = 1;
+        }
+
+        let moveBy = direction.current * baseVelocity * (delta / 1000);
+        moveBy += moveBy * Math.abs(factor);
+
+        baseX.set(baseX.get() + moveBy);
+    });
+
+    if (reduceMotion) {
+        return <div className="flex flex-wrap items-center justify-center gap-x-10 gap-y-4">{children}</div>;
+    }
+
+    return (
+        <div
+            className="overflow-hidden"
+            style={{
+                maskImage: 'linear-gradient(to right, transparent, black 8%, black 92%, transparent)',
+                WebkitMaskImage: 'linear-gradient(to right, transparent, black 8%, black 92%, transparent)',
+            }}
+        >
+            <motion.div className="flex will-change-transform" style={{ x }}>
+                {[0, 1, 2, 3].map((copy) => (
+                    <div
+                        key={copy}
+                        aria-hidden={copy > 0}
+                        className="flex shrink-0 items-center gap-x-10 pr-10"
+                    >
+                        {children}
+                    </div>
+                ))}
+            </motion.div>
+        </div>
+    );
+}
+
+/**
+ * Cursor-tracked spotlight. The pointer position is written to CSS custom
+ * properties on the card, which two radial gradients read: one lights the rim,
+ * the other washes across the face. Cheap enough to run on every card because
+ * nothing re-renders — only the custom properties change.
+ */
+function SpotlightCard({ children }: { children: ReactNode }) {
+    const ref = useRef<HTMLDivElement>(null);
+    const reduceMotion = useReducedMotion();
+
+    const handleMove = (event: MouseEvent<HTMLDivElement>) => {
+        const element = ref.current;
+
+        if (!element) {
+            return;
+        }
+
+        const rect = element.getBoundingClientRect();
+        element.style.setProperty('--spot-x', `${event.clientX - rect.left}px`);
+        element.style.setProperty('--spot-y', `${event.clientY - rect.top}px`);
+    };
+
+    if (reduceMotion) {
+        return <div className="h-full">{children}</div>;
+    }
+
+    return (
+        <div ref={ref} onMouseMove={handleMove} className="group/spot relative h-full">
+            <div
+                aria-hidden
+                className="pointer-events-none absolute -inset-px rounded-2xl opacity-0 blur-[1px] transition-opacity duration-300 group-hover/spot:opacity-70"
+                style={{
+                    background:
+                        'radial-gradient(180px circle at var(--spot-x, 50%) var(--spot-y, 50%), var(--color-primary), transparent 70%)',
+                }}
+            />
+            <div className="relative h-full transition-transform duration-300 group-hover/spot:-translate-y-1">
+                {children}
+                <div
+                    aria-hidden
+                    className="pointer-events-none absolute inset-0 rounded-2xl opacity-0 transition-opacity duration-300 group-hover/spot:opacity-100"
+                    style={{
+                        background:
+                            'radial-gradient(240px circle at var(--spot-x, 50%) var(--spot-y, 50%), color-mix(in oklab, var(--color-primary) 12%, transparent), transparent 70%)',
+                    }}
+                />
+            </div>
+        </div>
     );
 }
 
@@ -634,22 +777,17 @@ export default function Welcome({ contactEmail, canRegister = true, trialDays = 
                             <p className="mb-5 text-center text-xs font-semibold tracking-wider text-muted-foreground uppercase">
                                 Tudo que a rotina de uma clínica exige
                             </p>
-                            <div className="flex flex-wrap items-center justify-center gap-x-10 gap-y-4 text-sm font-medium text-foreground/70">
-                                {[
-                                    { icon: CalendarRange, label: 'Agenda' },
-                                    { icon: Users, label: 'Pacientes' },
-                                    { icon: FileText, label: 'Evoluções' },
-                                    { icon: Users, label: 'Turmas' },
-                                    { icon: CreditCard, label: 'Matrículas' },
-                                    { icon: DollarSign, label: 'Financeiro' },
-                                    { icon: BarChart3, label: 'Relatórios' },
-                                ].map((m) => (
-                                    <span key={m.label} className="inline-flex items-center gap-2">
+                            <VelocityMarquee>
+                                {modules.map((m) => (
+                                    <span
+                                        key={m.label}
+                                        className="inline-flex items-center gap-2 text-sm font-medium whitespace-nowrap text-foreground/70"
+                                    >
                                         <m.icon className="size-4 text-primary" />
                                         {m.label}
                                     </span>
                                 ))}
-                            </div>
+                            </VelocityMarquee>
                         </div>
                     </section>
 
@@ -669,21 +807,23 @@ export default function Welcome({ contactEmail, canRegister = true, trialDays = 
                         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
                             {features.map((feature, i) => (
                                 <Reveal key={feature.title} delay={(i % 4) * 0.08}>
-                                    <article className="group flex h-full flex-col rounded-2xl border border-border bg-card p-6 transition-all duration-300 hover:-translate-y-1 hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5">
-                                        <div
-                                            className={`mb-5 inline-flex size-11 items-center justify-center rounded-xl ${
-                                                feature.tone === 'primary'
-                                                    ? 'bg-primary/10 text-primary'
-                                                    : 'bg-secondary text-secondary-foreground'
-                                            }`}
-                                        >
-                                            <feature.icon className="size-5" />
-                                        </div>
-                                        <h3 className="text-base font-semibold text-foreground">{feature.title}</h3>
-                                        <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                                            {feature.description}
-                                        </p>
-                                    </article>
+                                    <SpotlightCard>
+                                        <article className="flex h-full flex-col rounded-2xl border border-border bg-card p-6 transition-colors duration-300 group-hover/spot:border-primary/30">
+                                            <div
+                                                className={`mb-5 inline-flex size-11 items-center justify-center rounded-xl ${
+                                                    feature.tone === 'primary'
+                                                        ? 'bg-primary/10 text-primary'
+                                                        : 'bg-secondary text-secondary-foreground'
+                                                }`}
+                                            >
+                                                <feature.icon className="size-5" />
+                                            </div>
+                                            <h3 className="text-base font-semibold text-foreground">{feature.title}</h3>
+                                            <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                                                {feature.description}
+                                            </p>
+                                        </article>
+                                    </SpotlightCard>
                                 </Reveal>
                             ))}
                         </div>
