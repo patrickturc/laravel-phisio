@@ -8,6 +8,23 @@ beforeEach(function () {
     $this->skipUnlessFortifyFeature(Features::registration());
 });
 
+/**
+ * @return array<string, string>
+ */
+function registrationPayload(array $overrides = []): array
+{
+    return array_merge([
+        'organization_name' => 'Studio Movimento',
+        'document' => '11.222.333/0001-81',
+        'name' => 'Test User',
+        'email' => 'test@example.com',
+        'phone' => '11999990000',
+        'password' => 'password',
+        'password_confirmation' => 'password',
+        'terms' => '1',
+    ], $overrides);
+}
+
 test('registration screen can be rendered', function () {
     $response = $this->get(route('register'));
 
@@ -15,15 +32,7 @@ test('registration screen can be rendered', function () {
 });
 
 test('new organizations can register themselves and start a trial', function () {
-    $response = $this->post(route('register.store'), [
-        'organization_name' => 'Studio Movimento',
-        'name' => 'Test User',
-        'email' => 'test@example.com',
-        'phone' => '11999990000',
-        'password' => 'password',
-        'password_confirmation' => 'password',
-        'terms' => '1',
-    ]);
+    $response = $this->post(route('register.store'), registrationPayload());
 
     $this->assertAuthenticated();
     $response->assertRedirect(route('dashboard', absolute: false));
@@ -34,7 +43,12 @@ test('new organizations can register themselves and start a trial', function () 
         ->and($tenant->status)->toBe('active')
         ->and($tenant->plan)->toBe('free')
         ->and($tenant->isOnTrial())->toBeTrue()
-        ->and($tenant->trialDaysLeft())->toBe(Tenant::TRIAL_DAYS);
+        ->and($tenant->trialDaysLeft())->toBe(Tenant::TRIAL_DAYS)
+        // Punctuation is stripped so the uniqueness check cannot be bypassed.
+        ->and($tenant->document)->toBe('11222333000181')
+        ->and($tenant->phone)->toBe('11999990000')
+        // Seats and storage come from the trial plan definition.
+        ->and($tenant->max_users)->toBe(Tenant::planConfig('free')['users']);
 
     $user = User::where('email', 'test@example.com')->firstOrFail();
 
@@ -43,7 +57,7 @@ test('new organizations can register themselves and start a trial', function () 
         ->and($user->hasRole('Administrador'))->toBeTrue();
 });
 
-test('registration requires an organization name and accepted terms', function () {
+test('registration requires organization name, document, phone and accepted terms', function () {
     $response = $this->post(route('register.store'), [
         'name' => 'Test User',
         'email' => 'test@example.com',
@@ -51,31 +65,57 @@ test('registration requires an organization name and accepted terms', function (
         'password_confirmation' => 'password',
     ]);
 
-    $response->assertSessionHasErrors(['organization_name', 'terms']);
+    $response->assertSessionHasErrors(['organization_name', 'document', 'phone', 'terms']);
     $this->assertGuest();
     expect(Tenant::count())->toBe(0);
 });
 
+test('registration rejects a document that is not a real CPF or CNPJ', function () {
+    $response = $this->post(route('register.store'), registrationPayload([
+        'document' => '12345678900',
+    ]));
+
+    $response->assertSessionHasErrors('document');
+    expect(Tenant::count())->toBe(0);
+});
+
+test('registration rejects a document already used by another organization', function () {
+    Tenant::factory()->create(['document' => '11222333000181']);
+
+    // Same CNPJ, different punctuation — must still be caught.
+    $response = $this->post(route('register.store'), registrationPayload([
+        'document' => '11222333/0001-81',
+    ]));
+
+    $response->assertSessionHasErrors('document');
+    expect(Tenant::where('name', 'Studio Movimento')->count())->toBe(0);
+});
+
+test('a self-registered organization starts with an incomplete profile', function () {
+    $this->post(route('register.store'), registrationPayload());
+
+    $tenant = Tenant::where('name', 'Studio Movimento')->firstOrFail();
+
+    expect($tenant->isProfileComplete())->toBeFalse()
+        // Document and phone were captured at signup, so they are not missing.
+        ->and($tenant->missingProfileFields())->not->toContain('document')
+        ->and($tenant->missingProfileFields())->toContain('cep', 'city', 'technical_manager_name');
+});
+
 test('each registration creates its own isolated organization', function () {
-    $this->post(route('register.store'), [
+    $this->post(route('register.store'), registrationPayload([
         'organization_name' => 'Clinica Norte',
-        'name' => 'Ana',
+        'document' => '11222333000181',
         'email' => 'ana@example.com',
-        'password' => 'password',
-        'password_confirmation' => 'password',
-        'terms' => '1',
-    ]);
+    ]));
 
     $this->post('/logout');
 
-    $this->post(route('register.store'), [
+    $this->post(route('register.store'), registrationPayload([
         'organization_name' => 'Clinica Norte',
-        'name' => 'Bruno',
+        'document' => '11444777000161',
         'email' => 'bruno@example.com',
-        'password' => 'password',
-        'password_confirmation' => 'password',
-        'terms' => '1',
-    ]);
+    ]));
 
     $tenants = Tenant::where('name', 'Clinica Norte')->get();
 

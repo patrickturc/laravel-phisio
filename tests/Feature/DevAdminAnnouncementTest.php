@@ -3,6 +3,7 @@
 use App\Models\SystemAnnouncement;
 use App\Models\Tenant;
 use App\Models\User;
+use Spatie\Permission\Models\Permission;
 
 test('dev admin can create, toggle and delete announcements', function () {
     $devAdmin = User::factory()->create([
@@ -48,7 +49,7 @@ test('tenant users receive relevant active announcements in inertia payload', fu
     $tenantA = Tenant::factory()->create(['name' => 'Clínica A']);
     $tenantB = Tenant::factory()->create(['name' => 'Clínica B']);
 
-    \Spatie\Permission\Models\Permission::findOrCreate('dashboard.view', 'web');
+    Permission::findOrCreate('dashboard.view', 'web');
 
     $userA = User::factory()->create([
         'tenant_id' => $tenantA->id,
@@ -105,4 +106,27 @@ test('tenant users receive relevant active announcements in inertia payload', fu
     expect($titles)->toContain('Aviso para Clínica A');
     expect($titles)->not->toContain('Aviso para Clínica B');
     expect($titles)->not->toContain('Aviso Inativo');
+});
+
+test('dev admin can open the announcements panel', function () {
+    $devAdmin = User::factory()->create([
+        'is_dev_admin' => true,
+        'tenant_id' => null,
+    ]);
+
+    $this->actingAs($devAdmin)
+        ->get(route('dev-admin.announcements.index'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page->component('DevAdmin/Announcements/Index'));
+});
+
+test('tenants serialize safely when only some columns are selected', function () {
+    Tenant::factory()->create();
+
+    // The announcements panel loads its tenant picker with get(['id','name']).
+    // Appended attributes must not assume every column was selected.
+    $rows = Tenant::orderBy('name')->get(['id', 'name'])->toArray();
+
+    expect($rows[0])->toHaveKeys(['id', 'name', 'access_status'])
+        ->and($rows[0]['access_status'])->toBeNull();
 });

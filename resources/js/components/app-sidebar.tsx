@@ -1,5 +1,5 @@
 import { Link } from '@inertiajs/react';
-import { BookOpen, FolderGit2, LayoutGrid, Users, CalendarRange, Activity, BarChart3, ClipboardList, DollarSign, CreditCard, Settings, ShieldCheck, Tag, RefreshCw, ChevronRight } from 'lucide-react';
+import { BookOpen, Building2, FolderGit2, LayoutGrid, Users, CalendarRange, Activity, BarChart3, ClipboardList, DollarSign, CreditCard, Settings, ShieldCheck, Tag, RefreshCw, ChevronRight } from 'lucide-react';
 import AppLogo from '@/components/app-logo';
 import { NavFooter } from '@/components/nav-footer';
 import { NavMain } from '@/components/nav-main';
@@ -55,6 +55,7 @@ export function AppSidebar() {
     ].filter(item => item.show);
 
     const settingsNavItems = [
+        { title: 'Dados da Clínica', href: '/settings/organization', icon: Building2, show: can('settings.users.view') },
         { title: 'Protocolos Clínicos', href: '/clinical-protocols', icon: ClipboardList, show: can('treatment_plans.manage.view') && hasFeature('clinical_protocols') },
         { title: 'Planos e Pacotes', href: '/commercial-plans', icon: Tag, show: can('commercial_plans.manage.view') },
         { title: 'Usuários', href: '/settings/users', icon: Users, show: can('settings.users.view') },

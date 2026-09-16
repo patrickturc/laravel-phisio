@@ -37,7 +37,7 @@ class TenantController extends Controller
             ->when($filter === 'trial_expired', fn ($query) => $query->trialExpired())
             ->when($filter === 'plan_requests', fn ($query) => $query->pendingPlanRequest())
             ->when($filter === 'self_registered', fn ($query) => $query->selfRegistered())
-            ->when($filter === 'paid', fn ($query) => $query->whereIn('plan', Tenant::PAID_PLANS))
+            ->when($filter === 'paid', fn ($query) => $query->whereIn('plan', Tenant::paidPlans()))
             ->latest()
             ->paginate(10)
             ->withQueryString();
@@ -54,7 +54,7 @@ class TenantController extends Controller
                 'trial_expired' => Tenant::trialExpired()->count(),
                 'plan_requests' => Tenant::pendingPlanRequest()->count(),
                 'self_registered' => Tenant::selfRegistered()->count(),
-                'paid' => Tenant::whereIn('plan', Tenant::PAID_PLANS)->count(),
+                'paid' => Tenant::whereIn('plan', Tenant::paidPlans())->count(),
             ],
         ]);
     }
@@ -85,7 +85,7 @@ class TenantController extends Controller
             'technical_manager_name' => ['nullable', 'string', 'max:255'],
             'technical_manager_document' => ['nullable', 'string', 'max:50'],
             'notes' => ['nullable', 'string'],
-            'plan' => ['required', Rule::in(['free', 'basic', 'pro'])],
+            'plan' => ['required', Rule::in(array_keys(config('plans.plans', [])))],
             'max_users' => ['required', 'integer', 'min:1'],
             'max_storage_mb' => ['nullable', 'integer', 'min:100'],
             'features' => ['nullable', 'array'],
@@ -159,6 +159,15 @@ class TenantController extends Controller
             'tenant' => $tenant,
             'metrics' => $metrics,
             'usageLogs' => $tenant->usageLogs()->latest('reference_date')->take(10)->get(),
+            'plans' => collect(config('plans.plans', []))
+                ->map(fn (array $plan): array => [
+                    'name' => $plan['name'],
+                    'users' => $plan['users'],
+                    'storage_mb' => $plan['storage_mb'],
+                    'selectable' => (bool) ($plan['selectable'] ?? false),
+                ])
+                ->all(),
+            'extraUserPrice' => (float) config('plans.extra_user_price'),
         ]);
     }
 
@@ -190,7 +199,7 @@ class TenantController extends Controller
             'technical_manager_name' => ['nullable', 'string', 'max:255'],
             'technical_manager_document' => ['nullable', 'string', 'max:50'],
             'notes' => ['nullable', 'string'],
-            'plan' => ['required', Rule::in(['free', 'basic', 'pro'])],
+            'plan' => ['required', Rule::in(array_keys(config('plans.plans', [])))],
             'max_users' => ['required', 'integer', 'min:1'],
             'max_storage_mb' => ['nullable', 'integer', 'min:100'],
             'features' => ['nullable', 'array'],
@@ -234,21 +243,29 @@ class TenantController extends Controller
     public function approvePlanRequest(Request $request, Tenant $tenant)
     {
         $validated = $request->validate([
-            'plan' => ['required', Rule::in(['basic', 'pro'])],
-            'max_users' => ['nullable', 'integer', 'min:1'],
+            'plan' => ['required', Rule::in(Tenant::selectablePlans())],
+            'extra_users' => ['nullable', 'integer', 'min:0', 'max:'.config('plans.max_extra_users')],
         ]);
 
+        $extraUsers = $validated['extra_users'] ?? $tenant->requested_extra_users;
+
+        // applyPlan writes the plan's seats, storage and feature flags in one
+        // step, so activating a plan actually changes what the tenant can do.
+        $tenant->applyPlan($validated['plan'], $extraUsers);
+
         $tenant->update([
-            'plan' => $validated['plan'],
-            'max_users' => $validated['max_users'] ?? max($tenant->max_users, 5),
             'status' => 'active',
             'trial_ends_at' => null,
             'requested_plan' => null,
+            'requested_extra_users' => 0,
             'plan_requested_at' => null,
             'plan_request_notes' => null,
         ]);
 
-        return back()->with('success', "Plano {$validated['plan']} ativado para {$tenant->name}.");
+        $tenant->refresh();
+        $planName = Tenant::planConfig($tenant->plan)['name'] ?? $tenant->plan;
+
+        return back()->with('success', "Plano {$planName} ativado para {$tenant->name} com {$tenant->seatLimit()} usuários.");
     }
 
     /**
@@ -259,6 +276,7 @@ class TenantController extends Controller
     {
         $tenant->update([
             'requested_plan' => null,
+            'requested_extra_users' => 0,
             'plan_requested_at' => null,
             'plan_request_notes' => null,
         ]);

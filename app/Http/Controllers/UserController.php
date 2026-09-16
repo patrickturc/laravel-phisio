@@ -3,10 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Inertia\Inertia;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules;
+use Inertia\Inertia;
 use Spatie\Permission\Models\Role;
 
 class UserController extends Controller
@@ -17,7 +18,7 @@ class UserController extends Controller
      * Only an Administrador may hand out the Administrador role. Prevents a
      * non-admin holding settings.users.* from escalating themselves or others.
      */
-    private function assertCanAssignRole(string $role): ?\Illuminate\Http\RedirectResponse
+    private function assertCanAssignRole(string $role): ?RedirectResponse
     {
         if ($role === self::ADMIN_ROLE && ! auth()->user()->hasRole(self::ADMIN_ROLE)) {
             return back()
@@ -49,8 +50,31 @@ class UserController extends Controller
         ]);
     }
 
+    /**
+     * Stop the organization from going past the seats its plan pays for. The
+     * limit lives on the tenant so a dev admin can still grant an exception.
+     */
+    private function assertSeatAvailable(): ?RedirectResponse
+    {
+        $tenant = auth()->user()->tenant;
+
+        if (! $tenant || $tenant->hasSeatAvailable()) {
+            return null;
+        }
+
+        return back()
+            ->withErrors([
+                'email' => "Seu plano permite {$tenant->seatLimit()} usuários e todos já estão em uso. Contrate usuários adicionais para liberar novos acessos.",
+            ])
+            ->withInput();
+    }
+
     public function store(Request $request)
     {
+        if ($response = $this->assertSeatAvailable()) {
+            return $response;
+        }
+
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
@@ -77,7 +101,7 @@ class UserController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users,email,' . $user->id,
+            'email' => 'required|string|email|max:255|unique:users,email,'.$user->id,
             'password' => ['nullable', Rules\Password::defaults()],
             'role' => 'required|exists:roles,name',
         ]);
@@ -98,7 +122,7 @@ class UserController extends Controller
             'email' => $validated['email'],
         ];
 
-        if (!empty($validated['password'])) {
+        if (! empty($validated['password'])) {
             $data['password'] = Hash::make($validated['password']);
         }
 
@@ -121,6 +145,7 @@ class UserController extends Controller
         }
 
         $user->delete();
+
         return redirect()->route('users.index')->with('success', 'Usuário excluído com sucesso.');
     }
 }

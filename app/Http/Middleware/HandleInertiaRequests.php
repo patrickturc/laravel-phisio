@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Models\SystemAnnouncement;
+use App\Models\Tenant;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -58,6 +59,24 @@ class HandleInertiaRequests extends Middleware
                     'days_left' => $tenant->trialDaysLeft(),
                     'ends_at' => $tenant->trial_ends_at?->toIso8601String(),
                     'has_pending_request' => $tenant->hasPendingPlanRequest(),
+                ];
+            },
+            'profileCompletion' => function () use ($request) {
+                $tenant = $request->user()?->tenant;
+
+                if (! $tenant) {
+                    return null;
+                }
+
+                $missing = $tenant->missingProfileFields();
+                $required = count(Tenant::REQUIRED_PROFILE_FIELDS);
+
+                return [
+                    'complete' => $missing === [],
+                    'missing' => $missing,
+                    'missing_count' => count($missing),
+                    'percent' => (int) round((($required - count($missing)) / $required) * 100),
+                    'can_edit' => $request->user()->can('settings.users.view'),
                 ];
             },
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',

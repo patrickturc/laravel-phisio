@@ -3,6 +3,7 @@ import { AppShell } from '@/components/app-shell';
 import { AppSidebar } from '@/components/app-sidebar';
 import { AppSidebarHeader } from '@/components/app-sidebar-header';
 import { ImpersonationBanner } from '@/components/impersonation-banner';
+import { ProfileCompletionBanner } from '@/components/profile-completion-banner';
 import { SystemAnnouncementBanner } from '@/components/system-announcement-banner';
 import { TrialBanner } from '@/components/trial-banner';
 import type { AppLayoutProps } from '@/types';
@@ -29,6 +30,7 @@ export default function AppSidebarLayout({
                 <ImpersonationBanner />
                 <AppSidebarHeader breadcrumbs={breadcrumbs} />
                 <div className="px-4 sm:px-6 pt-2 space-y-2">
+                    <ProfileCompletionBanner />
                     <TrialBanner />
                     <SystemAnnouncementBanner />
                 </div>

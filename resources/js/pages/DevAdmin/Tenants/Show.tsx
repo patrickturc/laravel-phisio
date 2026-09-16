@@ -29,7 +29,16 @@ import { useState } from 'react';
 import { TenantFormSheet } from './TenantFormSheet';
 import { TenantStatusBadge } from './TenantStatusBadge';
 
+interface PlanOption {
+    name: string;
+    users: number;
+    storage_mb: number;
+    selectable: boolean;
+}
+
 interface ShowProps {
+    plans: Record<string, PlanOption>;
+    extraUserPrice: number;
     tenant: any;
     metrics: {
         total_patients: number;
@@ -42,7 +51,7 @@ interface ShowProps {
     usageLogs: any[];
 }
 
-export default function Show({ tenant, metrics, usageLogs }: ShowProps) {
+export default function Show({ tenant, metrics, usageLogs, plans, extraUserPrice }: ShowProps) {
     const [isAddUserOpen, setIsAddUserOpen] = useState(false);
     const [isEditDrawerOpen, setIsEditDrawerOpen] = useState(false);
     const [resetPasswordUser, setResetPasswordUser] = useState<any | null>(null);
@@ -86,11 +95,19 @@ export default function Show({ tenant, metrics, usageLogs }: ShowProps) {
         });
     };
 
-    const handleApprovePlan = (plan: string) => {
-        if (confirm(`Ativar o plano "${plan}" para "${tenant.name}"? O período de teste será encerrado.`)) {
+    const handleApprovePlan = (plan: string, extraUsers?: number) => {
+        const extras = extraUsers ?? tenant.requested_extra_users ?? 0;
+        const planLabel = plans[plan]?.name ?? plan;
+        const seats = (plans[plan]?.users ?? 0) + extras;
+
+        if (
+            confirm(
+                `Ativar o plano "${planLabel}" para "${tenant.name}" com ${seats} usuários? O período de teste será encerrado.`,
+            )
+        ) {
             router.post(
                 `/dev-admin/tenants/${tenant.id}/approve-plan`,
-                { plan },
+                { plan, extra_users: extras },
                 { preserveScroll: true },
             );
         }
@@ -194,7 +211,11 @@ export default function Show({ tenant, metrics, usageLogs }: ShowProps) {
                     <div className="grid gap-4 sm:grid-cols-3">
                         <div>
                             <p className="text-xs text-muted-foreground">Plano atual</p>
-                            <p className="font-medium capitalize">{tenant.plan}</p>
+                            <p className="font-medium">{plans[tenant.plan]?.name ?? tenant.plan}</p>
+                            <p className="text-xs text-muted-foreground">
+                                {tenant.users?.length ?? 0}/{tenant.max_users} usuários
+                                {tenant.extra_users > 0 ? ` (${tenant.extra_users} adicionais)` : ''}
+                            </p>
                         </div>
                         <div>
                             <p className="text-xs text-muted-foreground">Situação de acesso</p>
@@ -215,7 +236,10 @@ export default function Show({ tenant, metrics, usageLogs }: ShowProps) {
                     {tenant.has_pending_plan_request && (
                         <div className="rounded-lg border border-primary/30 bg-background p-4">
                             <p className="text-sm font-semibold text-foreground">
-                                Solicitou o plano <span className="capitalize">{tenant.requested_plan}</span>
+                                Solicitou o plano {plans[tenant.requested_plan]?.name ?? tenant.requested_plan}
+                                {tenant.requested_extra_users > 0
+                                    ? ` + ${tenant.requested_extra_users} usuários adicionais (${(tenant.requested_extra_users * extraUserPrice).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}/mês)`
+                                    : ''}
                                 {tenant.plan_requested_at
                                     ? ` em ${new Date(tenant.plan_requested_at).toLocaleDateString('pt-BR')}`
                                     : ''}
@@ -227,7 +251,7 @@ export default function Show({ tenant, metrics, usageLogs }: ShowProps) {
                             )}
                             <div className="mt-4 flex flex-wrap gap-2">
                                 <Button size="sm" onClick={() => handleApprovePlan(tenant.requested_plan)}>
-                                    Ativar plano {tenant.requested_plan}
+                                    Ativar plano solicitado
                                 </Button>
                                 <Button size="sm" variant="outline" onClick={handleRejectPlan}>
                                     Descartar solicitação
@@ -235,6 +259,25 @@ export default function Show({ tenant, metrics, usageLogs }: ShowProps) {
                             </div>
                         </div>
                     )}
+
+                    <div className="border-t pt-4">
+                        <p className="mb-2 text-sm text-muted-foreground">Ativar plano manualmente</p>
+                        <div className="flex flex-wrap gap-2">
+                            {Object.entries(plans)
+                                .filter(([, plan]) => plan.selectable)
+                                .map(([key, plan]) => (
+                                    <Button
+                                        key={key}
+                                        size="sm"
+                                        variant={tenant.plan === key ? 'secondary' : 'outline'}
+                                        disabled={tenant.plan === key}
+                                        onClick={() => handleApprovePlan(key, 0)}
+                                    >
+                                        {plan.name} · {plan.users} usuários
+                                    </Button>
+                                ))}
+                        </div>
+                    </div>
 
                     <div className="flex flex-wrap items-center gap-2 border-t pt-4">
                         <span className="text-sm text-muted-foreground">Estender teste em</span>
@@ -248,16 +291,6 @@ export default function Show({ tenant, metrics, usageLogs }: ShowProps) {
                                 +{days} dias
                             </Button>
                         ))}
-                        {!tenant.has_pending_plan_request && tenant.plan !== 'pro' && (
-                            <Button
-                                size="sm"
-                                variant="secondary"
-                                className="ml-auto"
-                                onClick={() => handleApprovePlan('pro')}
-                            >
-                                Ativar plano pro manualmente
-                            </Button>
-                        )}
                     </div>
                 </CardContent>
             </Card>

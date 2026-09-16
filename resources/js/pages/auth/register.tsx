@@ -57,12 +57,26 @@ export default function Register({ trialDays = 15 }: Props) {
                         </div>
 
                         <div className="grid gap-2">
+                            <Label htmlFor="document">CNPJ da clínica ou seu CPF</Label>
+                            <Input
+                                id="document"
+                                name="document"
+                                required
+                                tabIndex={2}
+                                inputMode="numeric"
+                                placeholder="00.000.000/0000-00"
+                                className="border-neutral-200 bg-neutral-50 focus:border-primary focus:ring-primary/20"
+                            />
+                            <InputError message={errors.document} />
+                        </div>
+
+                        <div className="grid gap-2">
                             <Label htmlFor="name">Seu nome</Label>
                             <Input
                                 id="name"
                                 name="name"
                                 required
-                                tabIndex={2}
+                                tabIndex={3}
                                 autoComplete="name"
                                 placeholder="Maria Oliveira"
                                 className="border-neutral-200 bg-neutral-50 focus:border-primary focus:ring-primary/20"
@@ -77,7 +91,7 @@ export default function Register({ trialDays = 15 }: Props) {
                                 type="email"
                                 name="email"
                                 required
-                                tabIndex={3}
+                                tabIndex={4}
                                 autoComplete="email"
                                 placeholder="seu@email.com"
                                 className="border-neutral-200 bg-neutral-50 focus:border-primary focus:ring-primary/20"
@@ -86,14 +100,14 @@ export default function Register({ trialDays = 15 }: Props) {
                         </div>
 
                         <div className="grid gap-2">
-                            <Label htmlFor="phone">
-                                Telefone <span className="font-normal text-muted-foreground">(opcional)</span>
-                            </Label>
+                            <Label htmlFor="phone">Telefone com DDD</Label>
                             <Input
                                 id="phone"
                                 name="phone"
-                                tabIndex={4}
+                                required
+                                tabIndex={5}
                                 autoComplete="tel"
+                                inputMode="tel"
                                 placeholder="(11) 99999-0000"
                                 className="border-neutral-200 bg-neutral-50 focus:border-primary focus:ring-primary/20"
                             />
@@ -106,7 +120,7 @@ export default function Register({ trialDays = 15 }: Props) {
                                 id="password"
                                 name="password"
                                 required
-                                tabIndex={5}
+                                tabIndex={6}
                                 autoComplete="new-password"
                                 placeholder="••••••••"
                                 className="border-neutral-200 bg-neutral-50 focus:border-primary focus:ring-primary/20"
@@ -120,7 +134,7 @@ export default function Register({ trialDays = 15 }: Props) {
                                 id="password_confirmation"
                                 name="password_confirmation"
                                 required
-                                tabIndex={6}
+                                tabIndex={7}
                                 autoComplete="new-password"
                                 placeholder="••••••••"
                                 className="border-neutral-200 bg-neutral-50 focus:border-primary focus:ring-primary/20"
@@ -134,7 +148,7 @@ export default function Register({ trialDays = 15 }: Props) {
                                     id="terms"
                                     name="terms"
                                     value="1"
-                                    tabIndex={7}
+                                    tabIndex={8}
                                     className="mt-0.5 data-[state=checked]:border-primary data-[state=checked]:bg-primary"
                                 />
                                 <Label htmlFor="terms" className="text-sm leading-relaxed font-normal">
@@ -147,7 +161,7 @@ export default function Register({ trialDays = 15 }: Props) {
                         <Button
                             type="submit"
                             className="mt-2 w-full bg-primary text-white shadow-sm hover:bg-primary/90"
-                            tabIndex={8}
+                            tabIndex={9}
                             disabled={processing}
                             data-test="register-button"
                         >

@@ -5,23 +5,44 @@ use App\Models\User;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 
+/**
+ * @return array<string, string>
+ */
+function completeProfile(): array
+{
+    return [
+        'document' => '11222333000181',
+        'cep' => '01310100',
+        'street' => 'Avenida Paulista',
+        'number' => '1000',
+        'neighborhood' => 'Bela Vista',
+        'city' => 'São Paulo',
+        'state' => 'SP',
+        'technical_manager_name' => 'Maria Fisio',
+        'technical_manager_document' => 'CREFITO-3/12345-F',
+    ];
+}
+
 function trialAdmin(array $tenantAttributes = []): User
 {
     $tenant = Tenant::factory()->create(array_merge([
         'plan' => 'free',
         'status' => 'active',
         'self_registered' => true,
+        // Same seats a real self-service signup would get.
+        'max_users' => Tenant::planConfig('free')['users'],
         'trial_started_at' => now()->subDays(5),
         'trial_ends_at' => now()->addDays(10),
-    ], $tenantAttributes));
+    ], completeProfile(), $tenantAttributes));
 
     $user = User::factory()->create(['tenant_id' => $tenant->id]);
 
-    Permission::findOrCreate('dashboard.view', 'web');
-    Permission::findOrCreate('settings.users.view', 'web');
+    foreach (['dashboard.view', 'settings.users.view', 'settings.users.create'] as $permission) {
+        Permission::findOrCreate($permission, 'web');
+    }
 
     $role = Role::findOrCreate('Administrador', 'web');
-    $role->givePermissionTo(['dashboard.view', 'settings.users.view']);
+    $role->givePermissionTo(['dashboard.view', 'settings.users.view', 'settings.users.create']);
     $user->assignRole($role);
 
     return $user;
@@ -89,10 +110,10 @@ test('a plan request rejects unknown plans', function () {
 });
 
 test('a user without admin permission cannot request a plan', function () {
-    $tenant = Tenant::factory()->create([
+    $tenant = Tenant::factory()->create(array_merge(completeProfile(), [
         'plan' => 'free',
         'trial_ends_at' => now()->addDays(10),
-    ]);
+    ]));
     $user = User::factory()->create(['tenant_id' => $tenant->id]);
 
     $this->actingAs($user)
@@ -100,6 +121,173 @@ test('a user without admin permission cannot request a plan', function () {
         ->assertSessionHas('error');
 
     expect($tenant->fresh()->plan_requested_at)->toBeNull();
+});
+
+test('a plan cannot be requested while the organization profile is incomplete', function () {
+    $user = trialAdmin(['city' => null, 'technical_manager_name' => null]);
+
+    $this->actingAs($user)
+        ->post(route('subscription.request'), ['requested_plan' => 'basic'])
+        ->assertRedirect(route('organization.edit'));
+
+    expect($user->tenant->fresh()->plan_requested_at)->toBeNull();
+});
+
+test('an admin can request extra seats alongside a plan', function () {
+    $user = trialAdmin();
+
+    $this->actingAs($user)->post(route('subscription.request'), [
+        'requested_plan' => 'basic',
+        'requested_extra_users' => 4,
+    ])->assertSessionHas('success');
+
+    $tenant = $user->tenant->fresh();
+
+    expect($tenant->requested_plan)->toBe('basic')
+        ->and($tenant->requested_extra_users)->toBe(4);
+});
+
+test('a plan request cannot ask for fewer seats than the team already uses', function () {
+    $user = trialAdmin();
+    $tenant = $user->tenant;
+
+    // Basic includes 5 seats; put 6 people in the organization.
+    User::factory()->count(5)->create(['tenant_id' => $tenant->id]);
+
+    $this->actingAs($user)->post(route('subscription.request'), [
+        'requested_plan' => 'basic',
+        'requested_extra_users' => 0,
+    ])->assertSessionHasErrors('requested_extra_users');
+
+    expect($tenant->fresh()->plan_requested_at)->toBeNull();
+});
+
+test('approving a plan applies its seats and storage', function () {
+    $user = trialAdmin([
+        'trial_ends_at' => now()->subDay(),
+        'requested_plan' => 'intermediate',
+        'requested_extra_users' => 3,
+        'plan_requested_at' => now()->subHour(),
+    ]);
+    $tenant = $user->tenant;
+
+    $devAdmin = User::factory()->create(['is_dev_admin' => true, 'tenant_id' => null]);
+
+    $this->actingAs($devAdmin)
+        ->post(route('dev-admin.tenants.approve-plan', $tenant), ['plan' => 'intermediate'])
+        ->assertSessionHas('success');
+
+    $tenant->refresh();
+    $config = Tenant::planConfig('intermediate');
+
+    expect($tenant->plan)->toBe('intermediate')
+        ->and($tenant->extra_users)->toBe(3)
+        // 15 seats from the plan plus the 3 extra ones that were requested.
+        ->and($tenant->seatLimit())->toBe($config['users'] + 3)
+        ->and($tenant->max_storage_mb)->toBe($config['storage_mb'])
+        ->and($tenant->requested_extra_users)->toBe(0);
+});
+
+test('plans do not gate features: every plan gives the whole system', function () {
+    $modules = ['financial', 'group_classes', 'clinical_protocols', 'reports', 'evolution_photos'];
+
+    foreach (['basic', 'intermediate', 'pro'] as $plan) {
+        $user = trialAdmin();
+        $tenant = $user->tenant;
+
+        $tenant->applyPlan($plan);
+        $tenant->refresh();
+
+        foreach ($modules as $module) {
+            expect($tenant->hasFeature($module))
+                ->toBeTrue("o plano {$plan} deveria liberar {$module}");
+        }
+    }
+});
+
+test('changing plan keeps the per-tenant feature switches a dev admin set', function () {
+    $user = trialAdmin();
+    $tenant = $user->tenant;
+
+    // A dev admin turned one module off for this clinic specifically.
+    $tenant->update(['features' => ['reports' => false]]);
+
+    $tenant->applyPlan('pro');
+    $tenant->refresh();
+
+    expect($tenant->hasFeature('reports'))->toBeFalse()
+        ->and($tenant->hasFeature('financial'))->toBeTrue();
+});
+
+test('an organization cannot create more users than its plan allows', function () {
+    $user = trialAdmin();
+    $tenant = $user->tenant;
+
+    // The trial plan seats 3: the admin plus two more fills it.
+    User::factory()->count(2)->create(['tenant_id' => $tenant->id]);
+
+    expect($tenant->hasSeatAvailable())->toBeFalse();
+
+    $this->actingAs($user)->post(route('users.store'), [
+        'name' => 'Novo Usuario',
+        'email' => 'novo@example.com',
+        'password' => 'password123',
+        'role' => 'Administrador',
+    ])->assertSessionHasErrors('email');
+
+    expect(User::where('email', 'novo@example.com')->exists())->toBeFalse();
+});
+
+test('buying extra seats lets the organization add users again', function () {
+    $user = trialAdmin();
+    $tenant = $user->tenant;
+
+    User::factory()->count(2)->create(['tenant_id' => $tenant->id]);
+    $tenant->applyPlan('basic', 0);
+    $tenant->refresh();
+
+    expect($tenant->seatLimit())->toBe(Tenant::planConfig('basic')['users'])
+        ->and($tenant->hasSeatAvailable())->toBeTrue();
+
+    $this->actingAs($user)->post(route('users.store'), [
+        'name' => 'Quarto Usuario',
+        'email' => 'quarto@example.com',
+        'password' => 'password123',
+        'role' => 'Administrador',
+    ]);
+
+    expect(User::where('email', 'quarto@example.com')->exists())->toBeTrue();
+});
+
+test('the profile completion state is shared with every page', function () {
+    $user = trialAdmin(['city' => null]);
+
+    $this->actingAs($user)
+        ->get(route('dashboard'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('profileCompletion.complete', false)
+            ->where('profileCompletion.missing_count', 1)
+            ->where('profileCompletion.missing', ['city'])
+        );
+});
+
+test('completing the organization form clears the reminder', function () {
+    $user = trialAdmin(['city' => null, 'profile_completed_at' => null]);
+
+    $this->actingAs($user)
+        ->patch(route('organization.update'), array_merge(completeProfile(), [
+            'name' => $user->tenant->name,
+            'email' => 'contato@example.com',
+            'phone' => '11999990000',
+        ]))
+        ->assertSessionHasNoErrors();
+
+    $tenant = $user->tenant->fresh();
+
+    expect($tenant->isProfileComplete())->toBeTrue()
+        ->and($tenant->profile_completed_at)->not->toBeNull()
+        ->and($tenant->city)->toBe('São Paulo');
 });
 
 test('a suspended organization is logged out rather than sent to the subscription page', function () {

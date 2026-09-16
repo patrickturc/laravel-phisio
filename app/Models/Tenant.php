@@ -45,6 +45,9 @@ class Tenant extends Model
         'requested_plan',
         'plan_requested_at',
         'plan_request_notes',
+        'extra_users',
+        'requested_extra_users',
+        'profile_completed_at',
     ];
 
     protected $appends = [
@@ -54,6 +57,9 @@ class Tenant extends Model
         'trial_days_left',
         'has_pending_plan_request',
         'access_status',
+        'seat_limit',
+        'profile_complete',
+        'missing_profile_fields',
     ];
 
     /**
@@ -62,11 +68,58 @@ class Tenant extends Model
     public const TRIAL_DAYS = 15;
 
     /**
-     * Plans that grant access without depending on a trial window.
+     * Plans that grant access without depending on a trial window. Everything
+     * in config/plans.php except the trial itself.
+     *
+     * @return list<string>
+     */
+    public static function paidPlans(): array
+    {
+        return array_values(array_diff(array_keys(config('plans.plans', [])), ['free']));
+    }
+
+    /**
+     * Plans an organization is allowed to ask for.
+     *
+     * @return list<string>
+     */
+    public static function selectablePlans(): array
+    {
+        return array_values(array_keys(array_filter(
+            config('plans.plans', []),
+            fn (array $plan): bool => (bool) ($plan['selectable'] ?? false),
+        )));
+    }
+
+    /**
+     * Definition of a plan, falling back to the trial when the key is unknown.
+     *
+     * @return array<string, mixed>
+     */
+    public static function planConfig(string $plan): array
+    {
+        $plans = config('plans.plans', []);
+
+        return $plans[$plan] ?? $plans['free'] ?? [];
+    }
+
+    /**
+     * Organization fields that must be filled before the account counts as
+     * complete. Collected after signup so the trial form can stay short.
      *
      * @var list<string>
      */
-    public const PAID_PLANS = ['basic', 'pro'];
+    public const REQUIRED_PROFILE_FIELDS = [
+        'document',
+        'cep',
+        'street',
+        'number',
+        'neighborhood',
+        'city',
+        'state',
+        'technical_manager_name',
+        'technical_manager_document',
+    ];
 
     public function getFormattedAddressAttribute(): ?string
     {
@@ -97,7 +150,10 @@ class Tenant extends Model
             'trial_started_at' => 'datetime',
             'trial_ends_at' => 'datetime',
             'plan_requested_at' => 'datetime',
+            'profile_completed_at' => 'datetime',
             'self_registered' => 'boolean',
+            'extra_users' => 'integer',
+            'requested_extra_users' => 'integer',
         ];
     }
 
@@ -106,7 +162,95 @@ class Tenant extends Model
      */
     public function hasPaidPlan(): bool
     {
-        return in_array($this->plan, self::PAID_PLANS, true);
+        return in_array($this->plan, self::paidPlans(), true);
+    }
+
+    /**
+     * Seats available to the organization: what the plan includes plus the
+     * extra ones it bought. max_users stays the stored source of truth so a
+     * dev admin can still grant a one-off exception.
+     */
+    public function seatLimit(): int
+    {
+        return max(1, (int) $this->max_users);
+    }
+
+    /**
+     * Seats a plan would give, before any dev-admin override.
+     */
+    public function seatsForPlan(string $plan, ?int $extraUsers = null): int
+    {
+        $base = (int) (self::planConfig($plan)['users'] ?? 1);
+
+        return $base + max(0, $extraUsers ?? (int) $this->extra_users);
+    }
+
+    public function seatsInUse(): int
+    {
+        return $this->users()->count();
+    }
+
+    public function hasSeatAvailable(): bool
+    {
+        return $this->seatsInUse() < $this->seatLimit();
+    }
+
+    /**
+     * Move the organization onto a plan, applying its seats and storage.
+     *
+     * Plans do not gate features: every plan gives the whole system, and only
+     * capacity differs. The tenant's own "features" flags are left untouched,
+     * since those are per-organization switches a dev admin sets by hand.
+     */
+    public function applyPlan(string $plan, ?int $extraUsers = null): void
+    {
+        $config = self::planConfig($plan);
+        $extra = max(0, $extraUsers ?? (int) $this->extra_users);
+
+        if (! ($config['allows_extra_users'] ?? false)) {
+            $extra = 0;
+        }
+
+        $this->update([
+            'plan' => $plan,
+            'extra_users' => $extra,
+            'max_users' => (int) ($config['users'] ?? 1) + $extra,
+            'max_storage_mb' => (int) ($config['storage_mb'] ?? 1024),
+        ]);
+    }
+
+    /**
+     * Fields still missing before the organization profile is usable for
+     * billing and for the clinic's own documents.
+     *
+     * @return list<string>
+     */
+    public function missingProfileFields(): array
+    {
+        return array_values(array_filter(
+            self::REQUIRED_PROFILE_FIELDS,
+            fn (string $field): bool => blank($this->{$field}),
+        ));
+    }
+
+    public function isProfileComplete(): bool
+    {
+        return $this->missingProfileFields() === [];
+    }
+
+    /**
+     * Keep profile_completed_at in step with the data actually on the record,
+     * so the reminder banner clears itself the moment the form is finished.
+     */
+    public function syncProfileCompletion(): void
+    {
+        $complete = $this->isProfileComplete();
+
+        if ($complete && $this->profile_completed_at === null) {
+            $this->forceFill(['profile_completed_at' => now()])->save();
+        } elseif (! $complete && $this->profile_completed_at !== null) {
+            $this->forceFill(['profile_completed_at' => null])->save();
+        }
     }
 
     /**
@@ -186,29 +330,64 @@ class Tenant extends Model
         ])->save();
     }
 
-    public function getIsOnTrialAttribute(): bool
+    /**
+     * Appended attributes are computed on every serialization, including for
+     * partial selects such as get(['id', 'name']). Those rows never loaded the
+     * columns these accessors read, so each one reports null instead of
+     * deriving a wrong answer from missing data.
+     */
+    private function loaded(string ...$columns): bool
     {
-        return $this->isOnTrial();
+        foreach ($columns as $column) {
+            if (! array_key_exists($column, $this->attributes)) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
-    public function getIsTrialExpiredAttribute(): bool
+    public function getIsOnTrialAttribute(): ?bool
     {
-        return $this->isTrialExpired();
+        return $this->loaded('plan', 'trial_ends_at') ? $this->isOnTrial() : null;
+    }
+
+    public function getIsTrialExpiredAttribute(): ?bool
+    {
+        return $this->loaded('plan', 'trial_ends_at') ? $this->isTrialExpired() : null;
     }
 
     public function getTrialDaysLeftAttribute(): ?int
     {
-        return $this->trialDaysLeft();
+        return $this->loaded('plan', 'trial_ends_at') ? $this->trialDaysLeft() : null;
     }
 
-    public function getHasPendingPlanRequestAttribute(): bool
+    public function getHasPendingPlanRequestAttribute(): ?bool
     {
-        return $this->hasPendingPlanRequest();
+        return $this->loaded('plan', 'plan_requested_at') ? $this->hasPendingPlanRequest() : null;
     }
 
-    public function getAccessStatusAttribute(): string
+    public function getAccessStatusAttribute(): ?string
     {
-        return $this->accessStatus();
+        return $this->loaded('status', 'plan', 'trial_ends_at') ? $this->accessStatus() : null;
+    }
+
+    public function getSeatLimitAttribute(): ?int
+    {
+        return $this->loaded('max_users') ? $this->seatLimit() : null;
+    }
+
+    public function getProfileCompleteAttribute(): ?bool
+    {
+        return $this->loaded(...self::REQUIRED_PROFILE_FIELDS) ? $this->isProfileComplete() : null;
+    }
+
+    /**
+     * @return list<string>|null
+     */
+    public function getMissingProfileFieldsAttribute(): ?array
+    {
+        return $this->loaded(...self::REQUIRED_PROFILE_FIELDS) ? $this->missingProfileFields() : null;
     }
 
     /**
@@ -216,7 +395,7 @@ class Tenant extends Model
      */
     public function scopeOnTrial(Builder $query): void
     {
-        $query->whereNotIn('plan', self::PAID_PLANS)
+        $query->whereNotIn('plan', self::paidPlans())
             ->whereNotNull('trial_ends_at')
             ->where('trial_ends_at', '>', now());
     }
@@ -226,7 +405,7 @@ class Tenant extends Model
      */
     public function scopeTrialExpired(Builder $query): void
     {
-        $query->whereNotIn('plan', self::PAID_PLANS)
+        $query->whereNotIn('plan', self::paidPlans())
             ->whereNotNull('trial_ends_at')
             ->where('trial_ends_at', '<=', now());
     }
@@ -237,7 +416,7 @@ class Tenant extends Model
     public function scopePendingPlanRequest(Builder $query): void
     {
         $query->whereNotNull('plan_requested_at')
-            ->whereNotIn('plan', self::PAID_PLANS);
+            ->whereNotIn('plan', self::paidPlans());
     }
 
     /**
