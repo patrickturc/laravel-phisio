@@ -23,23 +23,25 @@ export function Pagination({ links, from, to, total }: PaginationProps) {
     const next = links[links.length - 1];
 
     return (
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-1 py-4">
+        <div className="flex flex-col items-center justify-between gap-4 px-1 py-4 sm:flex-row">
             <p className="text-sm text-muted-foreground">
-                Mostrando <span className="font-semibold text-foreground">{from}</span> a{' '}
+                Mostrando{' '}
+                <span className="font-semibold text-foreground">{from}</span> a{' '}
                 <span className="font-semibold text-foreground">{to}</span> de{' '}
-                <span className="font-semibold text-foreground">{total}</span> resultados
+                <span className="font-semibold text-foreground">{total}</span>{' '}
+                resultados
             </p>
 
             <div className="flex items-center gap-1">
                 {prev.url ? (
                     <Link
                         href={prev.url}
-                        className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+                        className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
                     >
                         <ChevronLeft className="size-4" />
                     </Link>
                 ) : (
-                    <span className="p-2 rounded-lg text-muted-foreground/30">
+                    <span className="rounded-lg p-2 text-muted-foreground/30">
                         <ChevronLeft className="size-4" />
                     </span>
                 )}
@@ -49,10 +51,10 @@ export function Pagination({ links, from, to, total }: PaginationProps) {
                         {link.url ? (
                             <Link
                                 href={link.url}
-                                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                                className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
                                     link.active
                                         ? 'bg-primary text-primary-foreground shadow-sm'
-                                        : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                                        : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
                                 }`}
                                 dangerouslySetInnerHTML={{ __html: link.label }}
                             />
@@ -68,12 +70,12 @@ export function Pagination({ links, from, to, total }: PaginationProps) {
                 {next.url ? (
                     <Link
                         href={next.url}
-                        className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+                        className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
                     >
                         <ChevronRight className="size-4" />
                     </Link>
                 ) : (
-                    <span className="p-2 rounded-lg text-muted-foreground/30">
+                    <span className="rounded-lg p-2 text-muted-foreground/30">
                         <ChevronRight className="size-4" />
                     </span>
                 )}

@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ClinicalProtocol;
+use App\Models\CommercialPlan;
 use App\Models\Patient;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -14,10 +16,10 @@ class PatientController extends Controller
 
         if ($request->filled('search')) {
             $query->where(function ($q) use ($request) {
-                $q->where('name', 'ilike', '%' . $request->search . '%')
-                  ->orWhere('nickname', 'ilike', '%' . $request->search . '%')
-                  ->orWhere('cpf', 'ilike', '%' . $request->search . '%')
-                  ->orWhere('email', 'ilike', '%' . $request->search . '%');
+                $q->whereLike('name', '%'.$request->search.'%')
+                    ->orWhereLike('nickname', '%'.$request->search.'%')
+                    ->orWhereLike('cpf', '%'.$request->search.'%')
+                    ->orWhereLike('email', '%'.$request->search.'%');
             });
         }
 
@@ -78,11 +80,11 @@ class PatientController extends Controller
     public function show(Patient $patient)
     {
         $patient->load([
-            'appointments' => fn($q) => $q->orderBy('appointment_date', 'desc'),
-            'evolutions' => fn($q) => $q->orderBy('data_atendimento', 'desc'),
-            'memberships' => fn($q) => $q->with('commercialPlan')->orderBy('end_date', 'desc'),
-            'financialTransactions' => fn($q) => $q->orderBy('date', 'desc'),
-            'documents' => fn($q) => $q->orderBy('created_at', 'desc'),
+            'appointments' => fn ($q) => $q->orderBy('appointment_date', 'desc'),
+            'evolutions' => fn ($q) => $q->orderBy('data_atendimento', 'desc'),
+            'memberships' => fn ($q) => $q->with('commercialPlan')->orderBy('end_date', 'desc'),
+            'financialTransactions' => fn ($q) => $q->orderBy('date', 'desc'),
+            'documents' => fn ($q) => $q->orderBy('created_at', 'desc'),
         ]);
 
         // Expose the monthly session quota usage on each membership card.
@@ -97,12 +99,12 @@ class PatientController extends Controller
             'overdue_amount' => (float) $patient->financialTransactions
                 ->where('type', 'income')
                 ->where('status', 'pending')
-                ->filter(fn($t) => $t->due_date && $t->due_date->toDateString() < $today)
+                ->filter(fn ($t) => $t->due_date && $t->due_date->toDateString() < $today)
                 ->sum('amount'),
         ];
 
-        $protocols = \App\Models\ClinicalProtocol::orderBy('name')->get(['id', 'name', 'total_sessions']);
-        $commercialPlans = \App\Models\CommercialPlan::orderBy('name')->get(['id', 'name', 'price', 'duration_months']);
+        $protocols = ClinicalProtocol::orderBy('name')->get(['id', 'name', 'total_sessions']);
+        $commercialPlans = CommercialPlan::orderBy('name')->get(['id', 'name', 'price', 'duration_months']);
 
         return Inertia::render('patients/show', [
             'patient' => $patient,

@@ -11,7 +11,7 @@ class EvolutionPhoto extends Model
     use BelongsToTenant, HasUuids;
 
     protected $table = 'evolution_photos';
-    
+
     public $timestamps = false; // Supabase only uses data_upload instead of created_at/updated_at here
 
     protected $fillable = [
@@ -19,9 +19,9 @@ class EvolutionPhoto extends Model
         'evolucao_id',
         'caminho_arquivo',
         'descricao',
-        'data_upload'
+        'data_upload',
     ];
-    
+
     protected function casts(): array
     {
         return [

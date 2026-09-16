@@ -3,7 +3,7 @@
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        <script>
+        <script nonce="{{ Illuminate\Support\Facades\Vite::cspNonce() }}">
             // Previne zoom automático no iPhone ao focar em inputs
             if (window.CSS && window.CSS.supports && window.CSS.supports('(-webkit-touch-callout: none)')) {
                 var viewport = document.querySelector('meta[name="viewport"]');
@@ -13,7 +13,7 @@
             }
         </script>
         {{-- Inline script to set light mode by default --}}
-        <script>
+        <script nonce="{{ Illuminate\Support\Facades\Vite::cspNonce() }}">
             (function() {
                 const appearance = '{{ $appearance ?? "light" }}';
 

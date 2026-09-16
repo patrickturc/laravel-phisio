@@ -35,12 +35,14 @@ export function TrialBanner() {
                 <span>
                     {days === 0 ? (
                         <>
-                            <strong>Último dia de teste.</strong> Contrate um plano para não perder o acesso.
+                            <strong>Último dia de teste.</strong> Contrate um
+                            plano para não perder o acesso.
                         </>
                     ) : (
                         <>
                             <strong>
-                                {days} {days === 1 ? 'dia restante' : 'dias restantes'}
+                                {days}{' '}
+                                {days === 1 ? 'dia restante' : 'dias restantes'}
                             </strong>{' '}
                             no seu período de teste.
                         </>
@@ -56,7 +58,9 @@ export function TrialBanner() {
                         : 'bg-primary text-primary-foreground hover:bg-primary/90'
                 }`}
             >
-                {trial.has_pending_request ? 'Ver solicitação' : 'Escolher plano'}
+                {trial.has_pending_request
+                    ? 'Ver solicitação'
+                    : 'Escolher plano'}
             </Link>
         </div>
     );

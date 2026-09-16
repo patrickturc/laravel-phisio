@@ -3,6 +3,7 @@
 namespace App\Concerns;
 
 use App\Models\Tenant;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -20,7 +21,7 @@ trait BelongsToTenant
     {
         static::creating(function (Model $model): void {
             if (auth()->hasUser()) {
-                /** @var \App\Models\User|null $user */
+                /** @var User|null $user */
                 $user = auth()->user();
 
                 if ($user && ! $user->is_dev_admin) {
@@ -28,7 +29,7 @@ trait BelongsToTenant
                 }
             }
 
-            if (empty($model->tenant_id) && app()->runningUnitTests() && ! $model instanceof \App\Models\User) {
+            if (empty($model->tenant_id) && app()->runningUnitTests() && ! $model instanceof User) {
                 $model->tenant_id = Tenant::first()?->id ?? Tenant::factory()->create()->id;
             }
         });
@@ -38,7 +39,7 @@ trait BelongsToTenant
                 return;
             }
 
-            /** @var \App\Models\User|null $user */
+            /** @var User|null $user */
             $user = auth()->user();
 
             if (! $user || $user->is_dev_admin) {

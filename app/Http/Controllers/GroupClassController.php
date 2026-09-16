@@ -70,6 +70,7 @@ class GroupClassController extends Controller
             ->get()
             ->map(function ($absence) {
                 $absence->appointment_date = Carbon::parse($absence->appointment_date)->format('Y-m-d');
+
                 return $absence;
             });
 

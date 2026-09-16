@@ -1,7 +1,20 @@
-import DevAdminLayout from '@/layouts/DevAdminLayout';
 import { Head, Link } from '@inertiajs/react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Users, Building, Activity, Clock, AlertTriangle, Inbox } from 'lucide-react';
+import {
+    Users,
+    Building,
+    Activity,
+    Clock,
+    AlertTriangle,
+    Inbox,
+} from 'lucide-react';
+import {
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
+} from '@/components/ui/card';
+import DevAdminLayout from '@/layouts/DevAdminLayout';
 import { TenantStatusBadge } from './Tenants/TenantStatusBadge';
 
 interface DashboardProps {
@@ -17,11 +30,30 @@ interface DashboardProps {
     planRequests: any[];
 }
 
-export default function Dashboard({ stats, recentTenants, planRequests }: DashboardProps) {
+export default function Dashboard({
+    stats,
+    recentTenants,
+    planRequests,
+}: DashboardProps) {
     const cards = [
-        { label: 'Total de Organizações', value: stats.total_tenants, icon: Building, href: '/dev-admin/tenants' },
-        { label: 'Organizações Ativas', value: stats.active_tenants, icon: Activity, href: '/dev-admin/tenants' },
-        { label: 'Total de Usuários', value: stats.total_users, icon: Users, href: null },
+        {
+            label: 'Total de Organizações',
+            value: stats.total_tenants,
+            icon: Building,
+            href: '/dev-admin/tenants',
+        },
+        {
+            label: 'Organizações Ativas',
+            value: stats.active_tenants,
+            icon: Activity,
+            href: '/dev-admin/tenants',
+        },
+        {
+            label: 'Total de Usuários',
+            value: stats.total_users,
+            icon: Users,
+            href: null,
+        },
         {
             label: 'Em período de teste',
             value: stats.trial_tenants,
@@ -48,22 +80,36 @@ export default function Dashboard({ stats, recentTenants, planRequests }: Dashbo
         <DevAdminLayout>
             <Head title="Dev Admin Dashboard" />
 
-            <div className="grid gap-4 md:grid-cols-3 mb-8">
+            <div className="mb-8 grid gap-4 md:grid-cols-3">
                 {cards.map((card) => {
                     const content = (
-                        <Card className={card.highlight ? 'border-primary/40 bg-primary/5' : undefined}>
+                        <Card
+                            className={
+                                card.highlight
+                                    ? 'border-primary/40 bg-primary/5'
+                                    : undefined
+                            }
+                        >
                             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                <CardTitle className="text-sm font-medium">{card.label}</CardTitle>
+                                <CardTitle className="text-sm font-medium">
+                                    {card.label}
+                                </CardTitle>
                                 <card.icon className="h-4 w-4 text-muted-foreground" />
                             </CardHeader>
                             <CardContent>
-                                <div className="text-2xl font-bold">{card.value}</div>
+                                <div className="text-2xl font-bold">
+                                    {card.value}
+                                </div>
                             </CardContent>
                         </Card>
                     );
 
                     return card.href ? (
-                        <Link key={card.label} href={card.href} className="block transition-opacity hover:opacity-80">
+                        <Link
+                            key={card.label}
+                            href={card.href}
+                            className="block transition-opacity hover:opacity-80"
+                        >
                             {content}
                         </Link>
                     ) : (
@@ -77,7 +123,8 @@ export default function Dashboard({ stats, recentTenants, planRequests }: Dashbo
                     <CardHeader>
                         <CardTitle>Solicitações de plano pendentes</CardTitle>
                         <CardDescription>
-                            Organizações que pediram a contratação de um plano e aguardam ativação.
+                            Organizações que pediram a contratação de um plano e
+                            aguardam ativação.
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
@@ -88,10 +135,17 @@ export default function Dashboard({ stats, recentTenants, planRequests }: Dashbo
                                     className="flex flex-wrap items-center justify-between gap-3 border-b pb-4 last:border-0 last:pb-0"
                                 >
                                     <div>
-                                        <p className="font-medium">{tenant.name}</p>
+                                        <p className="font-medium">
+                                            {tenant.name}
+                                        </p>
                                         <p className="text-sm text-muted-foreground">
-                                            Pediu o plano <strong className="capitalize">{tenant.requested_plan}</strong>
-                                            {tenant.email ? ` · ${tenant.email}` : ''}
+                                            Pediu o plano{' '}
+                                            <strong className="capitalize">
+                                                {tenant.requested_plan}
+                                            </strong>
+                                            {tenant.email
+                                                ? ` · ${tenant.email}`
+                                                : ''}
                                         </p>
                                     </div>
                                     <div className="flex items-center gap-3">
@@ -113,22 +167,32 @@ export default function Dashboard({ stats, recentTenants, planRequests }: Dashbo
             <Card>
                 <CardHeader>
                     <CardTitle>Organizações Recentes</CardTitle>
-                    <CardDescription>As últimas 5 organizações cadastradas no sistema.</CardDescription>
+                    <CardDescription>
+                        As últimas 5 organizações cadastradas no sistema.
+                    </CardDescription>
                 </CardHeader>
                 <CardContent>
                     <div className="space-y-4">
                         {recentTenants.map((tenant) => (
-                            <div key={tenant.id} className="flex items-center justify-between border-b pb-4 last:border-0 last:pb-0">
+                            <div
+                                key={tenant.id}
+                                className="flex items-center justify-between border-b pb-4 last:border-0 last:pb-0"
+                            >
                                 <div>
                                     <p className="font-medium">{tenant.name}</p>
                                     <p className="text-sm text-muted-foreground">
                                         {tenant.slug}
-                                        {tenant.self_registered ? ' · cadastro próprio' : ''}
+                                        {tenant.self_registered
+                                            ? ' · cadastro próprio'
+                                            : ''}
                                     </p>
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <TenantStatusBadge tenant={tenant} />
-                                    <Link href={`/dev-admin/tenants/${tenant.id}`} className="text-sm text-primary hover:underline">
+                                    <Link
+                                        href={`/dev-admin/tenants/${tenant.id}`}
+                                        className="text-sm text-primary hover:underline"
+                                    >
                                         Detalhes
                                     </Link>
                                 </div>

@@ -1,3 +1,6 @@
+import { usePage } from '@inertiajs/react';
+import { useEffect } from 'react';
+import { Toaster, toast } from 'sonner';
 import { AppContent } from '@/components/app-content';
 import { AppShell } from '@/components/app-shell';
 import { AppSidebar } from '@/components/app-sidebar';
@@ -7,15 +10,14 @@ import { ProfileCompletionBanner } from '@/components/profile-completion-banner'
 import { SystemAnnouncementBanner } from '@/components/system-announcement-banner';
 import { TrialBanner } from '@/components/trial-banner';
 import type { AppLayoutProps } from '@/types';
-import { Toaster, toast } from 'sonner';
-import { usePage } from '@inertiajs/react';
-import { useEffect } from 'react';
 
 export default function AppSidebarLayout({
     children,
     breadcrumbs = [],
 }: AppLayoutProps) {
-    const { flash } = usePage<{ flash?: { success?: string; error?: string; warning?: string } }>().props as any;
+    const { flash } = usePage<{
+        flash?: { success?: string; error?: string; warning?: string };
+    }>().props as any;
 
     useEffect(() => {
         if (flash?.success) toast.success(flash.success);
@@ -29,14 +31,19 @@ export default function AppSidebarLayout({
             <AppContent variant="sidebar">
                 <ImpersonationBanner />
                 <AppSidebarHeader breadcrumbs={breadcrumbs} />
-                <div className="px-4 sm:px-6 pt-2 space-y-2">
+                <div className="space-y-2 px-4 pt-2 sm:px-6">
                     <ProfileCompletionBanner />
                     <TrialBanner />
                     <SystemAnnouncementBanner />
                 </div>
                 {children}
             </AppContent>
-            <Toaster position="top-right" richColors closeButton theme="system" />
+            <Toaster
+                position="top-right"
+                richColors
+                closeButton
+                theme="system"
+            />
         </AppShell>
     );
 }

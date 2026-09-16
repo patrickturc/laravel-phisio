@@ -17,7 +17,7 @@ return new class extends Migration
             $table->uuid('id')->default($isSqlite ? null : DB::raw('gen_random_uuid()'))->primary();
             $table->foreignUuid('tenant_id')->constrained()->cascadeOnDelete();
             $table->timestampTz('created_at')->default($isSqlite ? DB::raw('CURRENT_TIMESTAMP') : DB::raw("timezone('utc'::text, now())"));
-            $table->timestamp("updated_at")->nullable();
+            $table->timestamp('updated_at')->nullable();
             $table->text('name');
             $table->text('phone')->nullable();
             $table->text('type')->nullable();

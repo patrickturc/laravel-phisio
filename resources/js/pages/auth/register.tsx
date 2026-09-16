@@ -24,12 +24,14 @@ export default function Register({ trialDays = 15 }: Props) {
             <Head title="Criar conta - Phisio" />
 
             <div className="mt-2 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                {['Acesso completo', 'Sem cartão', 'Cancele quando quiser'].map((item) => (
-                    <span key={item} className="flex items-center gap-1">
-                        <CheckCircle2 className="size-3.5 text-secondary-foreground" />
-                        {item}
-                    </span>
-                ))}
+                {['Acesso completo', 'Sem cartão', 'Cancele quando quiser'].map(
+                    (item) => (
+                        <span key={item} className="flex items-center gap-1">
+                            <CheckCircle2 className="size-3.5 text-secondary-foreground" />
+                            {item}
+                        </span>
+                    ),
+                )}
             </div>
 
             <Form
@@ -42,7 +44,9 @@ export default function Register({ trialDays = 15 }: Props) {
                 {({ processing, errors }) => (
                     <div className="grid gap-5">
                         <div className="grid gap-2">
-                            <Label htmlFor="organization_name">Nome da clínica ou estúdio</Label>
+                            <Label htmlFor="organization_name">
+                                Nome da clínica ou estúdio
+                            </Label>
                             <Input
                                 id="organization_name"
                                 name="organization_name"
@@ -57,7 +61,9 @@ export default function Register({ trialDays = 15 }: Props) {
                         </div>
 
                         <div className="grid gap-2">
-                            <Label htmlFor="document">CNPJ da clínica ou seu CPF</Label>
+                            <Label htmlFor="document">
+                                CNPJ da clínica ou seu CPF
+                            </Label>
                             <Input
                                 id="document"
                                 name="document"
@@ -129,7 +135,9 @@ export default function Register({ trialDays = 15 }: Props) {
                         </div>
 
                         <div className="grid gap-2">
-                            <Label htmlFor="password_confirmation">Confirme a senha</Label>
+                            <Label htmlFor="password_confirmation">
+                                Confirme a senha
+                            </Label>
                             <PasswordInput
                                 id="password_confirmation"
                                 name="password_confirmation"
@@ -139,7 +147,9 @@ export default function Register({ trialDays = 15 }: Props) {
                                 placeholder="••••••••"
                                 className="border-neutral-200 bg-neutral-50 focus:border-primary focus:ring-primary/20"
                             />
-                            <InputError message={errors.password_confirmation} />
+                            <InputError
+                                message={errors.password_confirmation}
+                            />
                         </div>
 
                         <div className="grid gap-2">
@@ -151,8 +161,12 @@ export default function Register({ trialDays = 15 }: Props) {
                                     tabIndex={8}
                                     className="mt-0.5 data-[state=checked]:border-primary data-[state=checked]:bg-primary"
                                 />
-                                <Label htmlFor="terms" className="text-sm leading-relaxed font-normal">
-                                    Li e aceito os termos de uso e a política de privacidade.
+                                <Label
+                                    htmlFor="terms"
+                                    className="text-sm leading-relaxed font-normal"
+                                >
+                                    Li e aceito os termos de uso e a política de
+                                    privacidade.
                                 </Label>
                             </div>
                             <InputError message={errors.terms} />
@@ -171,7 +185,10 @@ export default function Register({ trialDays = 15 }: Props) {
 
                         <p className="text-center text-sm text-muted-foreground">
                             Já tem uma conta?{' '}
-                            <TextLink href={login()} className="text-primary hover:text-primary/80">
+                            <TextLink
+                                href={login()}
+                                className="text-primary hover:text-primary/80"
+                            >
                                 Entrar
                             </TextLink>
                         </p>

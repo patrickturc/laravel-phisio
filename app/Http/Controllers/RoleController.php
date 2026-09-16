@@ -4,8 +4,8 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Inertia\Inertia;
-use Spatie\Permission\Models\Role;
 use Spatie\Permission\Models\Permission;
+use Spatie\Permission\Models\Role;
 
 class RoleController extends Controller
 {
@@ -19,7 +19,7 @@ class RoleController extends Controller
         foreach ($permissions as $p) {
             $parts = explode('.', $p->name);
             $module = $parts[0];
-            if (!isset($groupedPermissions[$module])) {
+            if (! isset($groupedPermissions[$module])) {
                 $groupedPermissions[$module] = [];
             }
             $groupedPermissions[$module][] = $p;
@@ -40,8 +40,8 @@ class RoleController extends Controller
         ]);
 
         $role = Role::create(['name' => $validated['name'], 'guard_name' => 'web']);
-        
-        if (!empty($validated['permissions'])) {
+
+        if (! empty($validated['permissions'])) {
             $role->syncPermissions($validated['permissions']);
         }
 
@@ -55,13 +55,13 @@ class RoleController extends Controller
         }
 
         $validated = $request->validate([
-            'name' => 'required|string|max:255|unique:roles,name,' . $role->id,
+            'name' => 'required|string|max:255|unique:roles,name,'.$role->id,
             'permissions' => 'array',
             'permissions.*' => 'string|exists:permissions,name',
         ]);
 
         $role->update(['name' => $validated['name']]);
-        
+
         $permissions = $validated['permissions'] ?? [];
         $role->syncPermissions($permissions);
 
@@ -79,6 +79,7 @@ class RoleController extends Controller
         }
 
         $role->delete();
+
         return redirect()->route('roles.index')->with('success', 'Perfil excluído com sucesso.');
     }
 }

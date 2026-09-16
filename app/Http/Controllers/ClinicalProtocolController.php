@@ -13,7 +13,7 @@ class ClinicalProtocolController extends Controller
         $query = ClinicalProtocol::orderBy('name', 'asc');
 
         if ($request->filled('search')) {
-            $query->where('name', 'ilike', '%' . $request->search . '%');
+            $query->whereLike('name', '%'.$request->search.'%');
         }
 
         $protocols = $query->paginate(15)->withQueryString();
@@ -48,7 +48,7 @@ class ClinicalProtocolController extends Controller
     public function show(ClinicalProtocol $clinicalProtocol)
     {
         // Evolutions that used this protocol
-        $clinicalProtocol->load(['evolutions.patient' => fn($q) => $q->select('id', 'name')]);
+        $clinicalProtocol->load(['evolutions.patient' => fn ($q) => $q->select('id', 'name')]);
 
         return Inertia::render('clinical-protocols/show', [
             'protocol' => $clinicalProtocol,

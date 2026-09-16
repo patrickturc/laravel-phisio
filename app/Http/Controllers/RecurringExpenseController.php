@@ -65,12 +65,14 @@ class RecurringExpenseController extends Controller
     public function destroy(RecurringExpense $recurringExpense)
     {
         $recurringExpense->delete();
+
         return redirect()->route('recurring-expenses.index')->with('success', 'Gasto recorrente excluído.');
     }
 
     public function toggleActive(RecurringExpense $recurringExpense)
     {
-        $recurringExpense->update(['is_active' => !$recurringExpense->is_active]);
+        $recurringExpense->update(['is_active' => ! $recurringExpense->is_active]);
+
         return redirect()->back()->with('success', $recurringExpense->is_active ? 'Gasto ativado!' : 'Gasto desativado!');
     }
 }

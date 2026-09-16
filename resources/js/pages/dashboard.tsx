@@ -1,10 +1,26 @@
 import { Head, Link, router } from '@inertiajs/react';
-import AppLayout from '@/layouts/app-layout';
-import type { BreadcrumbItem } from '@/types';
-import { Users, Calendar, FileText, Clock, Plus, ChevronRight, ChevronLeft, TrendingUp, TrendingDown, ArrowUpRight, ArrowDownRight, CreditCard, BarChart3, CalendarDays, AlertTriangle } from 'lucide-react';
 import { motion } from 'framer-motion';
+import {
+    Users,
+    Calendar,
+    FileText,
+    Clock,
+    Plus,
+    ChevronRight,
+    ChevronLeft,
+    TrendingUp,
+    TrendingDown,
+    ArrowUpRight,
+    ArrowDownRight,
+    CreditCard,
+    BarChart3,
+    CalendarDays,
+    AlertTriangle,
+} from 'lucide-react';
 import { useState } from 'react';
 import { usePermissions } from '@/hooks/use-permissions';
+import AppLayout from '@/layouts/app-layout';
+import type { BreadcrumbItem } from '@/types';
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Dashboard', href: '/dashboard' },
@@ -59,11 +75,20 @@ interface Props {
         completionRate: { current: number; change: number };
         activeMemberships: { current: number; expiring: number };
     };
-    classesNeedingExtension: Array<{ id: string; name: string; color: string | null; last_appointment_date: string | null }>;
+    classesNeedingExtension: Array<{
+        id: string;
+        name: string;
+        color: string | null;
+        last_appointment_date: string | null;
+    }>;
 }
 
 function navigateToDate(date: string) {
-    router.get('/dashboard', { date }, { preserveState: true, preserveScroll: true });
+    router.get(
+        '/dashboard',
+        { date },
+        { preserveState: true, preserveScroll: true },
+    );
 }
 
 function shiftWeek(currentDate: string, direction: number) {
@@ -72,26 +97,59 @@ function shiftWeek(currentDate: string, direction: number) {
     navigateToDate(d.toISOString().split('T')[0]);
 }
 
-export default function Dashboard({ totalPatients, dayAppointments, dayCount, pendingEvolutions, selectedDate, weekDays, weekLabel, upcomingBirthdays, financialSummary, growthIndicators, classesNeedingExtension = [] }: Props) {
+export default function Dashboard({
+    totalPatients,
+    dayAppointments,
+    dayCount,
+    pendingEvolutions,
+    selectedDate,
+    weekDays,
+    weekLabel,
+    upcomingBirthdays,
+    financialSummary,
+    growthIndicators,
+    classesNeedingExtension = [],
+}: Props) {
     const { can } = usePermissions();
-    const statusLabel: Record<string, string> = { scheduled: 'Agendado', completed: 'Realizado', cancelled: 'Cancelado' };
-    const statusColor: Record<string, string> = { scheduled: 'bg-blue-100 text-blue-700', completed: 'bg-emerald-100 text-emerald-700', cancelled: 'bg-red-100 text-red-700' };
+    const statusLabel: Record<string, string> = {
+        scheduled: 'Agendado',
+        completed: 'Realizado',
+        cancelled: 'Cancelado',
+    };
+    const statusColor: Record<string, string> = {
+        scheduled: 'bg-blue-100 text-blue-700',
+        completed: 'bg-emerald-100 text-emerald-700',
+        cancelled: 'bg-red-100 text-red-700',
+    };
 
     const [isExtending, setIsExtending] = useState(false);
 
     function extendClasses() {
         setIsExtending(true);
-        router.post('/group-classes/extend-active', {}, {
-            preserveScroll: true,
-            onFinish: () => setIsExtending(false),
-        });
+        router.post(
+            '/group-classes/extend-active',
+            {},
+            {
+                preserveScroll: true,
+                onFinish: () => setIsExtending(false),
+            },
+        );
     }
 
     const formatCurrency = (val: number) => {
-        return Number(val).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        return Number(val).toLocaleString('pt-BR', {
+            style: 'currency',
+            currency: 'BRL',
+        });
     };
 
-    const selectedDayFormatted = new Date(selectedDate + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' });
+    const selectedDayFormatted = new Date(
+        selectedDate + 'T12:00:00',
+    ).toLocaleDateString('pt-BR', {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long',
+    });
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -100,29 +158,51 @@ export default function Dashboard({ totalPatients, dayAppointments, dayCount, pe
             <div className="flex h-full flex-1 flex-col gap-6 p-6 md:p-10">
                 {/* Welcome */}
                 <div>
-                    <h1 className="text-2xl font-bold tracking-tight">Bom dia! 👋</h1>
-                    <p className="text-muted-foreground text-sm mt-1">Aqui está o resumo do seu dia.</p>
+                    <h1 className="text-2xl font-bold tracking-tight">
+                        Bom dia! 👋
+                    </h1>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                        Aqui está o resumo do seu dia.
+                    </p>
                 </div>
 
                 {/* Classes running out of generated appointments */}
                 {classesNeedingExtension.length > 0 && (
-                    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-                        className="bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 rounded-2xl p-5 shadow-sm">
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="rounded-2xl border border-amber-200 bg-amber-50 p-5 shadow-sm dark:border-amber-500/20 dark:bg-amber-500/10"
+                    >
+                        <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
                             <div className="flex items-start gap-3">
-                                <div className="p-2.5 bg-amber-500/15 rounded-xl shrink-0"><AlertTriangle className="size-5 text-amber-600" /></div>
+                                <div className="shrink-0 rounded-xl bg-amber-500/15 p-2.5">
+                                    <AlertTriangle className="size-5 text-amber-600" />
+                                </div>
                                 <div>
                                     <h3 className="font-semibold text-amber-800 dark:text-amber-300">
-                                        {classesNeedingExtension.length} turma(s) com aulas acabando
+                                        {classesNeedingExtension.length}{' '}
+                                        turma(s) com aulas acabando
                                     </h3>
-                                    <p className="text-sm text-amber-700/80 dark:text-amber-400/80 mt-0.5">
-                                        Gere as próximas aulas para não ficar sem agenda. Clique para estender por mais 8 semanas.
+                                    <p className="mt-0.5 text-sm text-amber-700/80 dark:text-amber-400/80">
+                                        Gere as próximas aulas para não ficar
+                                        sem agenda. Clique para estender por
+                                        mais 8 semanas.
                                     </p>
-                                    <div className="flex flex-wrap gap-2 mt-3">
+                                    <div className="mt-3 flex flex-wrap gap-2">
                                         {classesNeedingExtension.map((gc) => (
-                                            <Link key={gc.id} href={`/group-classes/${gc.id}`}
-                                                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/60 dark:bg-black/20 border border-amber-200 dark:border-amber-500/20 text-xs font-medium text-amber-800 dark:text-amber-300 hover:bg-white transition-colors">
-                                                <span className="size-2 rounded-full" style={{ backgroundColor: gc.color || '#8b5cf6' }} />
+                                            <Link
+                                                key={gc.id}
+                                                href={`/group-classes/${gc.id}`}
+                                                className="inline-flex items-center gap-1.5 rounded-lg border border-amber-200 bg-white/60 px-2.5 py-1 text-xs font-medium text-amber-800 transition-colors hover:bg-white dark:border-amber-500/20 dark:bg-black/20 dark:text-amber-300"
+                                            >
+                                                <span
+                                                    className="size-2 rounded-full"
+                                                    style={{
+                                                        backgroundColor:
+                                                            gc.color ||
+                                                            '#8b5cf6',
+                                                    }}
+                                                />
                                                 {gc.name}
                                                 <span className="text-amber-600/70">
                                                     {gc.last_appointment_date
@@ -135,140 +215,261 @@ export default function Dashboard({ totalPatients, dayAppointments, dayCount, pe
                                 </div>
                             </div>
                             {can('group_classes.manage.edit') && (
-                            <button
-                                onClick={extendClasses}
-                                disabled={isExtending}
-                                className="inline-flex items-center justify-center gap-2 h-10 px-4 rounded-xl bg-amber-600 text-white text-sm font-medium shadow-sm hover:bg-amber-700 transition-colors disabled:opacity-60 shrink-0"
-                            >
-                                <CalendarDays className="size-4" />
-                                {isExtending ? 'Gerando...' : 'Estender todas as turmas'}
-                            </button>
+                                <button
+                                    onClick={extendClasses}
+                                    disabled={isExtending}
+                                    className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-xl bg-amber-600 px-4 text-sm font-medium text-white shadow-sm transition-colors hover:bg-amber-700 disabled:opacity-60"
+                                >
+                                    <CalendarDays className="size-4" />
+                                    {isExtending
+                                        ? 'Gerando...'
+                                        : 'Estender todas as turmas'}
+                                </button>
                             )}
                         </div>
                     </motion.div>
                 )}
 
                 {/* KPI Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-                        className="bg-card/60 backdrop-blur-xl border border-border/50 rounded-2xl p-5 shadow-sm hover:shadow-md transition-shadow">
-                        <div className="flex items-center justify-between mb-3">
-                            <div className="p-2.5 bg-primary/10 rounded-xl"><Users className="size-5 text-primary" /></div>
-                            <Link href="/patients" className="text-xs font-semibold text-primary hover:text-primary/80">Ver todos →</Link>
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                    <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="rounded-2xl border border-border/50 bg-card/60 p-5 shadow-sm backdrop-blur-xl transition-shadow hover:shadow-md"
+                    >
+                        <div className="mb-3 flex items-center justify-between">
+                            <div className="rounded-xl bg-primary/10 p-2.5">
+                                <Users className="size-5 text-primary" />
+                            </div>
+                            <Link
+                                href="/patients"
+                                className="text-xs font-semibold text-primary hover:text-primary/80"
+                            >
+                                Ver todos →
+                            </Link>
                         </div>
                         <p className="text-3xl font-bold">{totalPatients}</p>
-                        <p className="text-sm text-muted-foreground mt-0.5">Pacientes cadastrados</p>
+                        <p className="mt-0.5 text-sm text-muted-foreground">
+                            Pacientes cadastrados
+                        </p>
                     </motion.div>
 
-                    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}
-                        className="bg-card/60 backdrop-blur-xl border border-border/50 rounded-2xl p-5 shadow-sm hover:shadow-md transition-shadow">
-                        <div className="flex items-center justify-between mb-3">
-                            <div className="p-2.5 bg-emerald-500/10 rounded-xl"><Calendar className="size-5 text-emerald-600" /></div>
-                            <Link href="/appointments" className="text-xs font-semibold text-emerald-600 hover:text-emerald-500">Ver agenda →</Link>
+                    <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.05 }}
+                        className="rounded-2xl border border-border/50 bg-card/60 p-5 shadow-sm backdrop-blur-xl transition-shadow hover:shadow-md"
+                    >
+                        <div className="mb-3 flex items-center justify-between">
+                            <div className="rounded-xl bg-emerald-500/10 p-2.5">
+                                <Calendar className="size-5 text-emerald-600" />
+                            </div>
+                            <Link
+                                href="/appointments"
+                                className="text-xs font-semibold text-emerald-600 hover:text-emerald-500"
+                            >
+                                Ver agenda →
+                            </Link>
                         </div>
                         <p className="text-3xl font-bold">{dayCount}</p>
-                        <p className="text-sm text-muted-foreground mt-0.5">Sessões neste dia</p>
+                        <p className="mt-0.5 text-sm text-muted-foreground">
+                            Sessões neste dia
+                        </p>
                     </motion.div>
 
-                    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
-                        className="bg-card/60 backdrop-blur-xl border border-border/50 rounded-2xl p-5 shadow-sm hover:shadow-md transition-shadow">
-                        <div className="flex items-center justify-between mb-3">
-                            <div className="p-2.5 bg-amber-500/10 rounded-xl"><FileText className="size-5 text-amber-600" /></div>
-                            <Link href="/evolutions" className="text-xs font-semibold text-amber-600 hover:text-amber-500">Ver todas →</Link>
+                    <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.1 }}
+                        className="rounded-2xl border border-border/50 bg-card/60 p-5 shadow-sm backdrop-blur-xl transition-shadow hover:shadow-md"
+                    >
+                        <div className="mb-3 flex items-center justify-between">
+                            <div className="rounded-xl bg-amber-500/10 p-2.5">
+                                <FileText className="size-5 text-amber-600" />
+                            </div>
+                            <Link
+                                href="/evolutions"
+                                className="text-xs font-semibold text-amber-600 hover:text-amber-500"
+                            >
+                                Ver todas →
+                            </Link>
                         </div>
-                        <p className="text-3xl font-bold">{pendingEvolutions}</p>
-                        <p className="text-sm text-muted-foreground mt-0.5">Evoluções pendentes</p>
+                        <p className="text-3xl font-bold">
+                            {pendingEvolutions}
+                        </p>
+                        <p className="mt-0.5 text-sm text-muted-foreground">
+                            Evoluções pendentes
+                        </p>
                     </motion.div>
                 </div>
 
                 {/* Financial Summary */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 }}
-                        className="bg-card/60 backdrop-blur-xl border border-border/50 rounded-2xl p-5 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
-                        <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/5 to-transparent pointer-events-none" />
-                        <div className="flex items-center justify-between mb-2">
-                            <h3 className="font-semibold text-muted-foreground flex items-center gap-2">
-                                <span className="p-1.5 bg-emerald-500/10 text-emerald-600 rounded-lg"><TrendingUp className="size-4" /></span>
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.12 }}
+                        className="group relative overflow-hidden rounded-2xl border border-border/50 bg-card/60 p-5 shadow-sm backdrop-blur-xl transition-shadow hover:shadow-md"
+                    >
+                        <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-emerald-500/5 to-transparent" />
+                        <div className="mb-2 flex items-center justify-between">
+                            <h3 className="flex items-center gap-2 font-semibold text-muted-foreground">
+                                <span className="rounded-lg bg-emerald-500/10 p-1.5 text-emerald-600">
+                                    <TrendingUp className="size-4" />
+                                </span>
                                 Receitas do Mês
                             </h3>
-                            <Link href="/financial?type=income" className="text-xs font-semibold text-emerald-600 hover:text-emerald-500">Fluxo de Caixa →</Link>
+                            <Link
+                                href="/financial?type=income"
+                                className="text-xs font-semibold text-emerald-600 hover:text-emerald-500"
+                            >
+                                Fluxo de Caixa →
+                            </Link>
                         </div>
-                        <p className="text-3xl font-bold text-emerald-600 dark:text-emerald-400 mt-2">{formatCurrency(financialSummary.income)}</p>
-                        <p className="text-xs text-muted-foreground mt-1 max-w-[80%] line-clamp-1">
-                            +{formatCurrency(financialSummary.pending_income)} previstos para receber
+                        <p className="mt-2 text-3xl font-bold text-emerald-600 dark:text-emerald-400">
+                            {formatCurrency(financialSummary.income)}
+                        </p>
+                        <p className="mt-1 line-clamp-1 max-w-[80%] text-xs text-muted-foreground">
+                            +{formatCurrency(financialSummary.pending_income)}{' '}
+                            previstos para receber
                         </p>
                     </motion.div>
 
-                    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.14 }}
-                        className="bg-card/60 backdrop-blur-xl border border-border/50 rounded-2xl p-5 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
-                        <div className="absolute inset-0 bg-gradient-to-r from-red-500/5 to-transparent pointer-events-none" />
-                        <div className="flex items-center justify-between mb-2">
-                            <h3 className="font-semibold text-muted-foreground flex items-center gap-2">
-                                <span className="p-1.5 bg-red-500/10 text-red-600 rounded-lg"><TrendingDown className="size-4" /></span>
+                    <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.14 }}
+                        className="group relative overflow-hidden rounded-2xl border border-border/50 bg-card/60 p-5 shadow-sm backdrop-blur-xl transition-shadow hover:shadow-md"
+                    >
+                        <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-red-500/5 to-transparent" />
+                        <div className="mb-2 flex items-center justify-between">
+                            <h3 className="flex items-center gap-2 font-semibold text-muted-foreground">
+                                <span className="rounded-lg bg-red-500/10 p-1.5 text-red-600">
+                                    <TrendingDown className="size-4" />
+                                </span>
                                 Despesas do Mês
                             </h3>
-                            <Link href="/financial?type=expense" className="text-xs font-semibold text-red-600 hover:text-red-500">Fluxo de Caixa →</Link>
+                            <Link
+                                href="/financial?type=expense"
+                                className="text-xs font-semibold text-red-600 hover:text-red-500"
+                            >
+                                Fluxo de Caixa →
+                            </Link>
                         </div>
-                        <p className="text-3xl font-bold text-red-600 dark:text-red-400 mt-2">{formatCurrency(financialSummary.expense)}</p>
-                        <p className="text-xs text-muted-foreground mt-1 max-w-[80%] line-clamp-1">
-                            +{formatCurrency(financialSummary.pending_expense)} previstos para pagar
+                        <p className="mt-2 text-3xl font-bold text-red-600 dark:text-red-400">
+                            {formatCurrency(financialSummary.expense)}
+                        </p>
+                        <p className="mt-1 line-clamp-1 max-w-[80%] text-xs text-muted-foreground">
+                            +{formatCurrency(financialSummary.pending_expense)}{' '}
+                            previstos para pagar
                         </p>
                     </motion.div>
                 </div>
 
                 {/* Growth Indicators */}
-                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.16 }}
-                    className="bg-card/60 backdrop-blur-xl border border-border/50 rounded-2xl p-6 shadow-sm">
-                    <div className="flex items-center justify-between mb-5">
-                        <h2 className="text-lg font-bold flex items-center gap-2">
+                <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.16 }}
+                    className="rounded-2xl border border-border/50 bg-card/60 p-6 shadow-sm backdrop-blur-xl"
+                >
+                    <div className="mb-5 flex items-center justify-between">
+                        <h2 className="flex items-center gap-2 text-lg font-bold">
                             <BarChart3 className="size-5 text-primary" />
                             Indicadores de Crescimento
                         </h2>
-                        <span className="text-xs text-muted-foreground">vs. mês anterior</span>
+                        <span className="text-xs text-muted-foreground">
+                            vs. mês anterior
+                        </span>
                     </div>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        <div className="p-4 rounded-xl bg-muted/30 border border-border/30">
-                            <div className="flex items-center gap-2 mb-2">
+                    <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+                        <div className="rounded-xl border border-border/30 bg-muted/30 p-4">
+                            <div className="mb-2 flex items-center gap-2">
                                 <Users className="size-4 text-primary" />
-                                <span className="text-xs text-muted-foreground">Novos Pacientes</span>
+                                <span className="text-xs text-muted-foreground">
+                                    Novos Pacientes
+                                </span>
                             </div>
-                            <p className="text-2xl font-bold">{growthIndicators.newPatients.current}</p>
-                            <div className={`flex items-center gap-1 mt-1 text-xs font-semibold ${growthIndicators.newPatients.change >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
-                                {growthIndicators.newPatients.change >= 0 ? <ArrowUpRight className="size-3" /> : <ArrowDownRight className="size-3" />}
+                            <p className="text-2xl font-bold">
+                                {growthIndicators.newPatients.current}
+                            </p>
+                            <div
+                                className={`mt-1 flex items-center gap-1 text-xs font-semibold ${growthIndicators.newPatients.change >= 0 ? 'text-emerald-600' : 'text-red-500'}`}
+                            >
+                                {growthIndicators.newPatients.change >= 0 ? (
+                                    <ArrowUpRight className="size-3" />
+                                ) : (
+                                    <ArrowDownRight className="size-3" />
+                                )}
                                 {Math.abs(growthIndicators.newPatients.change)}%
                             </div>
                         </div>
-                        <div className="p-4 rounded-xl bg-muted/30 border border-border/30">
-                            <div className="flex items-center gap-2 mb-2">
+                        <div className="rounded-xl border border-border/30 bg-muted/30 p-4">
+                            <div className="mb-2 flex items-center gap-2">
                                 <TrendingUp className="size-4 text-emerald-600" />
-                                <span className="text-xs text-muted-foreground">Receita</span>
+                                <span className="text-xs text-muted-foreground">
+                                    Receita
+                                </span>
                             </div>
-                            <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{formatCurrency(growthIndicators.revenue.current)}</p>
-                            <div className={`flex items-center gap-1 mt-1 text-xs font-semibold ${growthIndicators.revenue.change >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
-                                {growthIndicators.revenue.change >= 0 ? <ArrowUpRight className="size-3" /> : <ArrowDownRight className="size-3" />}
+                            <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
+                                {formatCurrency(
+                                    growthIndicators.revenue.current,
+                                )}
+                            </p>
+                            <div
+                                className={`mt-1 flex items-center gap-1 text-xs font-semibold ${growthIndicators.revenue.change >= 0 ? 'text-emerald-600' : 'text-red-500'}`}
+                            >
+                                {growthIndicators.revenue.change >= 0 ? (
+                                    <ArrowUpRight className="size-3" />
+                                ) : (
+                                    <ArrowDownRight className="size-3" />
+                                )}
                                 {Math.abs(growthIndicators.revenue.change)}%
                             </div>
                         </div>
-                        <div className="p-4 rounded-xl bg-muted/30 border border-border/30">
-                            <div className="flex items-center gap-2 mb-2">
+                        <div className="rounded-xl border border-border/30 bg-muted/30 p-4">
+                            <div className="mb-2 flex items-center gap-2">
                                 <Calendar className="size-4 text-blue-500" />
-                                <span className="text-xs text-muted-foreground">Taxa Conclusão</span>
+                                <span className="text-xs text-muted-foreground">
+                                    Taxa Conclusão
+                                </span>
                             </div>
-                            <p className="text-2xl font-bold">{growthIndicators.completionRate.current}%</p>
-                            <div className={`flex items-center gap-1 mt-1 text-xs font-semibold ${growthIndicators.completionRate.change >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
-                                {growthIndicators.completionRate.change >= 0 ? <ArrowUpRight className="size-3" /> : <ArrowDownRight className="size-3" />}
-                                {Math.abs(growthIndicators.completionRate.change)}pp
+                            <p className="text-2xl font-bold">
+                                {growthIndicators.completionRate.current}%
+                            </p>
+                            <div
+                                className={`mt-1 flex items-center gap-1 text-xs font-semibold ${growthIndicators.completionRate.change >= 0 ? 'text-emerald-600' : 'text-red-500'}`}
+                            >
+                                {growthIndicators.completionRate.change >= 0 ? (
+                                    <ArrowUpRight className="size-3" />
+                                ) : (
+                                    <ArrowDownRight className="size-3" />
+                                )}
+                                {Math.abs(
+                                    growthIndicators.completionRate.change,
+                                )}
+                                pp
                             </div>
                         </div>
-                        <div className="p-4 rounded-xl bg-muted/30 border border-border/30">
-                            <div className="flex items-center gap-2 mb-2">
+                        <div className="rounded-xl border border-border/30 bg-muted/30 p-4">
+                            <div className="mb-2 flex items-center gap-2">
                                 <CreditCard className="size-4 text-purple-500" />
-                                <span className="text-xs text-muted-foreground">Matrículas Ativas</span>
+                                <span className="text-xs text-muted-foreground">
+                                    Matrículas Ativas
+                                </span>
                             </div>
-                            <p className="text-2xl font-bold">{growthIndicators.activeMemberships.current}</p>
-                            {growthIndicators.activeMemberships.expiring > 0 && (
-                                <p className="text-xs text-amber-500 font-medium mt-1">
-                                    ⚠ {growthIndicators.activeMemberships.expiring} vencendo em breve
+                            <p className="text-2xl font-bold">
+                                {growthIndicators.activeMemberships.current}
+                            </p>
+                            {growthIndicators.activeMemberships.expiring >
+                                0 && (
+                                <p className="mt-1 text-xs font-medium text-amber-500">
+                                    ⚠{' '}
+                                    {
+                                        growthIndicators.activeMemberships
+                                            .expiring
+                                    }{' '}
+                                    vencendo em breve
                                 </p>
                             )}
                         </div>
@@ -276,57 +477,75 @@ export default function Dashboard({ totalPatients, dayAppointments, dayCount, pe
                 </motion.div>
 
                 {/* Weekly Agenda */}
-                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
-                    className="bg-card/60 backdrop-blur-xl border border-border/50 rounded-2xl shadow-sm overflow-hidden">
-
+                <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.15 }}
+                    className="overflow-hidden rounded-2xl border border-border/50 bg-card/60 shadow-sm backdrop-blur-xl"
+                >
                     {/* Week Navigation Header */}
-                    <div className="px-6 pt-5 pb-4 border-b border-border/30">
-                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
-                            <h2 className="text-lg font-bold flex items-center gap-2">
+                    <div className="border-b border-border/30 px-6 pt-5 pb-4">
+                        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                            <h2 className="flex items-center gap-2 text-lg font-bold">
                                 <Clock className="size-5 text-primary" />
                                 Agenda Semanal
                             </h2>
                             <div className="flex items-center gap-2">
                                 <button
                                     onClick={() => shiftWeek(selectedDate, -1)}
-                                    className="p-2 rounded-xl hover:bg-muted/50 transition-colors text-muted-foreground hover:text-foreground"
+                                    className="rounded-xl p-2 text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
                                 >
                                     <ChevronLeft className="size-4" />
                                 </button>
-                                <span className="text-sm font-medium text-muted-foreground text-center">{weekLabel}</span>
+                                <span className="text-center text-sm font-medium text-muted-foreground">
+                                    {weekLabel}
+                                </span>
                                 <button
                                     onClick={() => shiftWeek(selectedDate, 1)}
-                                    className="p-2 rounded-xl hover:bg-muted/50 transition-colors text-muted-foreground hover:text-foreground"
+                                    className="rounded-xl p-2 text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
                                 >
                                     <ChevronRight className="size-4" />
                                 </button>
-                                <Link href="/settings/profile" className="p-2 rounded-xl border border-border/50 hover:bg-muted/50 transition-colors text-muted-foreground hover:text-foreground" title="Sincronizar Agenda Externa">
+                                <Link
+                                    href="/settings/profile"
+                                    className="rounded-xl border border-border/50 p-2 text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
+                                    title="Sincronizar Agenda Externa"
+                                >
                                     <CalendarDays className="size-4" />
                                 </Link>
                             </div>
                             {can('appointments.manage.create') && (
-                            <Link href="/appointments/create" className="flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-primary text-white text-sm font-semibold hover:bg-primary/90 transition-colors shadow-sm">
-                                <Plus className="size-4" /> Agendar
-                            </Link>
+                                <Link
+                                    href="/appointments/create"
+                                    className="flex items-center justify-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-primary/90"
+                                >
+                                    <Plus className="size-4" /> Agendar
+                                </Link>
                             )}
                         </div>
 
                         {/* Day Pills */}
-                        <div className="flex gap-1.5 overflow-x-auto pb-2 -mx-2 px-2 snap-x">
+                        <div className="-mx-2 flex snap-x gap-1.5 overflow-x-auto px-2 pb-2">
                             {weekDays.map((day) => (
                                 <button
                                     key={day.date}
                                     onClick={() => navigateToDate(day.date)}
-                                    className={`snap-start flex-shrink-0 min-w-[2.75rem] flex-1 flex flex-col items-center py-2.5 px-1 rounded-xl transition-all text-center cursor-pointer border
-                                        ${day.isSelected
-                                            ? 'bg-primary text-white border-primary shadow-md shadow-primary/20'
+                                    className={`flex min-w-[2.75rem] flex-1 flex-shrink-0 cursor-pointer snap-start flex-col items-center rounded-xl border px-1 py-2.5 text-center transition-all ${
+                                        day.isSelected
+                                            ? 'border-primary bg-primary text-white shadow-md shadow-primary/20'
                                             : day.isToday
-                                                ? 'bg-primary/10 text-primary border-primary/30 hover:bg-primary/20'
-                                                : 'bg-transparent text-muted-foreground border-transparent hover:bg-muted/40 hover:border-border/30'
-                                        }`}
+                                              ? 'border-primary/30 bg-primary/10 text-primary hover:bg-primary/20'
+                                              : 'border-transparent bg-transparent text-muted-foreground hover:border-border/30 hover:bg-muted/40'
+                                    }`}
                                 >
-                                    <span className="text-[10px] font-semibold uppercase tracking-wider">{day.dayName}</span>
-                                    <span className={`text-lg font-bold mt-0.5 ${day.isSelected ? 'text-white' : ''}`}>{day.dayNumber}</span>
+                                    <span className="text-[10px] font-semibold tracking-wider uppercase">
+                                        {day.dayName}
+                                    </span>
+                                    <span
+                                        className={`mt-0.5 text-lg font-bold ${day.isSelected ? 'text-white' : ''}`}
+                                    >
+                                        {day.dayNumber}
+                                    </span>
                                 </button>
                             ))}
                         </div>
@@ -334,45 +553,82 @@ export default function Dashboard({ totalPatients, dayAppointments, dayCount, pe
 
                     {/* Selected Day Appointments */}
                     <div className="p-6">
-                        <p className="text-sm font-medium text-muted-foreground mb-4 capitalize">{selectedDayFormatted}</p>
+                        <p className="mb-4 text-sm font-medium text-muted-foreground capitalize">
+                            {selectedDayFormatted}
+                        </p>
 
                         {dayAppointments.length === 0 ? (
-                            <div className="text-center py-10">
-                                <Calendar className="size-12 text-muted-foreground/30 mx-auto mb-3" />
-                                <p className="text-muted-foreground text-sm">Nenhuma sessão neste dia.</p>
+                            <div className="py-10 text-center">
+                                <Calendar className="mx-auto mb-3 size-12 text-muted-foreground/30" />
+                                <p className="text-sm text-muted-foreground">
+                                    Nenhuma sessão neste dia.
+                                </p>
                                 {can('appointments.manage.create') && (
-                                <Link href="/appointments/create" className="text-primary text-sm font-semibold hover:text-primary/80 mt-2 inline-block">
-                                    Criar agendamento →
-                                </Link>
+                                    <Link
+                                        href="/appointments/create"
+                                        className="mt-2 inline-block text-sm font-semibold text-primary hover:text-primary/80"
+                                    >
+                                        Criar agendamento →
+                                    </Link>
                                 )}
                             </div>
                         ) : (
                             <div className="space-y-2">
                                 {dayAppointments.map((app) => (
-                                    <Link key={app.id} href={`/appointments/${app.id}`}
-                                        className="flex items-center justify-between p-4 rounded-xl hover:bg-muted/40 transition-colors border border-border/20 group">
+                                    <Link
+                                        key={app.id}
+                                        href={`/appointments/${app.id}`}
+                                        className="group flex items-center justify-between rounded-xl border border-border/20 p-4 transition-colors hover:bg-muted/40"
+                                    >
                                         <div className="flex items-center gap-4">
-                                            <div className="text-center min-w-[52px]">
-                                                <p className="text-lg font-bold text-foreground">{app.start_time?.slice(0, 5)}</p>
-                                                <p className="text-xs text-muted-foreground">{app.duration_minutes}min</p>
+                                            <div className="min-w-[52px] text-center">
+                                                <p className="text-lg font-bold text-foreground">
+                                                    {app.start_time?.slice(
+                                                        0,
+                                                        5,
+                                                    )}
+                                                </p>
+                                                <p className="text-xs text-muted-foreground">
+                                                    {app.duration_minutes}min
+                                                </p>
                                             </div>
                                             <div className="h-10 w-px bg-border/30" />
                                             <div>
-                                                <p className="font-semibold text-sm line-clamp-1">
-                                                    {app.type === 'group' ? app.title || 'Turma' : (app.patients?.[0]?.name || 'Sem paciente')}
+                                                <p className="line-clamp-1 text-sm font-semibold">
+                                                    {app.type === 'group'
+                                                        ? app.title || 'Turma'
+                                                        : app.patients?.[0]
+                                                              ?.name ||
+                                                          'Sem paciente'}
                                                 </p>
                                                 <p className="text-xs text-muted-foreground capitalize">
-                                                    {app.type === 'group' 
-                                                        ? (app.patients?.length ? app.patients.map(p => p.nickname || p.name.split(' ')[0]).join(', ') : 'Nenhum participante')
-                                                        : (app.patients?.[0]?.type === 'pilates' ? 'Pilates' : 'Fisioterapia')}
+                                                    {app.type === 'group'
+                                                        ? app.patients?.length
+                                                            ? app.patients
+                                                                  .map(
+                                                                      (p) =>
+                                                                          p.nickname ||
+                                                                          p.name.split(
+                                                                              ' ',
+                                                                          )[0],
+                                                                  )
+                                                                  .join(', ')
+                                                            : 'Nenhum participante'
+                                                        : app.patients?.[0]
+                                                                ?.type ===
+                                                            'pilates'
+                                                          ? 'Pilates'
+                                                          : 'Fisioterapia'}
                                                 </p>
                                             </div>
                                         </div>
                                         <div className="flex items-center gap-3">
-                                            <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${statusColor[app.status]}`}>
+                                            <span
+                                                className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${statusColor[app.status]}`}
+                                            >
                                                 {statusLabel[app.status]}
                                             </span>
-                                            <ChevronRight className="size-4 text-muted-foreground/50 group-hover:text-muted-foreground transition-colors" />
+                                            <ChevronRight className="size-4 text-muted-foreground/50 transition-colors group-hover:text-muted-foreground" />
                                         </div>
                                     </Link>
                                 ))}
@@ -382,30 +638,48 @@ export default function Dashboard({ totalPatients, dayAppointments, dayCount, pe
                 </motion.div>
 
                 {/* Upcoming Birthdays */}
-                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
-                    className="bg-card/60 backdrop-blur-xl border border-border/50 rounded-2xl p-6 shadow-sm">
-                    <div className="flex items-center justify-between mb-4">
-                        <h2 className="text-lg font-bold flex items-center gap-2">
-                            <span className="text-xl">🎂</span> Próximos Aniversários
+                <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.2 }}
+                    className="rounded-2xl border border-border/50 bg-card/60 p-6 shadow-sm backdrop-blur-xl"
+                >
+                    <div className="mb-4 flex items-center justify-between">
+                        <h2 className="flex items-center gap-2 text-lg font-bold">
+                            <span className="text-xl">🎂</span> Próximos
+                            Aniversários
                         </h2>
                     </div>
-                    
+
                     {upcomingBirthdays.length === 0 ? (
-                        <div className="text-center py-6">
-                            <p className="text-muted-foreground text-sm">Nenhum aniversário nos próximos 7 dias.</p>
+                        <div className="py-6 text-center">
+                            <p className="text-sm text-muted-foreground">
+                                Nenhum aniversário nos próximos 7 dias.
+                            </p>
                         </div>
                     ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {upcomingBirthdays.map(patient => (
-                                <Link key={patient.id} href={`/patients/${patient.id}`}
-                                    className={`flex items-center gap-4 p-4 rounded-xl border transition-all hover:shadow-md ${patient.isToday ? 'bg-primary/5 border-primary/30 ring-1 ring-primary/20' : 'bg-transparent border-border/40 hover:bg-muted/30'}`}>
-                                    <div className={`flex items-center justify-center size-12 rounded-full font-bold ${patient.isToday ? 'bg-primary text-white shadow-sm shadow-primary/30' : 'bg-muted text-muted-foreground'}`}>
+                        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+                            {upcomingBirthdays.map((patient) => (
+                                <Link
+                                    key={patient.id}
+                                    href={`/patients/${patient.id}`}
+                                    className={`flex items-center gap-4 rounded-xl border p-4 transition-all hover:shadow-md ${patient.isToday ? 'border-primary/30 bg-primary/5 ring-1 ring-primary/20' : 'border-border/40 bg-transparent hover:bg-muted/30'}`}
+                                >
+                                    <div
+                                        className={`flex size-12 items-center justify-center rounded-full font-bold ${patient.isToday ? 'bg-primary text-white shadow-sm shadow-primary/30' : 'bg-muted text-muted-foreground'}`}
+                                    >
                                         {patient.age_turning}
                                     </div>
                                     <div className="flex-1 overflow-hidden">
-                                        <p className="font-semibold text-sm truncate">{patient.name}</p>
-                                        <p className={`text-xs mt-0.5 ${patient.isToday ? 'text-primary font-medium' : 'text-muted-foreground'}`}>
-                                            {patient.isToday ? 'Hoje! 🎉' : `Daqui a ${patient.daysToBirthday} dia(s)`}
+                                        <p className="truncate text-sm font-semibold">
+                                            {patient.name}
+                                        </p>
+                                        <p
+                                            className={`mt-0.5 text-xs ${patient.isToday ? 'font-medium text-primary' : 'text-muted-foreground'}`}
+                                        >
+                                            {patient.isToday
+                                                ? 'Hoje! 🎉'
+                                                : `Daqui a ${patient.daysToBirthday} dia(s)`}
                                         </p>
                                     </div>
                                     <ChevronRight className="size-4 text-muted-foreground/40" />
@@ -416,22 +690,56 @@ export default function Dashboard({ totalPatients, dayAppointments, dayCount, pe
                 </motion.div>
 
                 {/* Quick Actions */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                     {can('patients.manage.create') && (
-                    <Link href="/patients/create" className="bg-card/60 backdrop-blur-xl border border-border/50 rounded-2xl p-5 shadow-sm hover:shadow-md hover:border-primary/30 transition-all group flex items-center gap-4">
-                        <div className="p-2.5 bg-primary/10 rounded-xl group-hover:bg-primary/20 transition-colors"><Plus className="size-5 text-primary" /></div>
-                        <div><p className="font-semibold text-sm">Novo Paciente</p><p className="text-xs text-muted-foreground">Cadastrar paciente</p></div>
-                    </Link>
+                        <Link
+                            href="/patients/create"
+                            className="group flex items-center gap-4 rounded-2xl border border-border/50 bg-card/60 p-5 shadow-sm backdrop-blur-xl transition-all hover:border-primary/30 hover:shadow-md"
+                        >
+                            <div className="rounded-xl bg-primary/10 p-2.5 transition-colors group-hover:bg-primary/20">
+                                <Plus className="size-5 text-primary" />
+                            </div>
+                            <div>
+                                <p className="text-sm font-semibold">
+                                    Novo Paciente
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                    Cadastrar paciente
+                                </p>
+                            </div>
+                        </Link>
                     )}
                     {can('appointments.manage.create') && (
-                    <Link href="/appointments/create" className="bg-card/60 backdrop-blur-xl border border-border/50 rounded-2xl p-5 shadow-sm hover:shadow-md hover:border-emerald-500/30 transition-all group flex items-center gap-4">
-                        <div className="p-2.5 bg-emerald-500/10 rounded-xl group-hover:bg-emerald-500/20 transition-colors"><Calendar className="size-5 text-emerald-600" /></div>
-                        <div><p className="font-semibold text-sm">Agendar Sessão</p><p className="text-xs text-muted-foreground">Criar agendamento</p></div>
-                    </Link>
+                        <Link
+                            href="/appointments/create"
+                            className="group flex items-center gap-4 rounded-2xl border border-border/50 bg-card/60 p-5 shadow-sm backdrop-blur-xl transition-all hover:border-emerald-500/30 hover:shadow-md"
+                        >
+                            <div className="rounded-xl bg-emerald-500/10 p-2.5 transition-colors group-hover:bg-emerald-500/20">
+                                <Calendar className="size-5 text-emerald-600" />
+                            </div>
+                            <div>
+                                <p className="text-sm font-semibold">
+                                    Agendar Sessão
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                    Criar agendamento
+                                </p>
+                            </div>
+                        </Link>
                     )}
-                    <Link href="/patients" className="bg-card/60 backdrop-blur-xl border border-border/50 rounded-2xl p-5 shadow-sm hover:shadow-md hover:border-amber-500/30 transition-all group flex items-center gap-4">
-                        <div className="p-2.5 bg-amber-500/10 rounded-xl group-hover:bg-amber-500/20 transition-colors"><FileText className="size-5 text-amber-600" /></div>
-                        <div><p className="font-semibold text-sm">Prontuários</p><p className="text-xs text-muted-foreground">Acessar ficha de pacientes</p></div>
+                    <Link
+                        href="/patients"
+                        className="group flex items-center gap-4 rounded-2xl border border-border/50 bg-card/60 p-5 shadow-sm backdrop-blur-xl transition-all hover:border-amber-500/30 hover:shadow-md"
+                    >
+                        <div className="rounded-xl bg-amber-500/10 p-2.5 transition-colors group-hover:bg-amber-500/20">
+                            <FileText className="size-5 text-amber-600" />
+                        </div>
+                        <div>
+                            <p className="text-sm font-semibold">Prontuários</p>
+                            <p className="text-xs text-muted-foreground">
+                                Acessar ficha de pacientes
+                            </p>
+                        </div>
                     </Link>
                 </div>
             </div>

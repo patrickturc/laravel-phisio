@@ -1,10 +1,26 @@
-import { useState, useEffect } from 'react';
 import { useForm } from '@inertiajs/react';
+import {
+    Building2,
+    MapPin,
+    Phone,
+    ShieldCheck,
+    Layers,
+    UserPlus,
+    Loader2,
+    Sparkles,
+} from 'lucide-react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import {
     Sheet,
     SheetContent,
@@ -13,18 +29,6 @@ import {
     SheetDescription,
     SheetFooter,
 } from '@/components/ui/sheet';
-import {
-    Building2,
-    MapPin,
-    Phone,
-    Globe,
-    ShieldCheck,
-    Layers,
-    UserPlus,
-    Loader2,
-    KeyRound,
-    Sparkles,
-} from 'lucide-react';
 
 export interface TenantData {
     id?: string;
@@ -64,44 +68,51 @@ interface TenantFormSheetProps {
     tenant?: TenantData | null;
 }
 
-export function TenantFormSheet({ open, onOpenChange, tenant }: TenantFormSheetProps) {
+export function TenantFormSheet({
+    open,
+    onOpenChange,
+    tenant,
+}: TenantFormSheetProps) {
     const isEditing = !!tenant;
     const [isLoadingCep, setIsLoadingCep] = useState(false);
 
-    const { data, setData, post, put, processing, errors, reset, clearErrors } = useForm({
-        name: tenant?.name || '',
-        legal_name: tenant?.legal_name || '',
-        document: tenant?.document || '',
-        state_registration: tenant?.state_registration || '',
-        email: tenant?.email || '',
-        phone: tenant?.phone || '',
-        whatsapp: tenant?.whatsapp || '',
-        website: tenant?.website || '',
-        cep: tenant?.cep || '',
-        street: tenant?.street || '',
-        number: tenant?.number || '',
-        complement: tenant?.complement || '',
-        neighborhood: tenant?.neighborhood || '',
-        city: tenant?.city || '',
-        state: tenant?.state || '',
-        technical_manager_name: tenant?.technical_manager_name || '',
-        technical_manager_document: tenant?.technical_manager_document || '',
-        notes: tenant?.notes || '',
-        plan: tenant?.plan || 'free',
-        max_users: tenant?.max_users || 5,
-        max_storage_mb: tenant?.max_storage_mb || 1024,
-        features: {
-            financial: tenant?.features?.financial ?? true,
-            group_classes: tenant?.features?.group_classes ?? true,
-            clinical_protocols: tenant?.features?.clinical_protocols ?? true,
-            reports: tenant?.features?.reports ?? true,
-            evolution_photos: tenant?.features?.evolution_photos ?? true,
-        },
-        // Admin inicial (somente no cadastro)
-        admin_name: '',
-        admin_email: '',
-        admin_password: '',
-    });
+    const { data, setData, post, put, processing, errors, reset, clearErrors } =
+        useForm({
+            name: tenant?.name || '',
+            legal_name: tenant?.legal_name || '',
+            document: tenant?.document || '',
+            state_registration: tenant?.state_registration || '',
+            email: tenant?.email || '',
+            phone: tenant?.phone || '',
+            whatsapp: tenant?.whatsapp || '',
+            website: tenant?.website || '',
+            cep: tenant?.cep || '',
+            street: tenant?.street || '',
+            number: tenant?.number || '',
+            complement: tenant?.complement || '',
+            neighborhood: tenant?.neighborhood || '',
+            city: tenant?.city || '',
+            state: tenant?.state || '',
+            technical_manager_name: tenant?.technical_manager_name || '',
+            technical_manager_document:
+                tenant?.technical_manager_document || '',
+            notes: tenant?.notes || '',
+            plan: tenant?.plan || 'free',
+            max_users: tenant?.max_users || 5,
+            max_storage_mb: tenant?.max_storage_mb || 1024,
+            features: {
+                financial: tenant?.features?.financial ?? true,
+                group_classes: tenant?.features?.group_classes ?? true,
+                clinical_protocols:
+                    tenant?.features?.clinical_protocols ?? true,
+                reports: tenant?.features?.reports ?? true,
+                evolution_photos: tenant?.features?.evolution_photos ?? true,
+            },
+            // Admin inicial (somente no cadastro)
+            admin_name: '',
+            admin_email: '',
+            admin_password: '',
+        });
 
     useEffect(() => {
         if (open) {
@@ -124,7 +135,8 @@ export function TenantFormSheet({ open, onOpenChange, tenant }: TenantFormSheetP
                     city: tenant.city || '',
                     state: tenant.state || '',
                     technical_manager_name: tenant.technical_manager_name || '',
-                    technical_manager_document: tenant.technical_manager_document || '',
+                    technical_manager_document:
+                        tenant.technical_manager_document || '',
                     notes: tenant.notes || '',
                     plan: tenant.plan || 'free',
                     max_users: tenant.max_users || 5,
@@ -132,9 +144,11 @@ export function TenantFormSheet({ open, onOpenChange, tenant }: TenantFormSheetP
                     features: {
                         financial: tenant.features?.financial ?? true,
                         group_classes: tenant.features?.group_classes ?? true,
-                        clinical_protocols: tenant.features?.clinical_protocols ?? true,
+                        clinical_protocols:
+                            tenant.features?.clinical_protocols ?? true,
                         reports: tenant.features?.reports ?? true,
-                        evolution_photos: tenant.features?.evolution_photos ?? true,
+                        evolution_photos:
+                            tenant.features?.evolution_photos ?? true,
                     },
                     admin_name: '',
                     admin_email: '',
@@ -193,7 +207,9 @@ export function TenantFormSheet({ open, onOpenChange, tenant }: TenantFormSheetP
         if (masked.length === 9) {
             setIsLoadingCep(true);
             try {
-                const response = await fetch(`https://viacep.com.br/ws/${masked.replace('-', '')}/json/`);
+                const response = await fetch(
+                    `https://viacep.com.br/ws/${masked.replace('-', '')}/json/`,
+                );
                 const json = await response.json();
                 if (!json.erro) {
                     setData((prev) => ({
@@ -220,7 +236,8 @@ export function TenantFormSheet({ open, onOpenChange, tenant }: TenantFormSheetP
     };
 
     const generateRandomPassword = () => {
-        const chars = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789!@#$%&*';
+        const chars =
+            'abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789!@#$%&*';
         let pass = '';
         for (let i = 0; i < 10; i++) {
             pass += chars.charAt(Math.floor(Math.random() * chars.length));
@@ -247,11 +264,16 @@ export function TenantFormSheet({ open, onOpenChange, tenant }: TenantFormSheetP
 
     return (
         <Sheet open={open} onOpenChange={onOpenChange}>
-            <SheetContent side="right" className="w-full sm:max-w-2xl md:max-w-3xl overflow-y-auto p-0 flex flex-col">
-                <SheetHeader className="p-6 pb-4 border-b border-border/60 bg-muted/20">
-                    <SheetTitle className="text-xl font-bold flex items-center gap-2 text-foreground">
+            <SheetContent
+                side="right"
+                className="flex w-full flex-col overflow-y-auto p-0 sm:max-w-2xl md:max-w-3xl"
+            >
+                <SheetHeader className="border-b border-border/60 bg-muted/20 p-6 pb-4">
+                    <SheetTitle className="flex items-center gap-2 text-xl font-bold text-foreground">
                         <Building2 className="h-5 w-5 text-primary" />
-                        {isEditing ? `Editar ${tenant.name}` : 'Cadastrar Nova Organização'}
+                        {isEditing
+                            ? `Editar ${tenant.name}`
+                            : 'Cadastrar Nova Organização'}
                     </SheetTitle>
                     <SheetDescription className="text-sm text-muted-foreground">
                         {isEditing
@@ -260,25 +282,31 @@ export function TenantFormSheet({ open, onOpenChange, tenant }: TenantFormSheetP
                     </SheetDescription>
                 </SheetHeader>
 
-                <form onSubmit={handleSubmit} className="flex-1 p-6 space-y-6">
+                <form onSubmit={handleSubmit} className="flex-1 space-y-6 p-6">
                     {/* SEÇÃO 1: Identificação & Dados Fiscais */}
                     <div className="space-y-4">
-                        <div className="flex items-center gap-2 text-sm font-semibold text-foreground pb-1 border-b border-border/40">
-                            <Building2 className="w-4 h-4 text-primary" />
+                        <div className="flex items-center gap-2 border-b border-border/40 pb-1 text-sm font-semibold text-foreground">
+                            <Building2 className="h-4 w-4 text-primary" />
                             Identificação & Dados Fiscais
                         </div>
 
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                             <div className="space-y-1.5">
                                 <Label htmlFor="name">Nome Fantasia *</Label>
                                 <Input
                                     id="name"
                                     value={data.name}
-                                    onChange={(e) => setData('name', e.target.value)}
+                                    onChange={(e) =>
+                                        setData('name', e.target.value)
+                                    }
                                     placeholder="Ex: FisioVida Pilates"
                                     required
                                 />
-                                {errors.name && <p className="text-xs text-destructive">{errors.name}</p>}
+                                {errors.name && (
+                                    <p className="text-xs text-destructive">
+                                        {errors.name}
+                                    </p>
+                                )}
                             </div>
 
                             <div className="space-y-1.5">
@@ -286,31 +314,53 @@ export function TenantFormSheet({ open, onOpenChange, tenant }: TenantFormSheetP
                                 <Input
                                     id="legal_name"
                                     value={data.legal_name}
-                                    onChange={(e) => setData('legal_name', e.target.value)}
+                                    onChange={(e) =>
+                                        setData('legal_name', e.target.value)
+                                    }
                                     placeholder="Ex: FisioVida Serviços Médicos Ltda"
                                 />
-                                {errors.legal_name && <p className="text-xs text-destructive">{errors.legal_name}</p>}
+                                {errors.legal_name && (
+                                    <p className="text-xs text-destructive">
+                                        {errors.legal_name}
+                                    </p>
+                                )}
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                             <div className="space-y-1.5">
                                 <Label htmlFor="document">CNPJ / CPF</Label>
                                 <Input
                                     id="document"
                                     value={data.document}
-                                    onChange={(e) => setData('document', maskDocument(e.target.value))}
+                                    onChange={(e) =>
+                                        setData(
+                                            'document',
+                                            maskDocument(e.target.value),
+                                        )
+                                    }
                                     placeholder="00.000.000/0001-00"
                                 />
-                                {errors.document && <p className="text-xs text-destructive">{errors.document}</p>}
+                                {errors.document && (
+                                    <p className="text-xs text-destructive">
+                                        {errors.document}
+                                    </p>
+                                )}
                             </div>
 
                             <div className="space-y-1.5">
-                                <Label htmlFor="state_registration">Inscrição Estadual / Municipal</Label>
+                                <Label htmlFor="state_registration">
+                                    Inscrição Estadual / Municipal
+                                </Label>
                                 <Input
                                     id="state_registration"
                                     value={data.state_registration}
-                                    onChange={(e) => setData('state_registration', e.target.value)}
+                                    onChange={(e) =>
+                                        setData(
+                                            'state_registration',
+                                            e.target.value,
+                                        )
+                                    }
                                     placeholder="Ex: 123.456.789.000"
                                 />
                             </div>
@@ -319,16 +369,21 @@ export function TenantFormSheet({ open, onOpenChange, tenant }: TenantFormSheetP
 
                     {/* SEÇÃO 2: Endereço Completo */}
                     <div className="space-y-4 pt-2">
-                        <div className="flex items-center gap-2 text-sm font-semibold text-foreground pb-1 border-b border-border/40">
-                            <MapPin className="w-4 h-4 text-primary" />
+                        <div className="flex items-center gap-2 border-b border-border/40 pb-1 text-sm font-semibold text-foreground">
+                            <MapPin className="h-4 w-4 text-primary" />
                             Endereço da Clínica
                         </div>
 
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                             <div className="space-y-1.5">
-                                <Label htmlFor="cep" className="flex items-center gap-1.5">
+                                <Label
+                                    htmlFor="cep"
+                                    className="flex items-center gap-1.5"
+                                >
                                     CEP
-                                    {isLoadingCep && <Loader2 className="w-3.5 h-3.5 animate-spin text-primary" />}
+                                    {isLoadingCep && (
+                                        <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
+                                    )}
                                 </Label>
                                 <Input
                                     id="cep"
@@ -337,27 +392,35 @@ export function TenantFormSheet({ open, onOpenChange, tenant }: TenantFormSheetP
                                     placeholder="00000-000"
                                     maxLength={9}
                                 />
-                                {errors.cep && <p className="text-xs text-destructive">{errors.cep}</p>}
+                                {errors.cep && (
+                                    <p className="text-xs text-destructive">
+                                        {errors.cep}
+                                    </p>
+                                )}
                             </div>
 
-                            <div className="sm:col-span-2 space-y-1.5">
+                            <div className="space-y-1.5 sm:col-span-2">
                                 <Label htmlFor="street">Logradouro / Rua</Label>
                                 <Input
                                     id="street"
                                     value={data.street}
-                                    onChange={(e) => setData('street', e.target.value)}
+                                    onChange={(e) =>
+                                        setData('street', e.target.value)
+                                    }
                                     placeholder="Ex: Av. Paulista"
                                 />
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                             <div className="space-y-1.5">
                                 <Label htmlFor="number">Número</Label>
                                 <Input
                                     id="number"
                                     value={data.number}
-                                    onChange={(e) => setData('number', e.target.value)}
+                                    onChange={(e) =>
+                                        setData('number', e.target.value)
+                                    }
                                     placeholder="Ex: 1500"
                                 />
                             </div>
@@ -367,7 +430,9 @@ export function TenantFormSheet({ open, onOpenChange, tenant }: TenantFormSheetP
                                 <Input
                                     id="complement"
                                     value={data.complement}
-                                    onChange={(e) => setData('complement', e.target.value)}
+                                    onChange={(e) =>
+                                        setData('complement', e.target.value)
+                                    }
                                     placeholder="Ex: Sala 42"
                                 />
                             </div>
@@ -377,19 +442,23 @@ export function TenantFormSheet({ open, onOpenChange, tenant }: TenantFormSheetP
                                 <Input
                                     id="neighborhood"
                                     value={data.neighborhood}
-                                    onChange={(e) => setData('neighborhood', e.target.value)}
+                                    onChange={(e) =>
+                                        setData('neighborhood', e.target.value)
+                                    }
                                     placeholder="Ex: Bela Vista"
                                 />
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                            <div className="sm:col-span-2 space-y-1.5">
+                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                            <div className="space-y-1.5 sm:col-span-2">
                                 <Label htmlFor="city">Cidade</Label>
                                 <Input
                                     id="city"
                                     value={data.city}
-                                    onChange={(e) => setData('city', e.target.value)}
+                                    onChange={(e) =>
+                                        setData('city', e.target.value)
+                                    }
                                     placeholder="Ex: São Paulo"
                                 />
                             </div>
@@ -399,7 +468,12 @@ export function TenantFormSheet({ open, onOpenChange, tenant }: TenantFormSheetP
                                 <Input
                                     id="state"
                                     value={data.state}
-                                    onChange={(e) => setData('state', e.target.value.toUpperCase())}
+                                    onChange={(e) =>
+                                        setData(
+                                            'state',
+                                            e.target.value.toUpperCase(),
+                                        )
+                                    }
                                     placeholder="SP"
                                     maxLength={2}
                                 />
@@ -409,52 +483,78 @@ export function TenantFormSheet({ open, onOpenChange, tenant }: TenantFormSheetP
 
                     {/* SEÇÃO 3: Contatos & Comunicação */}
                     <div className="space-y-4 pt-2">
-                        <div className="flex items-center gap-2 text-sm font-semibold text-foreground pb-1 border-b border-border/40">
-                            <Phone className="w-4 h-4 text-primary" />
+                        <div className="flex items-center gap-2 border-b border-border/40 pb-1 text-sm font-semibold text-foreground">
+                            <Phone className="h-4 w-4 text-primary" />
                             Canais de Atendimento & Redes
                         </div>
 
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                             <div className="space-y-1.5">
-                                <Label htmlFor="email">Email Principal da Clínica</Label>
+                                <Label htmlFor="email">
+                                    Email Principal da Clínica
+                                </Label>
                                 <Input
                                     id="email"
                                     type="email"
                                     value={data.email}
-                                    onChange={(e) => setData('email', e.target.value)}
+                                    onChange={(e) =>
+                                        setData('email', e.target.value)
+                                    }
                                     placeholder="contato@fisiovida.com.br"
                                 />
-                                {errors.email && <p className="text-xs text-destructive">{errors.email}</p>}
+                                {errors.email && (
+                                    <p className="text-xs text-destructive">
+                                        {errors.email}
+                                    </p>
+                                )}
                             </div>
 
                             <div className="space-y-1.5">
-                                <Label htmlFor="phone">Telefone Fixo / Comercial</Label>
+                                <Label htmlFor="phone">
+                                    Telefone Fixo / Comercial
+                                </Label>
                                 <Input
                                     id="phone"
                                     value={data.phone}
-                                    onChange={(e) => setData('phone', maskPhone(e.target.value))}
+                                    onChange={(e) =>
+                                        setData(
+                                            'phone',
+                                            maskPhone(e.target.value),
+                                        )
+                                    }
                                     placeholder="(11) 3456-7890"
                                 />
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                             <div className="space-y-1.5">
-                                <Label htmlFor="whatsapp">WhatsApp Comercial</Label>
+                                <Label htmlFor="whatsapp">
+                                    WhatsApp Comercial
+                                </Label>
                                 <Input
                                     id="whatsapp"
                                     value={data.whatsapp}
-                                    onChange={(e) => setData('whatsapp', maskPhone(e.target.value))}
+                                    onChange={(e) =>
+                                        setData(
+                                            'whatsapp',
+                                            maskPhone(e.target.value),
+                                        )
+                                    }
                                     placeholder="(11) 99999-8888"
                                 />
                             </div>
 
                             <div className="space-y-1.5">
-                                <Label htmlFor="website">Site ou Instagram</Label>
+                                <Label htmlFor="website">
+                                    Site ou Instagram
+                                </Label>
                                 <Input
                                     id="website"
                                     value={data.website}
-                                    onChange={(e) => setData('website', e.target.value)}
+                                    onChange={(e) =>
+                                        setData('website', e.target.value)
+                                    }
                                     placeholder="https://fisiovida.com.br ou @fisiovida"
                                 />
                             </div>
@@ -463,28 +563,42 @@ export function TenantFormSheet({ open, onOpenChange, tenant }: TenantFormSheetP
 
                     {/* SEÇÃO 4: Responsável Técnico (RT) */}
                     <div className="space-y-4 pt-2">
-                        <div className="flex items-center gap-2 text-sm font-semibold text-foreground pb-1 border-b border-border/40">
-                            <ShieldCheck className="w-4 h-4 text-primary" />
+                        <div className="flex items-center gap-2 border-b border-border/40 pb-1 text-sm font-semibold text-foreground">
+                            <ShieldCheck className="h-4 w-4 text-primary" />
                             Responsabilidade Técnica & Conformidade
                         </div>
 
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                             <div className="space-y-1.5">
-                                <Label htmlFor="technical_manager_name">Nome do Responsável Técnico</Label>
+                                <Label htmlFor="technical_manager_name">
+                                    Nome do Responsável Técnico
+                                </Label>
                                 <Input
                                     id="technical_manager_name"
                                     value={data.technical_manager_name}
-                                    onChange={(e) => setData('technical_manager_name', e.target.value)}
+                                    onChange={(e) =>
+                                        setData(
+                                            'technical_manager_name',
+                                            e.target.value,
+                                        )
+                                    }
                                     placeholder="Dr(a). Nome do Fisioterapeuta"
                                 />
                             </div>
 
                             <div className="space-y-1.5">
-                                <Label htmlFor="technical_manager_document">Registro Profissional (CREFITO / CRM)</Label>
+                                <Label htmlFor="technical_manager_document">
+                                    Registro Profissional (CREFITO / CRM)
+                                </Label>
                                 <Input
                                     id="technical_manager_document"
                                     value={data.technical_manager_document}
-                                    onChange={(e) => setData('technical_manager_document', e.target.value)}
+                                    onChange={(e) =>
+                                        setData(
+                                            'technical_manager_document',
+                                            e.target.value,
+                                        )
+                                    }
                                     placeholder="Ex: CREFITO-3/123456-F"
                                 />
                             </div>
@@ -493,22 +607,33 @@ export function TenantFormSheet({ open, onOpenChange, tenant }: TenantFormSheetP
 
                     {/* SEÇÃO 5: Plano, Armazenamento & Módulos */}
                     <div className="space-y-4 pt-2">
-                        <div className="flex items-center gap-2 text-sm font-semibold text-foreground pb-1 border-b border-border/40">
-                            <Layers className="w-4 h-4 text-primary" />
+                        <div className="flex items-center gap-2 border-b border-border/40 pb-1 text-sm font-semibold text-foreground">
+                            <Layers className="h-4 w-4 text-primary" />
                             Plano, Limites & Módulos Contratados
                         </div>
 
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                             <div className="space-y-1.5">
                                 <Label htmlFor="plan">Plano Contratado</Label>
-                                <Select value={data.plan} onValueChange={(val: any) => setData('plan', val)}>
+                                <Select
+                                    value={data.plan}
+                                    onValueChange={(val: any) =>
+                                        setData('plan', val)
+                                    }
+                                >
                                     <SelectTrigger>
                                         <SelectValue placeholder="Selecione o plano" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="free">Gratuito</SelectItem>
-                                        <SelectItem value="basic">Básico</SelectItem>
-                                        <SelectItem value="pro">Profissional (Pro)</SelectItem>
+                                        <SelectItem value="free">
+                                            Gratuito
+                                        </SelectItem>
+                                        <SelectItem value="basic">
+                                            Básico
+                                        </SelectItem>
+                                        <SelectItem value="pro">
+                                            Profissional (Pro)
+                                        </SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
@@ -519,63 +644,109 @@ export function TenantFormSheet({ open, onOpenChange, tenant }: TenantFormSheetP
                                     id="max_users"
                                     type="number"
                                     value={data.max_users}
-                                    onChange={(e) => setData('max_users', parseInt(e.target.value) || 1)}
+                                    onChange={(e) =>
+                                        setData(
+                                            'max_users',
+                                            parseInt(e.target.value) || 1,
+                                        )
+                                    }
                                     min="1"
                                 />
                             </div>
 
                             <div className="space-y-1.5">
-                                <Label htmlFor="max_storage_mb">Armazenamento (MB)</Label>
+                                <Label htmlFor="max_storage_mb">
+                                    Armazenamento (MB)
+                                </Label>
                                 <Input
                                     id="max_storage_mb"
                                     type="number"
                                     value={data.max_storage_mb}
-                                    onChange={(e) => setData('max_storage_mb', parseInt(e.target.value) || 100)}
+                                    onChange={(e) =>
+                                        setData(
+                                            'max_storage_mb',
+                                            parseInt(e.target.value) || 100,
+                                        )
+                                    }
                                     min="100"
                                     step="100"
                                 />
                             </div>
                         </div>
 
-                        <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-3">
-                            <span className="text-xs font-semibold text-foreground block">
+                        <div className="space-y-3 rounded-lg border border-border bg-muted/30 p-4">
+                            <span className="block text-xs font-semibold text-foreground">
                                 Módulos Habilitados para esta Organização
                             </span>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                <label className="flex items-center space-x-2.5 cursor-pointer">
+                            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                <label className="flex cursor-pointer items-center space-x-2.5">
                                     <Checkbox
                                         checked={data.features.financial}
-                                        onCheckedChange={(c) => handleFeatureChange('financial', !!c)}
+                                        onCheckedChange={(c) =>
+                                            handleFeatureChange(
+                                                'financial',
+                                                !!c,
+                                            )
+                                        }
                                     />
-                                    <span className="text-xs font-medium">Financeiro (Fluxo de Caixa / Despesas)</span>
+                                    <span className="text-xs font-medium">
+                                        Financeiro (Fluxo de Caixa / Despesas)
+                                    </span>
                                 </label>
-                                <label className="flex items-center space-x-2.5 cursor-pointer">
+                                <label className="flex cursor-pointer items-center space-x-2.5">
                                     <Checkbox
                                         checked={data.features.group_classes}
-                                        onCheckedChange={(c) => handleFeatureChange('group_classes', !!c)}
+                                        onCheckedChange={(c) =>
+                                            handleFeatureChange(
+                                                'group_classes',
+                                                !!c,
+                                            )
+                                        }
                                     />
-                                    <span className="text-xs font-medium">Turmas & Aulas Coletivas</span>
+                                    <span className="text-xs font-medium">
+                                        Turmas & Aulas Coletivas
+                                    </span>
                                 </label>
-                                <label className="flex items-center space-x-2.5 cursor-pointer">
+                                <label className="flex cursor-pointer items-center space-x-2.5">
                                     <Checkbox
-                                        checked={data.features.clinical_protocols}
-                                        onCheckedChange={(c) => handleFeatureChange('clinical_protocols', !!c)}
+                                        checked={
+                                            data.features.clinical_protocols
+                                        }
+                                        onCheckedChange={(c) =>
+                                            handleFeatureChange(
+                                                'clinical_protocols',
+                                                !!c,
+                                            )
+                                        }
                                     />
-                                    <span className="text-xs font-medium">Protocolos Clínicos</span>
+                                    <span className="text-xs font-medium">
+                                        Protocolos Clínicos
+                                    </span>
                                 </label>
-                                <label className="flex items-center space-x-2.5 cursor-pointer">
+                                <label className="flex cursor-pointer items-center space-x-2.5">
                                     <Checkbox
                                         checked={data.features.reports}
-                                        onCheckedChange={(c) => handleFeatureChange('reports', !!c)}
+                                        onCheckedChange={(c) =>
+                                            handleFeatureChange('reports', !!c)
+                                        }
                                     />
-                                    <span className="text-xs font-medium">Relatórios Gerenciais Avançados</span>
+                                    <span className="text-xs font-medium">
+                                        Relatórios Gerenciais Avançados
+                                    </span>
                                 </label>
-                                <label className="flex items-center space-x-2.5 cursor-pointer">
+                                <label className="flex cursor-pointer items-center space-x-2.5">
                                     <Checkbox
                                         checked={data.features.evolution_photos}
-                                        onCheckedChange={(c) => handleFeatureChange('evolution_photos', !!c)}
+                                        onCheckedChange={(c) =>
+                                            handleFeatureChange(
+                                                'evolution_photos',
+                                                !!c,
+                                            )
+                                        }
                                     />
-                                    <span className="text-xs font-medium">Anexar Fotos em Prontuários</span>
+                                    <span className="text-xs font-medium">
+                                        Anexar Fotos em Prontuários
+                                    </span>
                                 </label>
                             </div>
                         </div>
@@ -584,85 +755,123 @@ export function TenantFormSheet({ open, onOpenChange, tenant }: TenantFormSheetP
                     {/* SEÇÃO 6: Administrador Inicial (Apenas na Criação) */}
                     {!isEditing && (
                         <div className="space-y-4 pt-2">
-                            <div className="flex items-center gap-2 text-sm font-semibold text-foreground pb-1 border-b border-border/40">
-                                <UserPlus className="w-4 h-4 text-primary" />
+                            <div className="flex items-center gap-2 border-b border-border/40 pb-1 text-sm font-semibold text-foreground">
+                                <UserPlus className="h-4 w-4 text-primary" />
                                 Primeiro Administrador da Clínica (Opcional)
                             </div>
                             <p className="text-xs text-muted-foreground">
-                                Crie o primeiro usuário com perfil de Administrador já vinculado a esta clínica para início imediato.
+                                Crie o primeiro usuário com perfil de
+                                Administrador já vinculado a esta clínica para
+                                início imediato.
                             </p>
 
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                                 <div className="space-y-1.5">
-                                    <Label htmlFor="admin_name">Nome do Administrador</Label>
+                                    <Label htmlFor="admin_name">
+                                        Nome do Administrador
+                                    </Label>
                                     <Input
                                         id="admin_name"
                                         value={data.admin_name}
-                                        onChange={(e) => setData('admin_name', e.target.value)}
+                                        onChange={(e) =>
+                                            setData(
+                                                'admin_name',
+                                                e.target.value,
+                                            )
+                                        }
                                         placeholder="Ex: Dr. Roberto Silva"
                                     />
                                 </div>
 
                                 <div className="space-y-1.5">
-                                    <Label htmlFor="admin_email">E-mail de Acesso</Label>
+                                    <Label htmlFor="admin_email">
+                                        E-mail de Acesso
+                                    </Label>
                                     <Input
                                         id="admin_email"
                                         type="email"
                                         value={data.admin_email}
-                                        onChange={(e) => setData('admin_email', e.target.value)}
+                                        onChange={(e) =>
+                                            setData(
+                                                'admin_email',
+                                                e.target.value,
+                                            )
+                                        }
                                         placeholder="roberto@fisiovida.com.br"
                                     />
-                                    {errors.admin_email && <p className="text-xs text-destructive">{errors.admin_email}</p>}
+                                    {errors.admin_email && (
+                                        <p className="text-xs text-destructive">
+                                            {errors.admin_email}
+                                        </p>
+                                    )}
                                 </div>
                             </div>
 
                             <div className="space-y-1.5">
                                 <div className="flex items-center justify-between">
-                                    <Label htmlFor="admin_password">Senha Provisória</Label>
+                                    <Label htmlFor="admin_password">
+                                        Senha Provisória
+                                    </Label>
                                     <Button
                                         type="button"
                                         variant="ghost"
                                         size="sm"
                                         onClick={generateRandomPassword}
-                                        className="h-6 px-2 text-xs text-primary gap-1"
+                                        className="h-6 gap-1 px-2 text-xs text-primary"
                                     >
-                                        <Sparkles className="w-3 h-3" /> Gerar Senha
+                                        <Sparkles className="h-3 w-3" /> Gerar
+                                        Senha
                                     </Button>
                                 </div>
                                 <div className="relative">
                                     <Input
                                         id="admin_password"
                                         value={data.admin_password}
-                                        onChange={(e) => setData('admin_password', e.target.value)}
+                                        onChange={(e) =>
+                                            setData(
+                                                'admin_password',
+                                                e.target.value,
+                                            )
+                                        }
                                         placeholder="Mínimo de 8 caracteres"
                                     />
                                 </div>
-                                {errors.admin_password && <p className="text-xs text-destructive">{errors.admin_password}</p>}
+                                {errors.admin_password && (
+                                    <p className="text-xs text-destructive">
+                                        {errors.admin_password}
+                                    </p>
+                                )}
                             </div>
                         </div>
                     )}
 
                     {/* Observações Internas */}
                     <div className="space-y-1.5 pt-2">
-                        <Label htmlFor="notes">Notas & Observações Internas (Dev Admin)</Label>
+                        <Label htmlFor="notes">
+                            Notas & Observações Internas (Dev Admin)
+                        </Label>
                         <textarea
                             id="notes"
                             rows={2}
                             value={data.notes}
                             onChange={(e) => setData('notes', e.target.value)}
                             placeholder="Anotações para o suporte e controle interno..."
-                            className="w-full rounded-md border border-input bg-transparent px-3 py-2 text-xs shadow-xs placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                            className="w-full rounded-md border border-input bg-transparent px-3 py-2 text-xs shadow-xs placeholder:text-muted-foreground focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
                         />
                     </div>
 
-                    <SheetFooter className="pt-4 border-t border-border flex flex-row items-center justify-end gap-2">
-                        <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                    <SheetFooter className="flex flex-row items-center justify-end gap-2 border-t border-border pt-4">
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => onOpenChange(false)}
+                        >
                             Cancelar
                         </Button>
                         <Button type="submit" disabled={processing}>
                             {processing ? (
                                 <>
-                                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                                     Salvando...
                                 </>
                             ) : isEditing ? (

@@ -33,8 +33,8 @@ class AppointmentController extends Controller
         if ($request->filled('search')) {
             $query->where(function ($q) use ($request) {
                 $q->whereHas('patients', function ($sub) use ($request) {
-                    $sub->where('name', 'ilike', '%'.$request->search.'%');
-                })->orWhere('title', 'ilike', '%'.$request->search.'%');
+                    $sub->whereLike('name', '%'.$request->search.'%');
+                })->orWhereLike('title', '%'.$request->search.'%');
             });
         }
 
@@ -130,17 +130,12 @@ class AppointmentController extends Controller
                 $dateString = $currentDate->format('Y-m-d');
 
                 // Check for schedule conflict (same user_id overlapping times)
-                $conflict = Appointment::where('appointment_date', $dateString)
-                    ->where('user_id', $userId)
-                    ->where('status', '!=', 'cancelled')
-                    ->where(function ($query) use ($validated) {
-                        $start = $validated['start_time'];
-                        $end = date('H:i', strtotime($start) + ($validated['duration_minutes'] * 60));
-                        $query->where(function ($q) use ($start, $end) {
-                            $q->where('start_time', '<', $end)
-                                ->whereRaw("start_time::time + (duration_minutes || ' minutes')::interval > ?::time", [$start]);
-                        });
-                    })->exists();
+                $conflict = $this->hasOverlappingAppointment(
+                    $dateString,
+                    $userId,
+                    $validated['start_time'],
+                    (int) $validated['duration_minutes'],
+                );
 
                 // Guard against duplicates (e.g. re-submitting a recurring
                 // series): the same patient already booked at that date/time.
@@ -432,18 +427,13 @@ class AppointmentController extends Controller
         $userId = $request->user_id ?? auth()->id();
 
         // Check for schedule conflict
-        $conflict = Appointment::where('appointment_date', $validated['appointment_date'])
-            ->where('id', '!=', $appointment->id)
-            ->where('user_id', $userId)
-            ->where('status', '!=', 'cancelled')
-            ->where(function ($query) use ($validated) {
-                $start = $validated['start_time'];
-                $end = date('H:i', strtotime($start) + ($validated['duration_minutes'] * 60));
-                $query->where(function ($q) use ($start, $end) {
-                    $q->where('start_time', '<', $end)
-                        ->whereRaw("start_time::time + (duration_minutes || ' minutes')::interval > ?::time", [$start]);
-                });
-            })->exists();
+        $conflict = $this->hasOverlappingAppointment(
+            $validated['appointment_date'],
+            $userId,
+            $validated['start_time'],
+            (int) $validated['duration_minutes'],
+            $appointment->id,
+        );
 
         if ($conflict) {
             return back()->withErrors(['start_time' => 'Já existe um agendamento neste horário.'])->withInput();
@@ -554,6 +544,38 @@ class AppointmentController extends Controller
      * still "scheduled" inherit the session outcome; explicit attended / missed /
      * cancelled marks already set per patient are preserved.
      */
+    /**
+     * Whether an appointment for this professional would overlap an existing
+     * one on the same date. Written driver-agnostically (plain PHP/Carbon
+     * instead of Postgres-only ::time/::interval casts) so it behaves the same
+     * on sqlite (tests, local dev) and Postgres (production).
+     */
+    private function hasOverlappingAppointment(
+        string $date,
+        $userId,
+        string $start,
+        int $durationMinutes,
+        ?string $excludeAppointmentId = null,
+    ): bool {
+        $end = Carbon::parse($start)->addMinutes($durationMinutes)->format('H:i');
+
+        return Appointment::where('appointment_date', $date)
+            ->where('user_id', $userId)
+            ->where('status', '!=', 'cancelled')
+            ->when($excludeAppointmentId, fn ($q) => $q->where('id', '!=', $excludeAppointmentId))
+            // Narrows candidates in SQL (existing start before our end); the
+            // exact overlap test still needs duration_minutes added in PHP.
+            ->where('start_time', '<', $end)
+            ->get(['start_time', 'duration_minutes'])
+            ->contains(function (Appointment $existing) use ($start) {
+                $existingEnd = Carbon::parse($existing->start_time)
+                    ->addMinutes($existing->duration_minutes)
+                    ->format('H:i');
+
+                return $existingEnd > $start;
+            });
+    }
+
     private function cascadeSessionStatus(Appointment $appointment, string $status): void
     {
         if ($status === 'completed') {
@@ -593,7 +615,11 @@ class AppointmentController extends Controller
 
         if ($deleteMode === 'future') {
             // Delete this and all future scheduled appointments
-            $query = Appointment::where('appointment_date', '>=', $appointment->appointment_date)
+            // Bind the plain date string, not the Carbon instance: Laravel's
+            // query-binding layer formats a DateTimeInterface value with its
+            // own datetime format ("Y-m-d H:i:s"), which no longer matches a
+            // date-only stored value and would silently drop same-day rows.
+            $query = Appointment::where('appointment_date', '>=', $appointment->appointment_date->toDateString())
                 ->where('status', 'scheduled');
 
             if ($appointment->group_class_id) {

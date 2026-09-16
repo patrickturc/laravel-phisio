@@ -20,7 +20,7 @@ class MembershipController extends Controller
 
         if ($request->filled('search')) {
             $query->whereHas('patient', function ($q) use ($request) {
-                $q->where('name', 'ilike', '%'.$request->search.'%');
+                $q->whereLike('name', '%'.$request->search.'%');
             });
         }
 

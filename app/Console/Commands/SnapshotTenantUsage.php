@@ -2,9 +2,11 @@
 
 namespace App\Console\Commands;
 
+use App\Models\Evolution;
+use App\Models\FinancialTransaction;
 use App\Models\Tenant;
-use Illuminate\Console\Command;
 use Carbon\Carbon;
+use Illuminate\Console\Command;
 
 class SnapshotTenantUsage extends Command
 {
@@ -28,7 +30,7 @@ class SnapshotTenantUsage extends Command
     public function handle()
     {
         $date = Carbon::today();
-        
+
         $this->info("Taking tenant usage snapshots for {$date->toDateString()}...");
 
         $tenants = Tenant::all();
@@ -43,8 +45,8 @@ class SnapshotTenantUsage extends Command
                     'appointments_count' => $tenant->appointments()->count(),
                     // Using models directly avoids needing BelongsToTenant logic if running outside request,
                     // but since the relation is on Tenant, it automatically filters by tenant_id.
-                    'evolutions_count' => \App\Models\Evolution::withoutGlobalScope('tenant')->where('tenant_id', $tenant->id)->count(),
-                    'financial_transactions_count' => \App\Models\FinancialTransaction::withoutGlobalScope('tenant')->where('tenant_id', $tenant->id)->count(),
+                    'evolutions_count' => Evolution::withoutGlobalScope('tenant')->where('tenant_id', $tenant->id)->count(),
+                    'financial_transactions_count' => FinancialTransaction::withoutGlobalScope('tenant')->where('tenant_id', $tenant->id)->count(),
                     'users_count' => $tenant->users()->count(),
                     // For now, storage_mb is a placeholder. You could calculate S3 size later.
                     'storage_mb' => 0.00,
@@ -55,7 +57,7 @@ class SnapshotTenantUsage extends Command
         }
 
         $bar->finish();
-        
+
         $this->newLine();
         $this->info('Snapshots completed successfully!');
     }

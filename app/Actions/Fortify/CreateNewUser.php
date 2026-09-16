@@ -65,7 +65,7 @@ class CreateNewUser implements CreatesNewUsers
             'terms.accepted' => 'É necessário aceitar os termos de uso para continuar.',
         ])->validate();
 
-        return DB::transaction(function () use ($input): User {
+        $user = DB::transaction(function () use ($input): User {
             $tenant = Tenant::create([
                 'name' => $input['organization_name'],
                 'slug' => $this->uniqueSlug($input['organization_name']),
@@ -94,6 +94,12 @@ class CreateNewUser implements CreatesNewUsers
 
             return $user;
         });
+
+        // Counted only after an organization is actually created, so a person
+        // fighting with the CNPJ field is not locked out by their own typos.
+        RateLimiter::hit($this->rateLimitKey(), 3600);
+
+        return $user;
     }
 
     /**
@@ -104,15 +110,16 @@ class CreateNewUser implements CreatesNewUsers
      */
     private function ensureNotRateLimited(): void
     {
-        $key = 'register:'.request()->ip();
-
-        if (RateLimiter::tooManyAttempts($key, 5)) {
+        if (RateLimiter::tooManyAttempts($this->rateLimitKey(), 5)) {
             throw ValidationException::withMessages([
-                'email' => 'Muitas tentativas de cadastro. Tente novamente em alguns minutos.',
+                'email' => 'Muitas organizações criadas a partir deste endereço. Tente novamente mais tarde.',
             ]);
         }
+    }
 
-        RateLimiter::hit($key, 3600);
+    private function rateLimitKey(): string
+    {
+        return 'register:'.request()->ip();
     }
 
     /**

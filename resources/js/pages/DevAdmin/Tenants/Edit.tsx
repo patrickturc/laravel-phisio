@@ -1,12 +1,18 @@
-import DevAdminLayout from '@/layouts/DevAdminLayout';
 import { Head, useForm, Link } from '@inertiajs/react';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 
-import { Checkbox } from '@/components/ui/checkbox';
+import DevAdminLayout from '@/layouts/DevAdminLayout';
 
 interface EditProps {
     tenant: any;
@@ -60,7 +66,7 @@ export default function Edit({ tenant }: EditProps) {
         <DevAdminLayout>
             <Head title={`Editar - ${tenant.name}`} />
 
-            <div className="flex items-center justify-between mb-6">
+            <div className="mb-6 flex items-center justify-between">
                 <h2 className="text-2xl font-bold">Editar Organização</h2>
                 <Button variant="outline" asChild>
                     <Link href="/dev-admin/tenants">Voltar</Link>
@@ -75,44 +81,74 @@ export default function Edit({ tenant }: EditProps) {
                     <form onSubmit={submit} className="space-y-6">
                         {/* Identificação */}
                         <div className="space-y-4">
-                            <h3 className="text-sm font-semibold border-b pb-1 text-foreground">Identificação & Fiscal</h3>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <h3 className="border-b pb-1 text-sm font-semibold text-foreground">
+                                Identificação & Fiscal
+                            </h3>
+                            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                                 <div className="space-y-2">
-                                    <Label htmlFor="name">Nome Fantasia *</Label>
+                                    <Label htmlFor="name">
+                                        Nome Fantasia *
+                                    </Label>
                                     <Input
                                         id="name"
                                         value={data.name}
-                                        onChange={(e) => setData('name', e.target.value)}
+                                        onChange={(e) =>
+                                            setData('name', e.target.value)
+                                        }
                                         required
                                     />
-                                    {errors.name && <p className="text-sm text-red-500">{errors.name}</p>}
+                                    {errors.name && (
+                                        <p className="text-sm text-red-500">
+                                            {errors.name}
+                                        </p>
+                                    )}
                                 </div>
                                 <div className="space-y-2">
-                                    <Label htmlFor="legal_name">Razão Social</Label>
+                                    <Label htmlFor="legal_name">
+                                        Razão Social
+                                    </Label>
                                     <Input
                                         id="legal_name"
                                         value={data.legal_name}
-                                        onChange={(e) => setData('legal_name', e.target.value)}
+                                        onChange={(e) =>
+                                            setData(
+                                                'legal_name',
+                                                e.target.value,
+                                            )
+                                        }
                                     />
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                                 <div className="space-y-2">
                                     <Label htmlFor="document">CNPJ / CPF</Label>
                                     <Input
                                         id="document"
                                         value={data.document}
-                                        onChange={(e) => setData('document', e.target.value)}
+                                        onChange={(e) =>
+                                            setData('document', e.target.value)
+                                        }
                                     />
-                                    {errors.document && <p className="text-sm text-red-500">{errors.document}</p>}
+                                    {errors.document && (
+                                        <p className="text-sm text-red-500">
+                                            {errors.document}
+                                        </p>
+                                    )}
                                 </div>
                                 <div className="space-y-2">
-                                    <Label htmlFor="state_registration">Inscrição Estadual / Municipal</Label>
+                                    <Label htmlFor="state_registration">
+                                        Inscrição Estadual / Municipal
+                                    </Label>
                                     <Input
                                         id="state_registration"
                                         value={data.state_registration}
-                                        onChange={(e) => setData('state_registration', e.target.value)}
+                                        onChange={(e) =>
+                                            setData(
+                                                'state_registration',
+                                                e.target.value,
+                                            )
+                                        }
                                     />
                                 </div>
                             </div>
@@ -120,40 +156,57 @@ export default function Edit({ tenant }: EditProps) {
 
                         {/* Endereço */}
                         <div className="space-y-4 pt-2">
-                            <h3 className="text-sm font-semibold border-b pb-1 text-foreground">Endereço</h3>
-                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                            <h3 className="border-b pb-1 text-sm font-semibold text-foreground">
+                                Endereço
+                            </h3>
+                            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                                 <div className="space-y-2">
                                     <Label htmlFor="cep">CEP</Label>
                                     <Input
                                         id="cep"
                                         value={data.cep}
-                                        onChange={(e) => setData('cep', e.target.value)}
+                                        onChange={(e) =>
+                                            setData('cep', e.target.value)
+                                        }
                                     />
                                 </div>
-                                <div className="sm:col-span-2 space-y-2">
-                                    <Label htmlFor="street">Rua / Logradouro</Label>
+                                <div className="space-y-2 sm:col-span-2">
+                                    <Label htmlFor="street">
+                                        Rua / Logradouro
+                                    </Label>
                                     <Input
                                         id="street"
                                         value={data.street}
-                                        onChange={(e) => setData('street', e.target.value)}
+                                        onChange={(e) =>
+                                            setData('street', e.target.value)
+                                        }
                                     />
                                 </div>
                             </div>
-                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                                 <div className="space-y-2">
                                     <Label htmlFor="number">Número</Label>
                                     <Input
                                         id="number"
                                         value={data.number}
-                                        onChange={(e) => setData('number', e.target.value)}
+                                        onChange={(e) =>
+                                            setData('number', e.target.value)
+                                        }
                                     />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label htmlFor="complement">Complemento</Label>
+                                    <Label htmlFor="complement">
+                                        Complemento
+                                    </Label>
                                     <Input
                                         id="complement"
                                         value={data.complement}
-                                        onChange={(e) => setData('complement', e.target.value)}
+                                        onChange={(e) =>
+                                            setData(
+                                                'complement',
+                                                e.target.value,
+                                            )
+                                        }
                                     />
                                 </div>
                                 <div className="space-y-2">
@@ -161,17 +214,24 @@ export default function Edit({ tenant }: EditProps) {
                                     <Input
                                         id="neighborhood"
                                         value={data.neighborhood}
-                                        onChange={(e) => setData('neighborhood', e.target.value)}
+                                        onChange={(e) =>
+                                            setData(
+                                                'neighborhood',
+                                                e.target.value,
+                                            )
+                                        }
                                     />
                                 </div>
                             </div>
-                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                                <div className="sm:col-span-2 space-y-2">
+                            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                                <div className="space-y-2 sm:col-span-2">
                                     <Label htmlFor="city">Cidade</Label>
                                     <Input
                                         id="city"
                                         value={data.city}
-                                        onChange={(e) => setData('city', e.target.value)}
+                                        onChange={(e) =>
+                                            setData('city', e.target.value)
+                                        }
                                     />
                                 </div>
                                 <div className="space-y-2">
@@ -179,7 +239,9 @@ export default function Edit({ tenant }: EditProps) {
                                     <Input
                                         id="state"
                                         value={data.state}
-                                        onChange={(e) => setData('state', e.target.value)}
+                                        onChange={(e) =>
+                                            setData('state', e.target.value)
+                                        }
                                         maxLength={2}
                                     />
                                 </div>
@@ -188,42 +250,58 @@ export default function Edit({ tenant }: EditProps) {
 
                         {/* Contatos */}
                         <div className="space-y-4 pt-2">
-                            <h3 className="text-sm font-semibold border-b pb-1 text-foreground">Contatos & Redes</h3>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <h3 className="border-b pb-1 text-sm font-semibold text-foreground">
+                                Contatos & Redes
+                            </h3>
+                            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                                 <div className="space-y-2">
                                     <Label htmlFor="email">Email</Label>
                                     <Input
                                         id="email"
                                         type="email"
                                         value={data.email}
-                                        onChange={(e) => setData('email', e.target.value)}
+                                        onChange={(e) =>
+                                            setData('email', e.target.value)
+                                        }
                                     />
-                                    {errors.email && <p className="text-sm text-red-500">{errors.email}</p>}
+                                    {errors.email && (
+                                        <p className="text-sm text-red-500">
+                                            {errors.email}
+                                        </p>
+                                    )}
                                 </div>
                                 <div className="space-y-2">
                                     <Label htmlFor="phone">Telefone</Label>
                                     <Input
                                         id="phone"
                                         value={data.phone}
-                                        onChange={(e) => setData('phone', e.target.value)}
+                                        onChange={(e) =>
+                                            setData('phone', e.target.value)
+                                        }
                                     />
                                 </div>
                             </div>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                                 <div className="space-y-2">
                                     <Label htmlFor="whatsapp">WhatsApp</Label>
                                     <Input
                                         id="whatsapp"
                                         value={data.whatsapp}
-                                        onChange={(e) => setData('whatsapp', e.target.value)}
+                                        onChange={(e) =>
+                                            setData('whatsapp', e.target.value)
+                                        }
                                     />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label htmlFor="website">Website / Instagram</Label>
+                                    <Label htmlFor="website">
+                                        Website / Instagram
+                                    </Label>
                                     <Input
                                         id="website"
                                         value={data.website}
-                                        onChange={(e) => setData('website', e.target.value)}
+                                        onChange={(e) =>
+                                            setData('website', e.target.value)
+                                        }
                                     />
                                 </div>
                             </div>
@@ -231,22 +309,38 @@ export default function Edit({ tenant }: EditProps) {
 
                         {/* Responsável Técnico */}
                         <div className="space-y-4 pt-2">
-                            <h3 className="text-sm font-semibold border-b pb-1 text-foreground">Responsabilidade Técnica</h3>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <h3 className="border-b pb-1 text-sm font-semibold text-foreground">
+                                Responsabilidade Técnica
+                            </h3>
+                            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                                 <div className="space-y-2">
-                                    <Label htmlFor="technical_manager_name">Nome do RT</Label>
+                                    <Label htmlFor="technical_manager_name">
+                                        Nome do RT
+                                    </Label>
                                     <Input
                                         id="technical_manager_name"
                                         value={data.technical_manager_name}
-                                        onChange={(e) => setData('technical_manager_name', e.target.value)}
+                                        onChange={(e) =>
+                                            setData(
+                                                'technical_manager_name',
+                                                e.target.value,
+                                            )
+                                        }
                                     />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label htmlFor="technical_manager_document">Registro Profissional (CREFITO)</Label>
+                                    <Label htmlFor="technical_manager_document">
+                                        Registro Profissional (CREFITO)
+                                    </Label>
                                     <Input
                                         id="technical_manager_document"
                                         value={data.technical_manager_document}
-                                        onChange={(e) => setData('technical_manager_document', e.target.value)}
+                                        onChange={(e) =>
+                                            setData(
+                                                'technical_manager_document',
+                                                e.target.value,
+                                            )
+                                        }
                                     />
                                 </div>
                             </div>
@@ -255,17 +349,30 @@ export default function Edit({ tenant }: EditProps) {
                         <div className="grid grid-cols-3 gap-4">
                             <div className="space-y-2">
                                 <Label htmlFor="plan">Plano</Label>
-                                <Select value={data.plan} onValueChange={(value) => setData('plan', value)}>
+                                <Select
+                                    value={data.plan}
+                                    onValueChange={(value) =>
+                                        setData('plan', value)
+                                    }
+                                >
                                     <SelectTrigger>
                                         <SelectValue placeholder="Selecione o plano" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="free">Gratuito</SelectItem>
-                                        <SelectItem value="basic">Básico</SelectItem>
+                                        <SelectItem value="free">
+                                            Gratuito
+                                        </SelectItem>
+                                        <SelectItem value="basic">
+                                            Básico
+                                        </SelectItem>
                                         <SelectItem value="pro">Pro</SelectItem>
                                     </SelectContent>
                                 </Select>
-                                {errors.plan && <p className="text-sm text-red-500">{errors.plan}</p>}
+                                {errors.plan && (
+                                    <p className="text-sm text-red-500">
+                                        {errors.plan}
+                                    </p>
+                                )}
                             </div>
 
                             <div className="space-y-2">
@@ -274,87 +381,156 @@ export default function Edit({ tenant }: EditProps) {
                                     id="max_users"
                                     type="number"
                                     value={data.max_users}
-                                    onChange={(e) => setData('max_users', parseInt(e.target.value) || 1)}
+                                    onChange={(e) =>
+                                        setData(
+                                            'max_users',
+                                            parseInt(e.target.value) || 1,
+                                        )
+                                    }
                                     min="1"
                                 />
-                                {errors.max_users && <p className="text-sm text-red-500">{errors.max_users}</p>}
+                                {errors.max_users && (
+                                    <p className="text-sm text-red-500">
+                                        {errors.max_users}
+                                    </p>
+                                )}
                             </div>
 
                             <div className="space-y-2">
-                                <Label htmlFor="max_storage_mb">Armazenamento (MB)</Label>
+                                <Label htmlFor="max_storage_mb">
+                                    Armazenamento (MB)
+                                </Label>
                                 <Input
                                     id="max_storage_mb"
                                     type="number"
                                     value={data.max_storage_mb}
-                                    onChange={(e) => setData('max_storage_mb', parseInt(e.target.value) || 100)}
+                                    onChange={(e) =>
+                                        setData(
+                                            'max_storage_mb',
+                                            parseInt(e.target.value) || 100,
+                                        )
+                                    }
                                     min="100"
                                     step="100"
                                 />
-                                {errors.max_storage_mb && <p className="text-sm text-red-500">{errors.max_storage_mb}</p>}
+                                {errors.max_storage_mb && (
+                                    <p className="text-sm text-red-500">
+                                        {errors.max_storage_mb}
+                                    </p>
+                                )}
                             </div>
                         </div>
 
-                        <div className="pt-4 border-t border-border">
-                            <h3 className="text-sm font-semibold mb-3">Módulos Habilitados (Feature Flags)</h3>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-muted/40 p-4 rounded-lg border border-border">
-                                <label className="flex items-center space-x-3 cursor-pointer">
+                        <div className="border-t border-border pt-4">
+                            <h3 className="mb-3 text-sm font-semibold">
+                                Módulos Habilitados (Feature Flags)
+                            </h3>
+                            <div className="grid grid-cols-1 gap-3 rounded-lg border border-border bg-muted/40 p-4 sm:grid-cols-2">
+                                <label className="flex cursor-pointer items-center space-x-3">
                                     <Checkbox
                                         checked={data.features.financial}
-                                        onCheckedChange={(checked) => handleFeatureChange('financial', !!checked)}
+                                        onCheckedChange={(checked) =>
+                                            handleFeatureChange(
+                                                'financial',
+                                                !!checked,
+                                            )
+                                        }
                                     />
                                     <div className="text-sm">
-                                        <p className="font-medium text-foreground">Módulo Financeiro</p>
-                                        <p className="text-xs text-muted-foreground">Fluxo de caixa e despesas</p>
+                                        <p className="font-medium text-foreground">
+                                            Módulo Financeiro
+                                        </p>
+                                        <p className="text-xs text-muted-foreground">
+                                            Fluxo de caixa e despesas
+                                        </p>
                                     </div>
                                 </label>
 
-                                <label className="flex items-center space-x-3 cursor-pointer">
+                                <label className="flex cursor-pointer items-center space-x-3">
                                     <Checkbox
                                         checked={data.features.group_classes}
-                                        onCheckedChange={(checked) => handleFeatureChange('group_classes', !!checked)}
+                                        onCheckedChange={(checked) =>
+                                            handleFeatureChange(
+                                                'group_classes',
+                                                !!checked,
+                                            )
+                                        }
                                     />
                                     <div className="text-sm">
-                                        <p className="font-medium text-foreground">Aulas e Turmas</p>
-                                        <p className="text-xs text-muted-foreground">Pilates e atendimentos em grupo</p>
+                                        <p className="font-medium text-foreground">
+                                            Aulas e Turmas
+                                        </p>
+                                        <p className="text-xs text-muted-foreground">
+                                            Pilates e atendimentos em grupo
+                                        </p>
                                     </div>
                                 </label>
 
-                                <label className="flex items-center space-x-3 cursor-pointer">
+                                <label className="flex cursor-pointer items-center space-x-3">
                                     <Checkbox
-                                        checked={data.features.clinical_protocols}
-                                        onCheckedChange={(checked) => handleFeatureChange('clinical_protocols', !!checked)}
+                                        checked={
+                                            data.features.clinical_protocols
+                                        }
+                                        onCheckedChange={(checked) =>
+                                            handleFeatureChange(
+                                                'clinical_protocols',
+                                                !!checked,
+                                            )
+                                        }
                                     />
                                     <div className="text-sm">
-                                        <p className="font-medium text-foreground">Protocolos Clínicos</p>
-                                        <p className="text-xs text-muted-foreground">Modelos e fichas de avaliação</p>
+                                        <p className="font-medium text-foreground">
+                                            Protocolos Clínicos
+                                        </p>
+                                        <p className="text-xs text-muted-foreground">
+                                            Modelos e fichas de avaliação
+                                        </p>
                                     </div>
                                 </label>
 
-                                <label className="flex items-center space-x-3 cursor-pointer">
+                                <label className="flex cursor-pointer items-center space-x-3">
                                     <Checkbox
                                         checked={data.features.reports}
-                                        onCheckedChange={(checked) => handleFeatureChange('reports', !!checked)}
+                                        onCheckedChange={(checked) =>
+                                            handleFeatureChange(
+                                                'reports',
+                                                !!checked,
+                                            )
+                                        }
                                     />
                                     <div className="text-sm">
-                                        <p className="font-medium text-foreground">Relatórios Avançados</p>
-                                        <p className="text-xs text-muted-foreground">Gráficos de desempenho e métricas</p>
+                                        <p className="font-medium text-foreground">
+                                            Relatórios Avançados
+                                        </p>
+                                        <p className="text-xs text-muted-foreground">
+                                            Gráficos de desempenho e métricas
+                                        </p>
                                     </div>
                                 </label>
 
-                                <label className="flex items-center space-x-3 cursor-pointer">
+                                <label className="flex cursor-pointer items-center space-x-3">
                                     <Checkbox
                                         checked={data.features.evolution_photos}
-                                        onCheckedChange={(checked) => handleFeatureChange('evolution_photos', !!checked)}
+                                        onCheckedChange={(checked) =>
+                                            handleFeatureChange(
+                                                'evolution_photos',
+                                                !!checked,
+                                            )
+                                        }
                                     />
                                     <div className="text-sm">
-                                        <p className="font-medium text-foreground">Fotos na Evolução</p>
-                                        <p className="text-xs text-muted-foreground">Anexo de imagens nos prontuários</p>
+                                        <p className="font-medium text-foreground">
+                                            Fotos na Evolução
+                                        </p>
+                                        <p className="text-xs text-muted-foreground">
+                                            Anexo de imagens nos prontuários
+                                        </p>
                                     </div>
                                 </label>
                             </div>
                         </div>
 
-                        <div className="pt-4 flex justify-end">
+                        <div className="flex justify-end pt-4">
                             <Button type="submit" disabled={processing}>
                                 Salvar Alterações
                             </Button>

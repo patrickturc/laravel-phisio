@@ -1,9 +1,9 @@
 import { Head, useForm, router } from '@inertiajs/react';
-import AppLayout from '@/layouts/app-layout';
-import { type BreadcrumbItem } from '@/types';
 import { Plus, Edit, Trash2, ShieldCheck } from 'lucide-react';
 import { useState } from 'react';
 import { useConfirmModal } from '@/components/confirm-modal';
+import AppLayout from '@/layouts/app-layout';
+import type { BreadcrumbItem } from '@/types';
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Configurações', href: '/settings/users' },
@@ -98,15 +98,22 @@ function getPermissionLabel(name: string): string {
     return permissionLabels[name] || name.split('.').slice(1).join(' ');
 }
 
-export default function RolesIndex({ roles, groupedPermissions }: { roles: any[], groupedPermissions: any }) {
+export default function RolesIndex({
+    roles,
+    groupedPermissions,
+}: {
+    roles: any[];
+    groupedPermissions: any;
+}) {
     const { confirm, modal } = useConfirmModal();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingRole, setEditingRole] = useState<any>(null);
 
-    const { data, setData, post, put, processing, errors, reset, clearErrors } = useForm({
-        name: '',
-        permissions: [] as string[],
-    });
+    const { data, setData, post, put, processing, errors, clearErrors } =
+        useForm({
+            name: '',
+            permissions: [] as string[],
+        });
 
     function openCreate() {
         setEditingRole(null);
@@ -122,7 +129,9 @@ export default function RolesIndex({ roles, groupedPermissions }: { roles: any[]
         setEditingRole(role);
         setData({
             name: role.name,
-            permissions: role.permissions ? role.permissions.map((p: any) => p.name) : [],
+            permissions: role.permissions
+                ? role.permissions.map((p: any) => p.name)
+                : [],
         });
         clearErrors();
         setIsModalOpen(true);
@@ -132,11 +141,11 @@ export default function RolesIndex({ roles, groupedPermissions }: { roles: any[]
         e.preventDefault();
         if (editingRole) {
             put(`/settings/roles/${editingRole.id}`, {
-                onSuccess: () => setIsModalOpen(false)
+                onSuccess: () => setIsModalOpen(false),
             });
         } else {
             post('/settings/roles', {
-                onSuccess: () => setIsModalOpen(false)
+                onSuccess: () => setIsModalOpen(false),
             });
         }
     }
@@ -154,7 +163,10 @@ export default function RolesIndex({ roles, groupedPermissions }: { roles: any[]
 
     function togglePermission(permissionName: string) {
         if (data.permissions.includes(permissionName)) {
-            setData('permissions', data.permissions.filter(p => p !== permissionName));
+            setData(
+                'permissions',
+                data.permissions.filter((p) => p !== permissionName),
+            );
         } else {
             setData('permissions', [...data.permissions, permissionName]);
         }
@@ -162,9 +174,12 @@ export default function RolesIndex({ roles, groupedPermissions }: { roles: any[]
 
     function toggleModule(modulePerms: any[]) {
         const allNames = modulePerms.map((p: any) => p.name);
-        const allSelected = allNames.every(n => data.permissions.includes(n));
+        const allSelected = allNames.every((n) => data.permissions.includes(n));
         if (allSelected) {
-            setData('permissions', data.permissions.filter(p => !allNames.includes(p)));
+            setData(
+                'permissions',
+                data.permissions.filter((p) => !allNames.includes(p)),
+            );
         } else {
             const merged = [...new Set([...data.permissions, ...allNames])];
             setData('permissions', merged);
@@ -175,57 +190,88 @@ export default function RolesIndex({ roles, groupedPermissions }: { roles: any[]
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Perfis de Acesso - Configurações" />
 
-            <div className="flex h-full flex-1 flex-col gap-6 p-6 md:p-10 max-w-6xl mx-auto w-full">
-                
+            <div className="mx-auto flex h-full w-full max-w-6xl flex-1 flex-col gap-6 p-6 md:p-10">
                 <div className="flex items-center justify-between">
                     <div>
-                        <h1 className="text-3xl font-bold tracking-tight text-foreground">Perfis de Acesso</h1>
-                        <p className="text-muted-foreground mt-1">Gerencie os perfis e as permissões de cada módulo.</p>
+                        <h1 className="text-3xl font-bold tracking-tight text-foreground">
+                            Perfis de Acesso
+                        </h1>
+                        <p className="mt-1 text-muted-foreground">
+                            Gerencie os perfis e as permissões de cada módulo.
+                        </p>
                     </div>
                     <button
                         onClick={openCreate}
-                        className="flex items-center gap-2 h-10 px-4 bg-primary text-primary-foreground font-medium rounded-xl hover:bg-primary/90 transition-colors shadow-sm"
+                        className="flex h-10 items-center gap-2 rounded-xl bg-primary px-4 font-medium text-primary-foreground shadow-sm transition-colors hover:bg-primary/90"
                     >
                         <Plus className="size-4" />
                         <span>Novo Perfil</span>
                     </button>
                 </div>
 
-                <div className="bg-card/60 backdrop-blur-xl border border-border/50 rounded-2xl shadow-sm overflow-hidden">
-                    <table className="w-full text-sm text-left">
-                        <thead className="text-xs text-muted-foreground uppercase bg-muted/50 border-b border-border/50">
+                <div className="overflow-hidden rounded-2xl border border-border/50 bg-card/60 shadow-sm backdrop-blur-xl">
+                    <table className="w-full text-left text-sm">
+                        <thead className="border-b border-border/50 bg-muted/50 text-xs text-muted-foreground uppercase">
                             <tr>
-                                <th className="px-5 py-3.5 font-semibold">Nome do Perfil</th>
-                                <th className="px-5 py-3.5 font-semibold">Permissões Habilitadas</th>
-                                <th className="px-5 py-3.5 w-24 text-center">Ações</th>
+                                <th className="px-5 py-3.5 font-semibold">
+                                    Nome do Perfil
+                                </th>
+                                <th className="px-5 py-3.5 font-semibold">
+                                    Permissões Habilitadas
+                                </th>
+                                <th className="w-24 px-5 py-3.5 text-center">
+                                    Ações
+                                </th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-border/50">
                             {roles.map((role: any) => (
-                                <tr key={role.id} className="hover:bg-muted/30 transition-colors group">
+                                <tr
+                                    key={role.id}
+                                    className="group transition-colors hover:bg-muted/30"
+                                >
                                     <td className="px-5 py-3.5">
                                         <div className="flex items-center gap-3">
-                                            <div className="size-8 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                                            <div className="flex size-8 items-center justify-center rounded-full bg-primary/10 text-primary">
                                                 <ShieldCheck className="size-4" />
                                             </div>
-                                            <span className="font-medium text-foreground">{role.name}</span>
+                                            <span className="font-medium text-foreground">
+                                                {role.name}
+                                            </span>
                                         </div>
                                     </td>
                                     <td className="px-5 py-3.5 text-muted-foreground">
                                         {role.name === 'Administrador' ? (
-                                            <span className="text-emerald-600 font-medium">Acesso Total</span>
+                                            <span className="font-medium text-emerald-600">
+                                                Acesso Total
+                                            </span>
                                         ) : (
-                                            <span>{role.permissions?.length || 0} permissões</span>
+                                            <span>
+                                                {role.permissions?.length || 0}{' '}
+                                                permissões
+                                            </span>
                                         )}
                                     </td>
                                     <td className="px-5 py-3.5 text-center">
                                         <div className="flex items-center justify-center gap-1">
                                             {role.name !== 'Administrador' && (
                                                 <>
-                                                    <button onClick={() => openEdit(role)} className="p-1.5 text-muted-foreground hover:text-primary rounded-lg hover:bg-primary/10 transition-colors" title="Editar">
+                                                    <button
+                                                        onClick={() =>
+                                                            openEdit(role)
+                                                        }
+                                                        className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary"
+                                                        title="Editar"
+                                                    >
                                                         <Edit className="size-4" />
                                                     </button>
-                                                    <button onClick={() => handleDelete(role)} className="p-1.5 text-muted-foreground hover:text-red-500 rounded-lg hover:bg-red-500/10 transition-colors" title="Excluir">
+                                                    <button
+                                                        onClick={() =>
+                                                            handleDelete(role)
+                                                        }
+                                                        className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-red-500/10 hover:text-red-500"
+                                                        title="Excluir"
+                                                    >
                                                         <Trash2 className="size-4" />
                                                     </button>
                                                 </>
@@ -241,88 +287,163 @@ export default function RolesIndex({ roles, groupedPermissions }: { roles: any[]
 
             {/* Modal */}
             {isModalOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 overflow-y-auto">
-                    <div className="bg-card w-full max-w-4xl rounded-2xl shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-200 my-8">
-                        <div className="px-6 py-4 border-b border-border/50">
-                            <h2 className="text-xl font-semibold">{editingRole ? 'Editar Perfil' : 'Novo Perfil'}</h2>
+                <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/50 p-4 backdrop-blur-sm">
+                    <div className="my-8 w-full max-w-4xl animate-in overflow-hidden rounded-2xl bg-card shadow-xl duration-200 zoom-in-95 fade-in">
+                        <div className="border-b border-border/50 px-6 py-4">
+                            <h2 className="text-xl font-semibold">
+                                {editingRole ? 'Editar Perfil' : 'Novo Perfil'}
+                            </h2>
                         </div>
-                        <form onSubmit={submit} className="p-6 space-y-6">
-                            
+                        <form onSubmit={submit} className="space-y-6 p-6">
                             <div className="space-y-2">
-                                <label className="text-sm font-medium">Nome do Perfil</label>
+                                <label className="text-sm font-medium">
+                                    Nome do Perfil
+                                </label>
                                 <input
                                     type="text"
                                     value={data.name}
-                                    onChange={e => setData('name', e.target.value)}
-                                    className="w-full h-10 px-3 border border-border rounded-xl bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+                                    onChange={(e) =>
+                                        setData('name', e.target.value)
+                                    }
+                                    className="h-10 w-full rounded-xl border border-border bg-background px-3 text-sm focus:ring-2 focus:ring-primary/50 focus:outline-none"
                                     required
                                 />
-                                {errors.name && <p className="text-xs text-red-500">{errors.name}</p>}
+                                {errors.name && (
+                                    <p className="text-xs text-red-500">
+                                        {errors.name}
+                                    </p>
+                                )}
                             </div>
 
                             <div className="space-y-4">
-                                <h3 className="text-sm font-medium border-b border-border/50 pb-2">Permissões de Acesso</h3>
-                                
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-h-[50vh] overflow-y-auto p-1">
-                                    {Object.entries(groupedPermissions).map(([module, perms]: [string, any]) => {
-                                        const allNames = perms.map((p: any) => p.name);
-                                        const allSelected = allNames.every((n: string) => data.permissions.includes(n));
-                                        const someSelected = allNames.some((n: string) => data.permissions.includes(n));
+                                <h3 className="border-b border-border/50 pb-2 text-sm font-medium">
+                                    Permissões de Acesso
+                                </h3>
 
-                                        return (
-                                            <div key={module} className="bg-muted/30 border border-border/50 rounded-xl p-4">
-                                                <div className="flex items-center justify-between mb-3">
-                                                    <h4 className="text-sm font-semibold text-primary">{getModuleLabel(module)}</h4>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => toggleModule(perms)}
-                                                        className={`text-xs font-medium px-2 py-0.5 rounded-md transition-colors ${
-                                                            allSelected
-                                                                ? 'bg-primary/10 text-primary hover:bg-primary/20'
-                                                                : someSelected
-                                                                    ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 hover:bg-amber-200'
-                                                                    : 'bg-muted text-muted-foreground hover:bg-muted/80'
-                                                        }`}
-                                                    >
-                                                        {allSelected ? 'Desmarcar todos' : 'Marcar todos'}
-                                                    </button>
-                                                </div>
-                                                <div className="space-y-2">
-                                                    {perms.map((p: any) => (
-                                                        <label key={p.name} className="flex items-center gap-2 cursor-pointer group">
-                                                            <div className="relative flex items-center">
-                                                                <input
-                                                                    type="checkbox"
-                                                                    className="peer sr-only"
-                                                                    checked={data.permissions.includes(p.name)}
-                                                                    onChange={() => togglePermission(p.name)}
-                                                                />
-                                                                <div className="w-4 h-4 rounded border border-border bg-background peer-checked:bg-primary peer-checked:border-primary flex items-center justify-center transition-colors">
-                                                                    {data.permissions.includes(p.name) && (
-                                                                        <svg className="w-3 h-3 text-primary-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                                                                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                                                                        </svg>
-                                                                    )}
+                                <div className="grid max-h-[50vh] grid-cols-1 gap-6 overflow-y-auto p-1 md:grid-cols-2 lg:grid-cols-3">
+                                    {Object.entries(groupedPermissions).map(
+                                        ([module, perms]: [string, any]) => {
+                                            const allNames = perms.map(
+                                                (p: any) => p.name,
+                                            );
+                                            const allSelected = allNames.every(
+                                                (n: string) =>
+                                                    data.permissions.includes(
+                                                        n,
+                                                    ),
+                                            );
+                                            const someSelected = allNames.some(
+                                                (n: string) =>
+                                                    data.permissions.includes(
+                                                        n,
+                                                    ),
+                                            );
+
+                                            return (
+                                                <div
+                                                    key={module}
+                                                    className="rounded-xl border border-border/50 bg-muted/30 p-4"
+                                                >
+                                                    <div className="mb-3 flex items-center justify-between">
+                                                        <h4 className="text-sm font-semibold text-primary">
+                                                            {getModuleLabel(
+                                                                module,
+                                                            )}
+                                                        </h4>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() =>
+                                                                toggleModule(
+                                                                    perms,
+                                                                )
+                                                            }
+                                                            className={`rounded-md px-2 py-0.5 text-xs font-medium transition-colors ${
+                                                                allSelected
+                                                                    ? 'bg-primary/10 text-primary hover:bg-primary/20'
+                                                                    : someSelected
+                                                                      ? 'bg-amber-100 text-amber-700 hover:bg-amber-200 dark:bg-amber-900/30 dark:text-amber-400'
+                                                                      : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                                                            }`}
+                                                        >
+                                                            {allSelected
+                                                                ? 'Desmarcar todos'
+                                                                : 'Marcar todos'}
+                                                        </button>
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        {perms.map((p: any) => (
+                                                            <label
+                                                                key={p.name}
+                                                                className="group flex cursor-pointer items-center gap-2"
+                                                            >
+                                                                <div className="relative flex items-center">
+                                                                    <input
+                                                                        type="checkbox"
+                                                                        className="peer sr-only"
+                                                                        checked={data.permissions.includes(
+                                                                            p.name,
+                                                                        )}
+                                                                        onChange={() =>
+                                                                            togglePermission(
+                                                                                p.name,
+                                                                            )
+                                                                        }
+                                                                    />
+                                                                    <div className="flex h-4 w-4 items-center justify-center rounded border border-border bg-background transition-colors peer-checked:border-primary peer-checked:bg-primary">
+                                                                        {data.permissions.includes(
+                                                                            p.name,
+                                                                        ) && (
+                                                                            <svg
+                                                                                className="h-3 w-3 text-primary-foreground"
+                                                                                fill="none"
+                                                                                viewBox="0 0 24 24"
+                                                                                stroke="currentColor"
+                                                                                strokeWidth={
+                                                                                    3
+                                                                                }
+                                                                            >
+                                                                                <path
+                                                                                    strokeLinecap="round"
+                                                                                    strokeLinejoin="round"
+                                                                                    d="M5 13l4 4L19 7"
+                                                                                />
+                                                                            </svg>
+                                                                        )}
+                                                                    </div>
                                                                 </div>
-                                                            </div>
-                                                            <span className="text-sm text-foreground group-hover:text-primary transition-colors">
-                                                                {getPermissionLabel(p.name)}
-                                                            </span>
-                                                        </label>
-                                                    ))}
+                                                                <span className="text-sm text-foreground transition-colors group-hover:text-primary">
+                                                                    {getPermissionLabel(
+                                                                        p.name,
+                                                                    )}
+                                                                </span>
+                                                            </label>
+                                                        ))}
+                                                    </div>
                                                 </div>
-                                            </div>
-                                        );
-                                    })}
+                                            );
+                                        },
+                                    )}
                                 </div>
-                                {errors.permissions && <p className="text-xs text-red-500">{errors.permissions}</p>}
+                                {errors.permissions && (
+                                    <p className="text-xs text-red-500">
+                                        {errors.permissions}
+                                    </p>
+                                )}
                             </div>
 
-                            <div className="pt-4 flex justify-end gap-3 border-t border-border/50 mt-6">
-                                <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-sm font-medium border border-border rounded-xl hover:bg-muted transition-colors">
+                            <div className="mt-6 flex justify-end gap-3 border-t border-border/50 pt-4">
+                                <button
+                                    type="button"
+                                    onClick={() => setIsModalOpen(false)}
+                                    className="rounded-xl border border-border px-4 py-2 text-sm font-medium transition-colors hover:bg-muted"
+                                >
                                     Cancelar
                                 </button>
-                                <button type="submit" disabled={processing} className="px-4 py-2 text-sm font-medium bg-primary text-primary-foreground rounded-xl hover:bg-primary/90 transition-colors disabled:opacity-50">
+                                <button
+                                    type="submit"
+                                    disabled={processing}
+                                    className="rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
+                                >
                                     Salvar Alterações
                                 </button>
                             </div>
@@ -330,7 +451,7 @@ export default function RolesIndex({ roles, groupedPermissions }: { roles: any[]
                     </div>
                 </div>
             )}
-            
+
             {modal}
         </AppLayout>
     );

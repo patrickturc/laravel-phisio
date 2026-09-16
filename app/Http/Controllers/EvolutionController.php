@@ -22,7 +22,7 @@ class EvolutionController extends Controller
             }]);
 
         if ($request->filled('search')) {
-            $query->where('name', 'ilike', '%'.$request->search.'%');
+            $query->whereLike('name', '%'.$request->search.'%');
         }
 
         if ($request->filled('tipo')) {

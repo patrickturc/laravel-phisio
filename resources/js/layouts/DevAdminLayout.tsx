@@ -1,15 +1,26 @@
+import { usePage, Link } from '@inertiajs/react';
+import { Home, Users, Megaphone } from 'lucide-react';
+import { useEffect } from 'react';
+import { Toaster, toast } from 'sonner';
 import { AppContent } from '@/components/app-content';
 import { AppShell } from '@/components/app-shell';
-import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenuItem, SidebarMenuButton, SidebarMenu, SidebarProvider } from '@/components/ui/sidebar';
-import type { AppLayoutProps } from '@/types';
-import { Toaster, toast } from 'sonner';
-import { usePage, Link } from '@inertiajs/react';
-import { useEffect } from 'react';
-import { Home, Users, Settings, LogOut, Megaphone } from 'lucide-react';
 import { NavUser } from '@/components/nav-user';
+import {
+    Sidebar,
+    SidebarContent,
+    SidebarFooter,
+    SidebarHeader,
+    SidebarMenuItem,
+    SidebarMenuButton,
+    SidebarMenu,
+    SidebarProvider,
+} from '@/components/ui/sidebar';
+import type { AppLayoutProps } from '@/types';
 
-export default function DevAdminLayout({ children, breadcrumbs = [] }: AppLayoutProps) {
-    const { auth, flash } = usePage<{ auth: any, flash?: { success?: string; error?: string; warning?: string } }>().props as any;
+export default function DevAdminLayout({ children }: AppLayoutProps) {
+    const { flash } = usePage<{
+        flash?: { success?: string; error?: string; warning?: string };
+    }>().props as any;
 
     useEffect(() => {
         if (flash?.success) toast.success(flash.success);
@@ -21,7 +32,7 @@ export default function DevAdminLayout({ children, breadcrumbs = [] }: AppLayout
         <SidebarProvider>
             <AppShell variant="sidebar">
                 <Sidebar>
-                    <SidebarHeader className="h-16 border-b flex items-center px-4 font-bold text-lg text-primary">
+                    <SidebarHeader className="flex h-16 items-center border-b px-4 text-lg font-bold text-primary">
                         Phisio Dev Admin
                     </SidebarHeader>
                     <SidebarContent>
@@ -29,21 +40,24 @@ export default function DevAdminLayout({ children, breadcrumbs = [] }: AppLayout
                             <SidebarMenuItem>
                                 <SidebarMenuButton asChild>
                                     <Link href="/dev-admin">
-                                        <Home className="w-4 h-4" /> <span>Dashboard</span>
+                                        <Home className="h-4 w-4" />{' '}
+                                        <span>Dashboard</span>
                                     </Link>
                                 </SidebarMenuButton>
                             </SidebarMenuItem>
                             <SidebarMenuItem>
                                 <SidebarMenuButton asChild>
                                     <Link href="/dev-admin/tenants">
-                                        <Users className="w-4 h-4" /> <span>Tenants</span>
+                                        <Users className="h-4 w-4" />{' '}
+                                        <span>Tenants</span>
                                     </Link>
                                 </SidebarMenuButton>
                             </SidebarMenuItem>
                             <SidebarMenuItem>
                                 <SidebarMenuButton asChild>
                                     <Link href="/dev-admin/announcements">
-                                        <Megaphone className="w-4 h-4" /> <span>Comunicados</span>
+                                        <Megaphone className="h-4 w-4" />{' '}
+                                        <span>Comunicados</span>
                                     </Link>
                                 </SidebarMenuButton>
                             </SidebarMenuItem>
@@ -54,14 +68,19 @@ export default function DevAdminLayout({ children, breadcrumbs = [] }: AppLayout
                     </SidebarFooter>
                 </Sidebar>
                 <AppContent variant="sidebar">
-                    <header className="h-16 border-b flex items-center px-6">
-                        <h1 className="font-semibold text-lg">Administração do Sistema</h1>
+                    <header className="flex h-16 items-center border-b px-6">
+                        <h1 className="text-lg font-semibold">
+                            Administração do Sistema
+                        </h1>
                     </header>
-                    <main className="p-6">
-                        {children}
-                    </main>
+                    <main className="p-6">{children}</main>
                 </AppContent>
-                <Toaster position="top-right" richColors closeButton theme="system" />
+                <Toaster
+                    position="top-right"
+                    richColors
+                    closeButton
+                    theme="system"
+                />
             </AppShell>
         </SidebarProvider>
     );

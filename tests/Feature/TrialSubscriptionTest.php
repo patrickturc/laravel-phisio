@@ -6,12 +6,34 @@ use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 
 /**
+ * A CNPJ with correct check digits, unique per call so tests that build several
+ * organizations do not trip the uniqueness constraint on tenants.document.
+ */
+function uniqueCnpj(): string
+{
+    $base = str_pad((string) random_int(0, 99999999), 8, '0', STR_PAD_LEFT).'0001';
+
+    foreach ([[5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2], [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]] as $weights) {
+        $sum = 0;
+
+        foreach ($weights as $i => $weight) {
+            $sum += (int) $base[$i] * $weight;
+        }
+
+        $remainder = $sum % 11;
+        $base .= $remainder < 2 ? 0 : 11 - $remainder;
+    }
+
+    return $base;
+}
+
+/**
  * @return array<string, string>
  */
 function completeProfile(): array
 {
     return [
-        'document' => '11222333000181',
+        'document' => uniqueCnpj(),
         'cep' => '01310100',
         'street' => 'Avenida Paulista',
         'number' => '1000',

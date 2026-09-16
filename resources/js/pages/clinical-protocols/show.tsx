@@ -1,10 +1,10 @@
 import { Head, Link, router } from '@inertiajs/react';
-import AppLayout from '@/layouts/app-layout';
-import { type BreadcrumbItem } from '@/types';
-import { ArrowLeft, Edit, Trash2, FileText, ChevronRight } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { ArrowLeft, Edit, Trash2, FileText, ChevronRight } from 'lucide-react';
 import { useConfirmModal } from '@/components/confirm-modal';
 import { usePermissions } from '@/hooks/use-permissions';
+import AppLayout from '@/layouts/app-layout';
+import type { BreadcrumbItem } from '@/types';
 
 interface ClinicalProtocol {
     id: string;
@@ -21,7 +21,11 @@ interface ClinicalProtocol {
     }>;
 }
 
-export default function ClinicalProtocolShow({ protocol }: { protocol: ClinicalProtocol }) {
+export default function ClinicalProtocolShow({
+    protocol,
+}: {
+    protocol: ClinicalProtocol;
+}) {
     const breadcrumbs: BreadcrumbItem[] = [
         { title: 'Protocolos Clínicos', href: '/clinical-protocols' },
         { title: protocol.name, href: `/clinical-protocols/${protocol.id}` },
@@ -39,51 +43,86 @@ export default function ClinicalProtocolShow({ protocol }: { protocol: ClinicalP
         if (confirmed) router.delete(`/clinical-protocols/${protocol.id}`);
     }
 
-    const tipoLabels: Record<string, string> = { sessao: 'Sessão', avaliacao: 'Avaliação', reavaliacao: 'Reavaliação' };
+    const tipoLabels: Record<string, string> = {
+        sessao: 'Sessão',
+        avaliacao: 'Avaliação',
+        reavaliacao: 'Reavaliação',
+    };
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title={protocol.name} />
-            <div className="flex h-full flex-1 flex-col gap-6 p-6 md:p-10 max-w-4xl mx-auto w-full">
+            <div className="mx-auto flex h-full w-full max-w-4xl flex-1 flex-col gap-6 p-6 md:p-10">
                 <div className="flex items-start justify-between gap-4">
                     <div className="flex items-center gap-4">
-                        <Link href="/clinical-protocols" className="p-2 rounded-xl hover:bg-muted/50 transition-colors text-muted-foreground"><ArrowLeft className="size-5" /></Link>
+                        <Link
+                            href="/clinical-protocols"
+                            className="rounded-xl p-2 text-muted-foreground transition-colors hover:bg-muted/50"
+                        >
+                            <ArrowLeft className="size-5" />
+                        </Link>
                         <div>
-                            <h1 className="text-2xl font-bold tracking-tight">{protocol.name}</h1>
+                            <h1 className="text-2xl font-bold tracking-tight">
+                                {protocol.name}
+                            </h1>
                             {protocol.total_sessions && (
-                                <p className="text-sm font-medium text-emerald-600 mt-1">{protocol.total_sessions} sessões sugeridas</p>
+                                <p className="mt-1 text-sm font-medium text-emerald-600">
+                                    {protocol.total_sessions} sessões sugeridas
+                                </p>
                             )}
                         </div>
                     </div>
                     <div className="flex items-center gap-2">
                         {can('treatment_plans.manage.edit') && (
-                            <Link href={`/clinical-protocols/${protocol.id}/edit`} className="p-2.5 rounded-xl border border-border/50 text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"><Edit className="size-4" /></Link>
+                            <Link
+                                href={`/clinical-protocols/${protocol.id}/edit`}
+                                className="rounded-xl border border-border/50 p-2.5 text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
+                            >
+                                <Edit className="size-4" />
+                            </Link>
                         )}
                         {can('treatment_plans.manage.delete') && (
-                            <button onClick={handleDelete} className="p-2.5 rounded-xl border border-red-200 text-red-500 hover:bg-red-50 hover:text-red-600 transition-colors"><Trash2 className="size-4" /></button>
+                            <button
+                                onClick={handleDelete}
+                                className="rounded-xl border border-red-200 p-2.5 text-red-500 transition-colors hover:bg-red-50 hover:text-red-600"
+                            >
+                                <Trash2 className="size-4" />
+                            </button>
                         )}
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                     {protocol.description && (
-                        <div className="bg-card/60 border border-border/50 rounded-2xl p-6">
-                            <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wide mb-2">Descrição / Objetivo Geral</h3>
-                            <p className="text-sm text-foreground whitespace-pre-wrap">{protocol.description}</p>
+                        <div className="rounded-2xl border border-border/50 bg-card/60 p-6">
+                            <h3 className="mb-2 text-sm font-bold tracking-wide text-muted-foreground uppercase">
+                                Descrição / Objetivo Geral
+                            </h3>
+                            <p className="text-sm whitespace-pre-wrap text-foreground">
+                                {protocol.description}
+                            </p>
                         </div>
                     )}
                     {protocol.notes && (
-                        <div className="bg-card/60 border border-border/50 rounded-2xl p-6">
-                            <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wide mb-2">Observações Técnicas</h3>
-                            <p className="text-sm text-foreground whitespace-pre-wrap">{protocol.notes}</p>
+                        <div className="rounded-2xl border border-border/50 bg-card/60 p-6">
+                            <h3 className="mb-2 text-sm font-bold tracking-wide text-muted-foreground uppercase">
+                                Observações Técnicas
+                            </h3>
+                            <p className="text-sm whitespace-pre-wrap text-foreground">
+                                {protocol.notes}
+                            </p>
                         </div>
                     )}
                 </div>
 
                 {/* Session History */}
-                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
-                    className="bg-card/60 backdrop-blur-xl border border-border/50 rounded-2xl p-6 shadow-sm">
-                    <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
+                <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.1 }}
+                    className="rounded-2xl border border-border/50 bg-card/60 p-6 shadow-sm backdrop-blur-xl"
+                >
+                    <h2 className="mb-4 flex items-center gap-2 text-lg font-bold">
                         <FileText className="size-5 text-emerald-500" />
                         Evoluções que utilizaram este protocolo
                     </h2>
@@ -91,37 +130,49 @@ export default function ClinicalProtocolShow({ protocol }: { protocol: ClinicalP
                     {protocol.evolutions && protocol.evolutions.length > 0 ? (
                         <div className="space-y-3">
                             {protocol.evolutions.map((evo) => (
-                                <Link key={evo.id} href={`/evolutions/${evo.id}`}
-                                    className="flex items-center gap-4 p-4 rounded-xl border border-border/30 hover:bg-muted/30 transition-colors group">
-                                    
-                                    <div className="flex-1 min-w-0">
+                                <Link
+                                    key={evo.id}
+                                    href={`/evolutions/${evo.id}`}
+                                    className="group flex items-center gap-4 rounded-xl border border-border/30 p-4 transition-colors hover:bg-muted/30"
+                                >
+                                    <div className="min-w-0 flex-1">
                                         <div className="flex items-center gap-2">
-                                            <span className="font-semibold text-sm text-foreground">
-                                                {evo.patient?.name || 'Paciente'}
+                                            <span className="text-sm font-semibold text-foreground">
+                                                {evo.patient?.name ||
+                                                    'Paciente'}
                                             </span>
                                             <span className="text-xs text-muted-foreground">
-                                                • {new Date(evo.data_atendimento).toLocaleDateString('pt-BR')}
+                                                •{' '}
+                                                {new Date(
+                                                    evo.data_atendimento,
+                                                ).toLocaleDateString('pt-BR')}
                                             </span>
-                                            <span className="px-2 py-0.5 rounded-md text-xs font-medium bg-muted text-muted-foreground">
-                                                {tipoLabels[evo.tipo_atendimento] || evo.tipo_atendimento}
+                                            <span className="rounded-md bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                                                {tipoLabels[
+                                                    evo.tipo_atendimento
+                                                ] || evo.tipo_atendimento}
                                             </span>
                                         </div>
                                         {evo.condutas_realizadas && (
-                                            <p className="text-xs text-muted-foreground mt-1 truncate">{evo.condutas_realizadas}</p>
+                                            <p className="mt-1 truncate text-xs text-muted-foreground">
+                                                {evo.condutas_realizadas}
+                                            </p>
                                         )}
                                     </div>
-                                    <ChevronRight className="size-4 text-muted-foreground/40 group-hover:text-muted-foreground transition-colors shrink-0" />
+                                    <ChevronRight className="size-4 shrink-0 text-muted-foreground/40 transition-colors group-hover:text-muted-foreground" />
                                 </Link>
                             ))}
                         </div>
                     ) : (
-                        <div className="text-center py-8">
-                            <FileText className="size-10 text-muted-foreground/20 mx-auto mb-3" />
-                            <p className="text-sm text-muted-foreground">Nenhuma evolução registrada com este protocolo ainda.</p>
+                        <div className="py-8 text-center">
+                            <FileText className="mx-auto mb-3 size-10 text-muted-foreground/20" />
+                            <p className="text-sm text-muted-foreground">
+                                Nenhuma evolução registrada com este protocolo
+                                ainda.
+                            </p>
                         </div>
                     )}
                 </motion.div>
-
             </div>
             {modal}
         </AppLayout>

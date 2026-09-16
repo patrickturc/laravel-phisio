@@ -2,6 +2,7 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
@@ -33,12 +34,12 @@ return new class extends Migration
         });
 
         // 3. Move existing data to pivot table
-        \Illuminate\Support\Facades\DB::statement("
+        DB::statement('
             INSERT INTO appointment_patient (appointment_id, patient_id, status, created_at, updated_at)
             SELECT id, patient_id, status, created_at, COALESCE(updated_at, created_at)
             FROM appointments
             WHERE patient_id IS NOT NULL
-        ");
+        ');
 
         // 4. Drop patient_id and status from appointments (since status is now per-patient)
         // Wait, does an appointment itself have a status? (e.g., cancelled class?)
@@ -61,7 +62,7 @@ return new class extends Migration
 
         // 2. Move data back (only one patient per appointment)
         // This is lossy, we just pick the first patient
-        \Illuminate\Support\Facades\DB::statement("
+        DB::statement('
             UPDATE appointments a
             SET patient_id = (
                 SELECT patient_id 
@@ -69,7 +70,7 @@ return new class extends Migration
                 WHERE ap.appointment_id = a.id 
                 LIMIT 1
             )
-        ");
+        ');
 
         // 3. Drop new columns
         Schema::table('appointments', function (Blueprint $table) {

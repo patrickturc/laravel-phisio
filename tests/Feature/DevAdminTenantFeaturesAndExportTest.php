@@ -3,6 +3,8 @@
 use App\Models\Patient;
 use App\Models\Tenant;
 use App\Models\User;
+use Spatie\Permission\Models\Permission;
+use Spatie\Permission\Models\Role;
 
 test('dev admin can export tenant data as JSON', function () {
     $tenant = Tenant::factory()->create(['name' => 'Clínica Exportavel']);
@@ -81,6 +83,11 @@ test('dev admin can create a tenant with complete address, clinic details and in
         'tenant_id' => null,
     ]);
 
+    // A real install always has at least one permission seeded before any
+    // tenant is created; without it there is nothing for the new
+    // Administrador role to be granted.
+    Permission::findOrCreate('dashboard.view', 'web');
+
     $this->actingAs($devAdmin);
     $response = $this->post(route('dev-admin.tenants.store'), [
         'name' => 'FisioVida Reabilitação',
@@ -126,10 +133,53 @@ test('dev admin can create a tenant with complete address, clinic details and in
     expect($tenant->formatted_address)->toContain('Avenida Paulista, 1000');
     expect($tenant->formatted_address)->toContain('São Paulo - SP');
 
-    // Admin user was created
+    // Admin user was created, with an actual, permission-bearing role — not
+    // an auto-vivified empty "admin" role that would lock them out entirely.
     $this->assertDatabaseHas('users', [
         'tenant_id' => $tenant->id,
         'email' => 'roberta@fisiovida.com.br',
     ]);
+
+    $admin = User::where('email', 'roberta@fisiovida.com.br')->first();
+    expect($admin->hasRole('Administrador'))->toBeTrue()
+        ->and($admin->getAllPermissions())->not->toBeEmpty();
 });
 
+test('a user added to an existing tenant gets a real, permission-bearing role', function () {
+    $devAdmin = User::factory()->create(['is_dev_admin' => true, 'tenant_id' => null]);
+    $tenant = Tenant::factory()->create();
+
+    // Mirrors what AclSeeder sets up on a real install: the role already
+    // exists, with real permissions, before anyone gets assigned to it.
+    Permission::findOrCreate('evolutions.manage.view', 'web');
+    Role::findOrCreate('Fisioterapeuta', 'web')
+        ->givePermissionTo('evolutions.manage.view');
+
+    $this->actingAs($devAdmin)->post(route('dev-admin.tenants.users.store', $tenant), [
+        'name' => 'Ana Fisioterapeuta',
+        'email' => 'ana@example.com',
+        'password' => 'password123',
+        'role' => 'Fisioterapeuta',
+    ])->assertSessionHas('success');
+
+    $user = User::where('email', 'ana@example.com')->firstOrFail();
+
+    expect($user->hasRole('Fisioterapeuta'))->toBeTrue()
+        ->and($user->getAllPermissions())->not->toBeEmpty();
+});
+
+test('adding a tenant user rejects a role that was never seeded', function () {
+    $devAdmin = User::factory()->create(['is_dev_admin' => true, 'tenant_id' => null]);
+    $tenant = Tenant::factory()->create();
+
+    $this->actingAs($devAdmin)->post(route('dev-admin.tenants.users.store', $tenant), [
+        'name' => 'Ghost User',
+        'email' => 'ghost@example.com',
+        'password' => 'password123',
+        'role' => 'attendant',
+    ])->assertSessionHasErrors('role');
+
+    // No user, and no empty role silently created for it.
+    expect(User::where('email', 'ghost@example.com')->exists())->toBeFalse()
+        ->and(Role::where('name', 'attendant')->exists())->toBeFalse();
+});

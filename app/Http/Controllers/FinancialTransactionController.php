@@ -4,12 +4,14 @@ namespace App\Http\Controllers;
 
 use App\Models\FinancialTransaction;
 use App\Models\Patient;
+use App\Models\User;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
-use Inertia\Inertia;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
-use Carbon\Carbon;
+use Inertia\Inertia;
 
 class FinancialTransactionController extends Controller
 {
@@ -39,16 +41,16 @@ class FinancialTransactionController extends Controller
 
         if ($request->filled('search')) {
             $query->where(function ($q) use ($request) {
-                $q->where('description', 'ilike', '%' . $request->search . '%')
-                  ->orWhere('category', 'ilike', '%' . $request->search . '%')
-                  ->orWhereHas('patient', fn($pq) => $pq->where('name', 'ilike', '%' . $request->search . '%'));
+                $q->whereLike('description', '%'.$request->search.'%')
+                    ->orWhereLike('category', '%'.$request->search.'%')
+                    ->orWhereHas('patient', fn ($pq) => $pq->whereLike('name', '%'.$request->search.'%'));
             });
         }
 
         $transactions = $query->paginate(20)->withQueryString();
 
         // Monthly summary
-        $monthQuery = fn() => FinancialTransaction::whereMonth('date', $month)->whereYear('date', $year);
+        $monthQuery = fn () => FinancialTransaction::whereMonth('date', $month)->whereYear('date', $year);
 
         $summary = [
             'income' => $monthQuery()->where('type', 'income')->where('status', 'paid')->sum('amount'),
@@ -86,7 +88,7 @@ class FinancialTransactionController extends Controller
                 ->groupBy('category')
                 ->orderByDesc('total')
                 ->get()
-                ->map(fn($row) => ['category' => $row->category ?: 'Sem categoria', 'total' => (float) $row->total])
+                ->map(fn ($row) => ['category' => $row->category ?: 'Sem categoria', 'total' => (float) $row->total])
                 ->values(),
             'expense' => FinancialTransaction::where('type', 'expense')
                 ->whereMonth('date', $month)->whereYear('date', $year)
@@ -94,7 +96,7 @@ class FinancialTransactionController extends Controller
                 ->groupBy('category')
                 ->orderByDesc('total')
                 ->get()
-                ->map(fn($row) => ['category' => $row->category ?: 'Sem categoria', 'total' => (float) $row->total])
+                ->map(fn ($row) => ['category' => $row->category ?: 'Sem categoria', 'total' => (float) $row->total])
                 ->values(),
         ];
 
@@ -124,7 +126,7 @@ class FinancialTransactionController extends Controller
      * → 50% each, regardless of how many sessions each gave. Charges with no
      * patient or no sessions in the month fall under "Não atribuído".
      *
-     * @return \Illuminate\Support\Collection<int, array{name:string, total:float, count:int}>
+     * @return Collection<int, array{name:string, total:float, count:int}>
      */
     private function earningsByProfessional(int $month, int $year)
     {
@@ -154,7 +156,7 @@ class FinancialTransactionController extends Controller
                 });
         }
 
-        $names = \App\Models\User::whereIn('id', collect($prosByPatient)->flatten()->unique()->values())
+        $names = User::whereIn('id', collect($prosByPatient)->flatten()->unique()->values())
             ->pluck('name', 'id');
 
         $earnings = [];
@@ -172,6 +174,7 @@ class FinancialTransactionController extends Controller
 
             if (empty($pros)) {
                 $add('none', 'Não atribuído', $amount);
+
                 continue;
             }
 
@@ -185,7 +188,6 @@ class FinancialTransactionController extends Controller
         return collect($earnings)->sortByDesc('total')->values();
     }
 
-
     public function receivables(Request $request)
     {
         $today = now()->toDateString();
@@ -198,10 +200,11 @@ class FinancialTransactionController extends Controller
             ->get();
 
         // Group by patient (transactions with no patient grouped under "Sem paciente")
-        $byPatient = $pending->groupBy(fn($t) => $t->patient_id ?? 'none')
+        $byPatient = $pending->groupBy(fn ($t) => $t->patient_id ?? 'none')
             ->map(function ($items) use ($today) {
                 $first = $items->first();
-                $overdue = $items->filter(fn($t) => $t->due_date && $t->due_date->toDateString() < $today);
+                $overdue = $items->filter(fn ($t) => $t->due_date && $t->due_date->toDateString() < $today);
+
                 return [
                     'patient_id' => $first->patient_id,
                     'patient_name' => $first->patient?->name ?? 'Sem paciente vinculado',
@@ -210,7 +213,7 @@ class FinancialTransactionController extends Controller
                     'overdue_count' => $overdue->count(),
                     'count' => $items->count(),
                     'oldest_due' => optional($items->whereNotNull('due_date')->sortBy('due_date')->first())->due_date?->toDateString(),
-                    'transactions' => $items->map(fn($t) => [
+                    'transactions' => $items->map(fn ($t) => [
                         'id' => $t->id,
                         'description' => $t->description,
                         'amount' => (float) $t->amount,
@@ -226,7 +229,7 @@ class FinancialTransactionController extends Controller
 
         $totals = [
             'total_pending' => (float) $pending->sum('amount'),
-            'overdue_amount' => (float) $pending->filter(fn($t) => $t->due_date && $t->due_date->toDateString() < $today)->sum('amount'),
+            'overdue_amount' => (float) $pending->filter(fn ($t) => $t->due_date && $t->due_date->toDateString() < $today)->sum('amount'),
             'patient_count' => $byPatient->count(),
         ];
 
@@ -265,7 +268,6 @@ class FinancialTransactionController extends Controller
 
         return redirect()->route('financial.index')->with('success', 'Transação registrada!');
     }
-
 
     public function update(Request $request, FinancialTransaction $financial)
     {
@@ -309,6 +311,7 @@ class FinancialTransactionController extends Controller
     {
         $financial->logAction('deleted', $financial->status, null);
         $financial->delete();
+
         return redirect()->route('financial.index')->with('success', 'Transação excluída.');
     }
 

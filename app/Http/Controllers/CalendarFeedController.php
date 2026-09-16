@@ -2,11 +2,9 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\User;
 use App\Models\Appointment;
-use App\Models\GroupClass;
-use Illuminate\Http\Request;
-use Illuminate\Support\Str;
+use App\Models\User;
+use Carbon\Carbon;
 
 class CalendarFeedController extends Controller
 {
@@ -28,44 +26,44 @@ class CalendarFeedController extends Controller
         $ics .= "PRODID:-//Phisio//Calendar Sync//PT\r\n";
         $ics .= "CALSCALE:GREGORIAN\r\n";
         $ics .= "METHOD:PUBLISH\r\n";
-        $ics .= "X-WR-CALNAME:Phisio - " . $user->name . "\r\n";
+        $ics .= 'X-WR-CALNAME:Phisio - '.$user->name."\r\n";
         $ics .= "X-PUBLISHED-TTL:PT1H\r\n"; // Suggest clients update every hour
 
         $nowStamp = gmdate('Ymd\THis\Z');
 
         foreach ($appointments as $app) {
             // format time to include seconds for carbon parsing if not present
-            $startTimeStr = strlen($app->start_time) === 5 ? $app->start_time . ':00' : $app->start_time;
-            $endTimeStr = strlen($app->end_time ?? '') === 5 ? $app->end_time . ':00' : ($app->end_time ?? '00:00:00');
-            
+            $startTimeStr = strlen($app->start_time) === 5 ? $app->start_time.':00' : $app->start_time;
+            $endTimeStr = strlen($app->end_time ?? '') === 5 ? $app->end_time.':00' : ($app->end_time ?? '00:00:00');
+
             // if duration_minutes is used instead of end_time:
-            if (!$app->end_time && $app->duration_minutes) {
-                $startObj = \Carbon\Carbon::createFromFormat('Y-m-d H:i:s', $app->appointment_date->format('Y-m-d') . ' ' . $startTimeStr, 'America/Sao_Paulo');
+            if (! $app->end_time && $app->duration_minutes) {
+                $startObj = Carbon::createFromFormat('Y-m-d H:i:s', $app->appointment_date->format('Y-m-d').' '.$startTimeStr, 'America/Sao_Paulo');
                 $endObj = $startObj->copy()->addMinutes($app->duration_minutes);
                 $startTime = $startObj->utc();
                 $endTime = $endObj->utc();
             } else {
-                $startTime = \Carbon\Carbon::createFromFormat('Y-m-d H:i:s', $app->appointment_date->format('Y-m-d') . ' ' . $startTimeStr, 'America/Sao_Paulo')->utc();
-                $endTime = \Carbon\Carbon::createFromFormat('Y-m-d H:i:s', $app->appointment_date->format('Y-m-d') . ' ' . $endTimeStr, 'America/Sao_Paulo')->utc();
+                $startTime = Carbon::createFromFormat('Y-m-d H:i:s', $app->appointment_date->format('Y-m-d').' '.$startTimeStr, 'America/Sao_Paulo')->utc();
+                $endTime = Carbon::createFromFormat('Y-m-d H:i:s', $app->appointment_date->format('Y-m-d').' '.$endTimeStr, 'America/Sao_Paulo')->utc();
             }
-            
+
             if ($app->type === 'group' && $app->groupClass) {
                 $summary = "Turma: {$app->groupClass->name}";
                 if ($app->patients->count() > 0) {
-                    $summary .= " (" . $app->patients->count() . " alunos)";
+                    $summary .= ' ('.$app->patients->count().' alunos)';
                 }
             } else {
                 $patients = $app->patients->pluck('name')->implode(', ');
-                $summary = $patients ? "Sessão: {$patients}" : "Sessão Agendada";
+                $summary = $patients ? "Sessão: {$patients}" : 'Sessão Agendada';
             }
-            
+
             $uid = "appointment-{$app->id}@phisio";
 
             $ics .= "BEGIN:VEVENT\r\n";
             $ics .= "UID:{$uid}\r\n";
             $ics .= "DTSTAMP:{$nowStamp}\r\n";
-            $ics .= "DTSTART:" . $startTime->format('Ymd\THis\Z') . "\r\n";
-            $ics .= "DTEND:" . $endTime->format('Ymd\THis\Z') . "\r\n";
+            $ics .= 'DTSTART:'.$startTime->format('Ymd\THis\Z')."\r\n";
+            $ics .= 'DTEND:'.$endTime->format('Ymd\THis\Z')."\r\n";
             $ics .= "SUMMARY:{$summary}\r\n";
             $ics .= "STATUS:CONFIRMED\r\n";
             $ics .= "END:VEVENT\r\n";

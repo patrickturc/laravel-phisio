@@ -14,10 +14,12 @@ use App\Models\Tenant;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
+use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 
 class TenantController extends Controller
@@ -100,21 +102,26 @@ class TenantController extends Controller
         }
 
         $tenantData = collect($validated)->except(['admin_name', 'admin_email', 'admin_password'])->toArray();
-        $tenant = Tenant::create($tenantData);
 
-        if (! empty($validated['admin_email']) && ! empty($validated['admin_password'])) {
-            $adminUser = User::create([
-                'tenant_id' => $tenant->id,
-                'name' => $validated['admin_name'] ?: 'Administrador',
-                'email' => $validated['admin_email'],
-                'password' => Hash::make($validated['admin_password']),
-                'is_dev_admin' => false,
-                'email_verified_at' => now(),
-            ]);
+        // Two dependent writes (tenant, then its first user): if the second
+        // one failed after the first committed, the dev admin would be left
+        // looking at a tenant with no way to sign in as it.
+        DB::transaction(function () use ($tenantData, $validated): void {
+            $tenant = Tenant::create($tenantData);
 
-            $role = Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
-            $adminUser->assignRole($role);
-        }
+            if (! empty($validated['admin_email']) && ! empty($validated['admin_password'])) {
+                $adminUser = User::create([
+                    'tenant_id' => $tenant->id,
+                    'name' => $validated['admin_name'] ?: 'Administrador',
+                    'email' => $validated['admin_email'],
+                    'password' => Hash::make($validated['admin_password']),
+                    'is_dev_admin' => false,
+                    'email_verified_at' => now(),
+                ]);
+
+                $adminUser->assignRole($this->ownerRole());
+            }
+        });
 
         return redirect()->route('dev-admin.tenants.index')
             ->with('success', 'Organização criada com sucesso.');
@@ -249,18 +256,21 @@ class TenantController extends Controller
 
         $extraUsers = $validated['extra_users'] ?? $tenant->requested_extra_users;
 
-        // applyPlan writes the plan's seats, storage and feature flags in one
-        // step, so activating a plan actually changes what the tenant can do.
-        $tenant->applyPlan($validated['plan'], $extraUsers);
+        // Two dependent writes: applying the plan and clearing the trial plus
+        // the pending request. Half of it landing would leave the organization
+        // on a paid plan that still looks like it is waiting for approval.
+        DB::transaction(function () use ($tenant, $validated, $extraUsers): void {
+            $tenant->applyPlan($validated['plan'], $extraUsers);
 
-        $tenant->update([
-            'status' => 'active',
-            'trial_ends_at' => null,
-            'requested_plan' => null,
-            'requested_extra_users' => 0,
-            'plan_requested_at' => null,
-            'plan_request_notes' => null,
-        ]);
+            $tenant->update([
+                'status' => 'active',
+                'trial_ends_at' => null,
+                'requested_plan' => null,
+                'requested_extra_users' => 0,
+                'plan_requested_at' => null,
+                'plan_request_notes' => null,
+            ]);
+        });
 
         $tenant->refresh();
         $planName = Tenant::planConfig($tenant->plan)['name'] ?? $tenant->plan;
@@ -306,6 +316,23 @@ class TenantController extends Controller
         return back()->with('success', "Trial estendido em {$validated['days']} dias.");
     }
 
+    /**
+     * The full-access role granted to a tenant's first admin, created with
+     * every permission on a fresh install so it is never left empty. Mirrors
+     * App\Actions\Fortify\CreateNewUser::ownerRole(), which does the same
+     * for self-service signups — both paths must land on one shared role.
+     */
+    private function ownerRole(): Role
+    {
+        $role = Role::findOrCreate('Administrador', 'web');
+
+        if ($role->permissions()->count() === 0) {
+            $role->syncPermissions(Permission::where('guard_name', 'web')->get());
+        }
+
+        return $role;
+    }
+
     public function toggleStatus(Tenant $tenant)
     {
         $newStatus = $tenant->status === 'active' ? 'suspended' : 'active';
@@ -321,7 +348,10 @@ class TenantController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255', 'unique:users,email'],
             'password' => ['required', 'string', 'min:8'],
-            'role' => ['nullable', 'string'],
+            // Only real, already-seeded roles: an unrecognized name used to
+            // auto-create a brand-new Spatie role with zero permissions,
+            // which silently locked the new user out of everything.
+            'role' => ['nullable', 'string', Rule::in(Role::pluck('name'))],
         ]);
 
         $user = User::create([
@@ -334,8 +364,7 @@ class TenantController extends Controller
         ]);
 
         if (! empty($validated['role'])) {
-            $role = Role::firstOrCreate(['name' => $validated['role'], 'guard_name' => 'web']);
-            $user->assignRole($role);
+            $user->assignRole($validated['role']);
         }
 
         return back()->with('success', "Usuário {$user->name} cadastrado com sucesso para esta organização.");

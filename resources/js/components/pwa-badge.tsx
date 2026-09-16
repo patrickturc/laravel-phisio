@@ -1,14 +1,12 @@
+import { WifiOff } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useRegisterSW } from 'virtual:pwa-register/react';
-import { WifiOff, Download } from 'lucide-react';
 import { Button } from './ui/button';
 
 export default function PwaBadge() {
     const [isOffline, setIsOffline] = useState(!navigator.onLine);
-    const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
 
     const {
-        offlineReady: [offlineReady, setOfflineReady],
         needRefresh: [needRefresh, setNeedRefresh],
         updateServiceWorker,
     } = useRegisterSW({
@@ -35,23 +33,34 @@ export default function PwaBadge() {
     }
 
     return (
-        <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2">
+        <div className="fixed right-4 bottom-4 z-50 flex flex-col gap-2">
             {isOffline && (
-                <div className="flex items-center gap-2 bg-destructive text-destructive-foreground px-4 py-2 rounded-lg shadow-lg text-sm font-medium animate-in slide-in-from-bottom-2">
+                <div className="flex animate-in items-center gap-2 rounded-lg bg-destructive px-4 py-2 text-sm font-medium text-destructive-foreground shadow-lg slide-in-from-bottom-2">
                     <WifiOff className="size-4" />
                     Você está offline
                 </div>
             )}
-            
+
             {needRefresh && (
-                <div className="flex flex-col gap-2 bg-background border px-4 py-3 rounded-lg shadow-xl text-sm animate-in slide-in-from-bottom-2">
-                    <div className="font-medium">Nova atualização disponível!</div>
-                    <div className="text-muted-foreground mb-1">Recarregue para ver as novidades.</div>
+                <div className="flex animate-in flex-col gap-2 rounded-lg border bg-background px-4 py-3 text-sm shadow-xl slide-in-from-bottom-2">
+                    <div className="font-medium">
+                        Nova atualização disponível!
+                    </div>
+                    <div className="mb-1 text-muted-foreground">
+                        Recarregue para ver as novidades.
+                    </div>
                     <div className="flex gap-2">
-                        <Button size="sm" onClick={() => updateServiceWorker(true)}>
+                        <Button
+                            size="sm"
+                            onClick={() => updateServiceWorker(true)}
+                        >
                             Atualizar Agora
                         </Button>
-                        <Button size="sm" variant="outline" onClick={() => setNeedRefresh(false)}>
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setNeedRefresh(false)}
+                        >
                             Depois
                         </Button>
                     </div>

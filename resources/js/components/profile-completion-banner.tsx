@@ -27,14 +27,18 @@ const fieldLabels: Record<string, string> = {
  * own documents, and it disappears on its own once the form is completed.
  */
 export function ProfileCompletionBanner() {
-    const { profileCompletion } = usePage<{ profileCompletion?: ProfileCompletion | null }>().props;
+    const { profileCompletion } = usePage<{
+        profileCompletion?: ProfileCompletion | null;
+    }>().props;
 
     if (!profileCompletion || profileCompletion.complete) {
         return null;
     }
 
     const { missing, missing_count, percent, can_edit } = profileCompletion;
-    const preview = missing.slice(0, 3).map((field) => fieldLabels[field] ?? field);
+    const preview = missing
+        .slice(0, 3)
+        .map((field) => fieldLabels[field] ?? field);
     const rest = missing_count - preview.length;
 
     return (

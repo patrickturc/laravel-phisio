@@ -61,11 +61,16 @@ type Props = {
 const money = (value: number) =>
     value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
-const storage = (mb: number) => (mb >= 1024 ? `${Math.round(mb / 1024)} GB` : `${mb} MB`);
+const storage = (mb: number) =>
+    mb >= 1024 ? `${Math.round(mb / 1024)} GB` : `${mb} MB`;
 
 const formatDate = (value: string | null) =>
     value
-        ? new Date(value).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })
+        ? new Date(value).toLocaleDateString('pt-BR', {
+              day: '2-digit',
+              month: 'long',
+              year: 'numeric',
+          })
         : null;
 
 export default function SubscriptionIndex({
@@ -94,17 +99,25 @@ export default function SubscriptionIndex({
     }, [flash]);
 
     const selected = plans.find((plan) => plan.key === data.requested_plan);
-    const extras = selected?.allows_extra_users ? data.requested_extra_users : 0;
+    const extras = selected?.allows_extra_users
+        ? data.requested_extra_users
+        : 0;
     const totalSeats = (selected?.users ?? 0) + extras;
     const extrasCost = extras * extraUserPrice;
-    const monthlyTotal = selected?.price !== null && selected?.price !== undefined ? selected.price + extrasCost : null;
+    const monthlyTotal =
+        selected?.price !== null && selected?.price !== undefined
+            ? selected.price + extrasCost
+            : null;
 
     const expired = tenant.is_trial_expired;
     const trialEnd = formatDate(tenant.trial_ends_at);
     const requestedAt = formatDate(tenant.plan_requested_at);
 
     const setExtras = (value: number) =>
-        setData('requested_extra_users', Math.min(maxExtraUsers, Math.max(0, value)));
+        setData(
+            'requested_extra_users',
+            Math.min(maxExtraUsers, Math.max(0, value)),
+        );
 
     const submit = (event: React.FormEvent) => {
         event.preventDefault();
@@ -122,9 +135,12 @@ export default function SubscriptionIndex({
                             <Sparkles className="size-4" />
                         </div>
                         <div>
-                            <p className="text-sm font-semibold text-foreground">{tenant.name}</p>
+                            <p className="text-sm font-semibold text-foreground">
+                                {tenant.name}
+                            </p>
                             <p className="text-xs text-muted-foreground">
-                                Plano {tenant.plan_name} · {tenant.seats_in_use}/{tenant.seat_limit} usuários
+                                Plano {tenant.plan_name} · {tenant.seats_in_use}
+                                /{tenant.seat_limit} usuários
                             </p>
                         </div>
                     </div>
@@ -135,7 +151,12 @@ export default function SubscriptionIndex({
                                 <Link href="/dashboard">Voltar ao sistema</Link>
                             </Button>
                         )}
-                        <Button variant="outline" size="sm" onClick={() => router.post('/logout')} className="gap-1.5">
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => router.post('/logout')}
+                            className="gap-1.5"
+                        >
                             <LogOut className="size-4" />
                             Sair
                         </Button>
@@ -146,16 +167,24 @@ export default function SubscriptionIndex({
             <main className="mx-auto max-w-6xl px-6 py-10">
                 <div
                     className={`mb-8 rounded-2xl border p-6 ${
-                        expired ? 'border-destructive/30 bg-destructive/5' : 'border-primary/20 bg-primary/5'
+                        expired
+                            ? 'border-destructive/30 bg-destructive/5'
+                            : 'border-primary/20 bg-primary/5'
                     }`}
                 >
                     <div className="flex items-start gap-4">
                         <div
                             className={`flex size-11 shrink-0 items-center justify-center rounded-xl ${
-                                expired ? 'bg-destructive/10 text-destructive' : 'bg-primary/10 text-primary'
+                                expired
+                                    ? 'bg-destructive/10 text-destructive'
+                                    : 'bg-primary/10 text-primary'
                             }`}
                         >
-                            {expired ? <AlertTriangle className="size-5" /> : <Clock className="size-5" />}
+                            {expired ? (
+                                <AlertTriangle className="size-5" />
+                            ) : (
+                                <Clock className="size-5" />
+                            )}
                         </div>
                         <div className="min-w-0">
                             <h1 className="text-xl font-bold tracking-tight text-foreground md:text-2xl">
@@ -180,7 +209,8 @@ export default function SubscriptionIndex({
                     <div className="mb-8 rounded-2xl border border-amber-300 bg-amber-50 p-5 dark:border-amber-700/60 dark:bg-amber-950/40">
                         <div className="flex flex-wrap items-center justify-between gap-3">
                             <p className="text-sm text-amber-900 dark:text-amber-100">
-                                <strong>Complete o cadastro da clínica</strong> antes de contratar um plano. Precisamos dos
+                                <strong>Complete o cadastro da clínica</strong>{' '}
+                                antes de contratar um plano. Precisamos dos
                                 dados para emitir a nota fiscal.
                             </p>
                             <Link
@@ -199,22 +229,29 @@ export default function SubscriptionIndex({
                         <div className="flex items-start gap-3">
                             <Check className="mt-0.5 size-5 shrink-0 text-secondary-foreground" />
                             <p className="text-sm text-foreground">
-                                <strong>Solicitação em análise.</strong> Você pediu o plano{' '}
-                                <strong className="capitalize">{tenant.requested_plan}</strong>
+                                <strong>Solicitação em análise.</strong> Você
+                                pediu o plano{' '}
+                                <strong className="capitalize">
+                                    {tenant.requested_plan}
+                                </strong>
                                 {tenant.requested_extra_users > 0
                                     ? ` com ${tenant.requested_extra_users} usuários adicionais`
                                     : ''}
-                                {requestedAt ? ` em ${requestedAt}` : ''}. Nossa equipe entrará em contato para concluir a
+                                {requestedAt ? ` em ${requestedAt}` : ''}. Nossa
+                                equipe entrará em contato para concluir a
                                 ativação.
                             </p>
                         </div>
                     </div>
                 )}
 
-                <h2 className="mb-1 text-lg font-semibold text-foreground">Escolha seu plano</h2>
+                <h2 className="mb-1 text-lg font-semibold text-foreground">
+                    Escolha seu plano
+                </h2>
                 <p className="mb-6 text-sm text-muted-foreground">
-                    Todos os planos dão acesso ao sistema completo. O que muda é quantos usuários e quanto
-                    armazenamento cabem. A ativação é feita pela nossa equipe após o contato.
+                    Todos os planos dão acesso ao sistema completo. O que muda é
+                    quantos usuários e quanto armazenamento cabem. A ativação é
+                    feita pela nossa equipe após o contato.
                 </p>
 
                 <form onSubmit={submit}>
@@ -227,7 +264,9 @@ export default function SubscriptionIndex({
                                 <button
                                     key={plan.key}
                                     type="button"
-                                    onClick={() => setData('requested_plan', plan.key)}
+                                    onClick={() =>
+                                        setData('requested_plan', plan.key)
+                                    }
                                     disabled={!canManage}
                                     className={`flex flex-col rounded-2xl border p-6 text-left transition-all disabled:cursor-not-allowed disabled:opacity-60 ${
                                         active
@@ -236,13 +275,19 @@ export default function SubscriptionIndex({
                                     }`}
                                 >
                                     <div className="mb-2 flex items-center justify-between gap-2">
-                                        <h3 className="text-base font-bold text-foreground">{plan.name}</h3>
+                                        <h3 className="text-base font-bold text-foreground">
+                                            {plan.name}
+                                        </h3>
                                         <span
                                             className={`flex size-5 shrink-0 items-center justify-center rounded-full border ${
-                                                active ? 'border-primary bg-primary text-primary-foreground' : 'border-border'
+                                                active
+                                                    ? 'border-primary bg-primary text-primary-foreground'
+                                                    : 'border-border'
                                             }`}
                                         >
-                                            {active && <Check className="size-3" />}
+                                            {active && (
+                                                <Check className="size-3" />
+                                            )}
                                         </span>
                                     </div>
 
@@ -252,15 +297,21 @@ export default function SubscriptionIndex({
                                         </span>
                                     )}
 
-                                    <p className="mb-4 text-sm text-muted-foreground">{plan.tagline}</p>
+                                    <p className="mb-4 text-sm text-muted-foreground">
+                                        {plan.tagline}
+                                    </p>
 
                                     <p className="mb-4 text-2xl font-bold text-foreground">
                                         {plan.price === null ? (
-                                            <span className="text-base font-semibold text-muted-foreground">Sob consulta</span>
+                                            <span className="text-base font-semibold text-muted-foreground">
+                                                Sob consulta
+                                            </span>
                                         ) : (
                                             <>
                                                 {money(plan.price)}
-                                                <span className="text-sm font-normal text-muted-foreground">/mês</span>
+                                                <span className="text-sm font-normal text-muted-foreground">
+                                                    /mês
+                                                </span>
                                             </>
                                         )}
                                     </p>
@@ -269,23 +320,31 @@ export default function SubscriptionIndex({
                                         <li className="flex items-center gap-2 text-sm text-foreground">
                                             <Users className="size-4 shrink-0 text-primary" />
                                             <span>
-                                                <strong>{plan.users} usuários</strong> incluídos
+                                                <strong>
+                                                    {plan.users} usuários
+                                                </strong>{' '}
+                                                incluídos
                                             </span>
                                         </li>
                                         <li className="flex items-center gap-2 text-sm text-foreground">
                                             <HardDrive className="size-4 shrink-0 text-primary" />
                                             <span>
-                                                <strong>{storage(plan.storage_mb)}</strong> de armazenamento
+                                                <strong>
+                                                    {storage(plan.storage_mb)}
+                                                </strong>{' '}
+                                                de armazenamento
                                             </span>
                                         </li>
                                         <li className="flex items-center gap-2 text-sm text-foreground">
                                             <Check className="size-4 shrink-0 text-secondary-foreground" />
-                                            Sistema completo, sem recurso bloqueado
+                                            Sistema completo, sem recurso
+                                            bloqueado
                                         </li>
                                         {plan.allows_extra_users && (
                                             <li className="flex items-center gap-2 text-sm text-muted-foreground">
                                                 <Plus className="size-4 shrink-0" />
-                                                Usuários extras por {money(extraUserPrice)}/mês
+                                                Usuários extras por{' '}
+                                                {money(extraUserPrice)}/mês
                                             </li>
                                         )}
                                     </ul>
@@ -293,16 +352,24 @@ export default function SubscriptionIndex({
                             );
                         })}
                     </div>
-                    <InputError message={errors.requested_plan} className="mt-2" />
+                    <InputError
+                        message={errors.requested_plan}
+                        className="mt-2"
+                    />
 
                     <div className="mt-4 rounded-2xl border border-border bg-muted/40 p-6">
-                        <h3 className="font-semibold text-foreground">Todos os planos incluem</h3>
+                        <h3 className="font-semibold text-foreground">
+                            Todos os planos incluem
+                        </h3>
                         <p className="mt-1 text-sm text-muted-foreground">
                             Nenhum recurso fica preso a um plano mais caro.
                         </p>
                         <ul className="mt-4 grid gap-2 sm:grid-cols-2">
                             {includedFeatures.map((feature) => (
-                                <li key={feature} className="flex items-start gap-2 text-sm text-foreground/90">
+                                <li
+                                    key={feature}
+                                    className="flex items-start gap-2 text-sm text-foreground/90"
+                                >
                                     <Check className="mt-0.5 size-4 shrink-0 text-secondary-foreground" />
                                     {feature}
                                 </li>
@@ -315,10 +382,14 @@ export default function SubscriptionIndex({
                         <div className="mt-6 rounded-2xl border border-border bg-card p-6">
                             <div className="flex flex-wrap items-center justify-between gap-4">
                                 <div>
-                                    <h3 className="font-semibold text-foreground">Usuários adicionais</h3>
+                                    <h3 className="font-semibold text-foreground">
+                                        Usuários adicionais
+                                    </h3>
                                     <p className="mt-1 text-sm text-muted-foreground">
-                                        O plano {selected.name} inclui {selected.users} usuários. Cada usuário a mais custa{' '}
-                                        {money(extraUserPrice)} por mês.
+                                        O plano {selected.name} inclui{' '}
+                                        {selected.users} usuários. Cada usuário
+                                        a mais custa {money(extraUserPrice)} por
+                                        mês.
                                     </p>
                                 </div>
 
@@ -333,12 +404,17 @@ export default function SubscriptionIndex({
                                     >
                                         <Minus className="size-4" />
                                     </Button>
-                                    <span className="w-10 text-center text-lg font-semibold text-foreground">{extras}</span>
+                                    <span className="w-10 text-center text-lg font-semibold text-foreground">
+                                        {extras}
+                                    </span>
                                     <Button
                                         type="button"
                                         variant="outline"
                                         size="icon"
-                                        disabled={!canManage || extras >= maxExtraUsers}
+                                        disabled={
+                                            !canManage ||
+                                            extras >= maxExtraUsers
+                                        }
                                         onClick={() => setExtras(extras + 1)}
                                         aria-label="Adicionar um usuário adicional"
                                     >
@@ -346,7 +422,10 @@ export default function SubscriptionIndex({
                                     </Button>
                                 </div>
                             </div>
-                            <InputError message={errors.requested_extra_users} className="mt-2" />
+                            <InputError
+                                message={errors.requested_extra_users}
+                                className="mt-2"
+                            />
 
                             <div className="mt-5 flex flex-wrap items-end justify-between gap-4 border-t border-border pt-5">
                                 <div className="text-sm text-muted-foreground">
@@ -357,11 +436,16 @@ export default function SubscriptionIndex({
                                     · sua equipe usa {tenant.seats_in_use} hoje
                                 </div>
                                 <div className="text-right">
-                                    <p className="text-xs text-muted-foreground">Total mensal estimado</p>
+                                    <p className="text-xs text-muted-foreground">
+                                        Total mensal estimado
+                                    </p>
                                     <p className="text-xl font-bold text-foreground">
                                         {monthlyTotal === null ? (
                                             <span className="text-base text-muted-foreground">
-                                                Sob consulta{extras > 0 ? ` + ${money(extrasCost)}` : ''}
+                                                Sob consulta
+                                                {extras > 0
+                                                    ? ` + ${money(extrasCost)}`
+                                                    : ''}
                                             </span>
                                         ) : (
                                             money(monthlyTotal)
@@ -374,12 +458,17 @@ export default function SubscriptionIndex({
 
                     <div className="mt-6 grid gap-2">
                         <Label htmlFor="plan_request_notes">
-                            Observações <span className="font-normal text-muted-foreground">(opcional)</span>
+                            Observações{' '}
+                            <span className="font-normal text-muted-foreground">
+                                (opcional)
+                            </span>
                         </Label>
                         <textarea
                             id="plan_request_notes"
                             value={data.plan_request_notes}
-                            onChange={(e) => setData('plan_request_notes', e.target.value)}
+                            onChange={(e) =>
+                                setData('plan_request_notes', e.target.value)
+                            }
                             disabled={!canManage}
                             rows={3}
                             maxLength={2000}
@@ -391,9 +480,15 @@ export default function SubscriptionIndex({
 
                     {canManage ? (
                         <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
-                            <Button type="submit" disabled={processing} className="gap-2">
+                            <Button
+                                type="submit"
+                                disabled={processing}
+                                className="gap-2"
+                            >
                                 {processing && <Spinner className="mr-1" />}
-                                {tenant.has_pending_plan_request ? 'Atualizar solicitação' : 'Solicitar plano'}
+                                {tenant.has_pending_plan_request
+                                    ? 'Atualizar solicitação'
+                                    : 'Solicitar plano'}
                                 <ArrowRight className="size-4" />
                             </Button>
 
@@ -409,14 +504,20 @@ export default function SubscriptionIndex({
                         </div>
                     ) : (
                         <p className="mt-6 rounded-lg border border-border bg-muted/50 p-4 text-sm text-muted-foreground">
-                            Somente um administrador da organização pode solicitar a contratação do plano. Fale com quem
+                            Somente um administrador da organização pode
+                            solicitar a contratação do plano. Fale com quem
                             administra a conta de {tenant.name}.
                         </p>
                     )}
                 </form>
             </main>
 
-            <Toaster position="top-right" richColors closeButton theme="system" />
+            <Toaster
+                position="top-right"
+                richColors
+                closeButton
+                theme="system"
+            />
         </div>
     );
 }

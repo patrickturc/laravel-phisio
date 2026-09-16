@@ -55,20 +55,26 @@ class ReportController extends Controller
         $chartStartDate = $startDate ? Carbon::parse($startDate)->startOfMonth() : $now->copy()->subMonths(11)->startOfMonth();
         $chartEndDate = $endDate ? Carbon::parse($endDate)->endOfMonth() : $now->copy()->endOfMonth();
 
+        $monthExpression = $this->monthTruncExpression('appointment_date');
+
         $appointmentsPerMonth = Appointment::select(
-            DB::raw("to_char(appointment_date, 'YYYY-MM') as month"),
+            DB::raw("{$monthExpression} as month"),
             DB::raw('count(*) as total'),
-            DB::raw("count(*) filter (where status = 'completed') as completed"),
-            DB::raw("count(*) filter (where status = 'cancelled') as cancelled"),
-            DB::raw("count(*) filter (where status = 'scheduled') as scheduled")
+            // count(*) filter (where ...) is Postgres-only; SUM(CASE WHEN ...)
+            // is the portable equivalent and runs the same on sqlite/MySQL.
+            DB::raw("SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed"),
+            DB::raw("SUM(CASE WHEN status = 'cancelled' THEN 1 ELSE 0 END) as cancelled"),
+            DB::raw("SUM(CASE WHEN status = 'scheduled' THEN 1 ELSE 0 END) as scheduled")
         )
             ->whereBetween('appointment_date', [$chartStartDate->format('Y-m-d'), $chartEndDate->format('Y-m-d')])
             ->groupBy('month')
             ->orderBy('month')
             ->get();
 
+        $evolutionMonthExpression = $this->monthTruncExpression('data_atendimento');
+
         $evolutionsPerMonth = Evolution::select(
-            DB::raw("to_char(data_atendimento, 'YYYY-MM') as month"),
+            DB::raw("{$evolutionMonthExpression} as month"),
             DB::raw('count(*) as total')
         )
             ->whereBetween('data_atendimento', [$chartStartDate->format('Y-m-d'), $chartEndDate->format('Y-m-d')])
@@ -95,6 +101,21 @@ class ReportController extends Controller
                 'end_date' => $endDate,
             ],
         ]);
+    }
+
+    /**
+     * SQL expression that truncates a date column to "YYYY-MM", written for
+     * whichever driver is active. to_char() is Postgres-only and breaks
+     * outright on sqlite (used in dev/tests), where strftime() is the
+     * equivalent; MySQL gets DATE_FORMAT().
+     */
+    private function monthTruncExpression(string $column): string
+    {
+        return match (DB::connection()->getDriverName()) {
+            'sqlite' => "strftime('%Y-%m', {$column})",
+            'mysql', 'mariadb' => "DATE_FORMAT({$column}, '%Y-%m')",
+            default => "to_char({$column}, 'YYYY-MM')",
+        };
     }
 
     public function pdf(Request $request)

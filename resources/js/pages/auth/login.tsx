@@ -32,7 +32,7 @@ export default function Login({
             <Form
                 {...store.form()}
                 resetOnSuccess={['password']}
-                className="flex flex-col gap-5 mt-2"
+                className="mt-2 flex flex-col gap-5"
             >
                 {({ processing, errors }) => (
                     <>
@@ -48,7 +48,7 @@ export default function Login({
                                     tabIndex={1}
                                     autoComplete="email"
                                     placeholder="seu@email.com"
-                                    className="bg-neutral-50 border-neutral-200 focus:border-primary focus:ring-primary/20"
+                                    className="border-neutral-200 bg-neutral-50 focus:border-primary focus:ring-primary/20"
                                 />
                                 <InputError message={errors.email} />
                             </div>
@@ -73,7 +73,7 @@ export default function Login({
                                     tabIndex={2}
                                     autoComplete="current-password"
                                     placeholder="••••••••"
-                                    className="bg-neutral-50 border-neutral-200 focus:border-primary focus:ring-primary/20"
+                                    className="border-neutral-200 bg-neutral-50 focus:border-primary focus:ring-primary/20"
                                 />
                                 <InputError message={errors.password} />
                             </div>
@@ -83,14 +83,19 @@ export default function Login({
                                     id="remember"
                                     name="remember"
                                     tabIndex={3}
-                                    className="data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+                                    className="data-[state=checked]:border-primary data-[state=checked]:bg-primary"
                                 />
-                                <Label htmlFor="remember" className="font-normal">Lembrar de mim</Label>
+                                <Label
+                                    htmlFor="remember"
+                                    className="font-normal"
+                                >
+                                    Lembrar de mim
+                                </Label>
                             </div>
 
                             <Button
                                 type="submit"
-                                className="mt-2 w-full bg-primary text-white hover:bg-primary/90 shadow-sm"
+                                className="mt-2 w-full bg-primary text-white shadow-sm hover:bg-primary/90"
                                 tabIndex={4}
                                 disabled={processing}
                                 data-test="login-button"
@@ -112,13 +117,12 @@ export default function Login({
                                 </p>
                             )}
                         </div>
-
                     </>
                 )}
             </Form>
 
             {status && (
-                <div className="mb-4 text-center text-sm font-medium text-emerald-600 bg-emerald-50 py-2 rounded-lg border border-emerald-100 mt-4">
+                <div className="mt-4 mb-4 rounded-lg border border-emerald-100 bg-emerald-50 py-2 text-center text-sm font-medium text-emerald-600">
                     {status}
                 </div>
             )}

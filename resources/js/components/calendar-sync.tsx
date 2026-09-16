@@ -1,11 +1,11 @@
-import { useState } from 'react';
 import { usePage, router } from '@inertiajs/react';
+import { CalendarDays, Copy, RefreshCw, Unplug } from 'lucide-react';
+import { useState } from 'react';
+import { toast } from 'sonner';
 import Heading from '@/components/heading';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { CalendarDays, Copy, RefreshCw, Unplug } from 'lucide-react';
-import { toast } from 'sonner';
 import { generate, revoke } from '@/routes/profile/calendar-token';
 
 export default function CalendarSync() {
@@ -14,37 +14,46 @@ export default function CalendarSync() {
     const [revoking, setRevoking] = useState(false);
 
     const hasToken = !!auth.user.calendar_token;
-    
+
     // Construct the absolute feed URL
-    const feedUrl = hasToken 
+    const feedUrl = hasToken
         ? `${window.location.origin}/feed/calendar/${auth.user.calendar_token}.ics`
         : '';
-        
+
     const webcalUrl = hasToken
         ? feedUrl.replace(/^https?:\/\//i, 'webcal://')
         : '';
 
     const handleGenerate = () => {
         setGenerating(true);
-        router.post(generate().url, {}, {
-            preserveScroll: true,
-            onSuccess: () => {
-                toast.success('Link gerado com sucesso!');
+        router.post(
+            generate().url,
+            {},
+            {
+                preserveScroll: true,
+                onSuccess: () => {
+                    toast.success('Link gerado com sucesso!');
+                },
+                onFinish: () => setGenerating(false),
             },
-            onFinish: () => setGenerating(false)
-        });
+        );
     };
 
     const handleRevoke = () => {
-        if (!confirm('Tem certeza? Isso fará com que o link antigo pare de funcionar nas suas agendas.')) return;
-        
+        if (
+            !confirm(
+                'Tem certeza? Isso fará com que o link antigo pare de funcionar nas suas agendas.',
+            )
+        )
+            return;
+
         setRevoking(true);
         router.delete(revoke().url, {
             preserveScroll: true,
             onSuccess: () => {
                 toast.success('Sincronização desativada.');
             },
-            onFinish: () => setRevoking(false)
+            onFinish: () => setRevoking(false),
         });
     };
 
@@ -62,20 +71,29 @@ export default function CalendarSync() {
             />
 
             <div className="rounded-lg border bg-card text-card-foreground shadow-sm">
-                <div className="p-6 space-y-4">
+                <div className="space-y-4 p-6">
                     {!hasToken ? (
-                        <div className="text-center space-y-4">
-                            <div className="bg-primary/10 w-12 h-12 rounded-full flex items-center justify-center mx-auto text-primary">
-                                <CalendarDays className="w-6 h-6" />
+                        <div className="space-y-4 text-center">
+                            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
+                                <CalendarDays className="h-6 w-6" />
                             </div>
                             <div className="space-y-2">
-                                <h3 className="font-semibold text-lg">Sincronize seus agendamentos</h3>
-                                <p className="text-sm text-muted-foreground max-w-sm mx-auto">
-                                    Gere um link secreto para visualizar suas consultas diretamente no seu app de calendário preferido.
+                                <h3 className="text-lg font-semibold">
+                                    Sincronize seus agendamentos
+                                </h3>
+                                <p className="mx-auto max-w-sm text-sm text-muted-foreground">
+                                    Gere um link secreto para visualizar suas
+                                    consultas diretamente no seu app de
+                                    calendário preferido.
                                 </p>
                             </div>
-                            <Button onClick={handleGenerate} disabled={generating}>
-                                {generating && <RefreshCw className="w-4 h-4 mr-2 animate-spin" />}
+                            <Button
+                                onClick={handleGenerate}
+                                disabled={generating}
+                            >
+                                {generating && (
+                                    <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                                )}
                                 Gerar Link de Sincronização
                             </Button>
                         </div>
@@ -84,35 +102,48 @@ export default function CalendarSync() {
                             <div className="space-y-2">
                                 <Label>Seu Link Secreto (Feed iCal)</Label>
                                 <div className="flex gap-2">
-                                    <Input readOnly value={feedUrl} className="font-mono text-sm bg-muted" />
-                                    <Button variant="secondary" onClick={copyToClipboard}>
-                                        <Copy className="w-4 h-4 mr-2" />
+                                    <Input
+                                        readOnly
+                                        value={feedUrl}
+                                        className="bg-muted font-mono text-sm"
+                                    />
+                                    <Button
+                                        variant="secondary"
+                                        onClick={copyToClipboard}
+                                    >
+                                        <Copy className="mr-2 h-4 w-4" />
                                         Copiar
                                     </Button>
                                 </div>
-                                <p className="text-xs text-muted-foreground mt-1">
-                                    Copie este link e adicione como uma nova agenda "Por URL" no seu Outlook ou Google Calendar.
+                                <p className="mt-1 text-xs text-muted-foreground">
+                                    Copie este link e adicione como uma nova
+                                    agenda "Por URL" no seu Outlook ou Google
+                                    Calendar.
                                 </p>
                             </div>
 
-                            <div className="pt-4 flex items-center gap-3 border-t">
-                                <Button asChild variant="outline" className="gap-2">
+                            <div className="flex items-center gap-3 border-t pt-4">
+                                <Button
+                                    asChild
+                                    variant="outline"
+                                    className="gap-2"
+                                >
                                     <a href={webcalUrl}>
-                                        <CalendarDays className="w-4 h-4" />
+                                        <CalendarDays className="h-4 w-4" />
                                         Abrir no App de Calendário
                                     </a>
                                 </Button>
 
-                                <Button 
-                                    variant="ghost" 
-                                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                                <Button
+                                    variant="ghost"
+                                    className="text-destructive hover:bg-destructive/10 hover:text-destructive"
                                     onClick={handleRevoke}
                                     disabled={revoking}
                                 >
                                     {revoking ? (
-                                        <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                                        <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
                                     ) : (
-                                        <Unplug className="w-4 h-4 mr-2" />
+                                        <Unplug className="mr-2 h-4 w-4" />
                                     )}
                                     Desativar Sincronização
                                 </Button>

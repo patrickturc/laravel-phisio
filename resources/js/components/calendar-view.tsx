@@ -1,22 +1,37 @@
-import FullCalendar from '@fullcalendar/react';
-import dayGridPlugin from '@fullcalendar/daygrid';
-import timeGridPlugin from '@fullcalendar/timegrid';
-import interactionPlugin from '@fullcalendar/interaction';
 import ptBrLocale from '@fullcalendar/core/locales/pt-br';
+import dayGridPlugin from '@fullcalendar/daygrid';
+import interactionPlugin from '@fullcalendar/interaction';
+import FullCalendar from '@fullcalendar/react';
+import timeGridPlugin from '@fullcalendar/timegrid';
 import { router } from '@inertiajs/react';
 import { useRef, useEffect } from 'react';
 
 interface CalendarViewProps {
     onEventClick?: (eventId: string) => void;
-    onDateSelect?: (startDate: string, startTime: string, durationMinutes?: number) => void;
-    onEventDrop?: (eventId: string, newDate: string, newTime: string, isGroup?: boolean) => void;
+    onDateSelect?: (
+        startDate: string,
+        startTime: string,
+        durationMinutes?: number,
+    ) => void;
+    onEventDrop?: (
+        eventId: string,
+        newDate: string,
+        newTime: string,
+        isGroup?: boolean,
+    ) => void;
     refreshTrigger?: any;
     userId?: string;
 }
 
 let isCalendarRestoring = false;
 
-export default function CalendarView({ onEventClick, onDateSelect, onEventDrop, refreshTrigger, userId }: CalendarViewProps) {
+export default function CalendarView({
+    onEventClick,
+    onDateSelect,
+    onEventDrop,
+    refreshTrigger,
+    userId,
+}: CalendarViewProps) {
     const calendarRef = useRef<FullCalendar>(null);
 
     useEffect(() => {
@@ -47,27 +62,30 @@ export default function CalendarView({ onEventClick, onDateSelect, onEventDrop, 
     const handleDateSelect = (selectInfo: any) => {
         // Prepare the dates
         const startDate = selectInfo.startStr.split('T')[0];
-        const startTime = selectInfo.startStr.split('T')[1]?.substring(0, 5) || '08:00';
-        
+        const startTime =
+            selectInfo.startStr.split('T')[1]?.substring(0, 5) || '08:00';
+
         // Calculate duration if the user dragged multiple slots
         let durationMinutes = 60; // Default
         if (selectInfo.start && selectInfo.end) {
-            durationMinutes = Math.round((selectInfo.end.getTime() - selectInfo.start.getTime()) / 60000);
+            durationMinutes = Math.round(
+                (selectInfo.end.getTime() - selectInfo.start.getTime()) / 60000,
+            );
         }
-        
+
         if (onDateSelect) {
             onDateSelect(startDate, startTime, durationMinutes);
         } else {
             const params = new URLSearchParams({
                 date: startDate,
-                time: startTime
+                time: startTime,
             });
             router.visit(`/appointments/create?${params.toString()}`);
         }
     };
 
     return (
-        <div className="bg-card/60 backdrop-blur-xl border border-border/50 rounded-2xl p-3 sm:p-6 shadow-sm calendar-container w-full h-[calc(100vh-200px)] min-h-[500px] flex flex-col">
+        <div className="calendar-container flex h-[calc(100vh-200px)] min-h-[500px] w-full flex-col rounded-2xl border border-border/50 bg-card/60 p-3 shadow-sm backdrop-blur-xl sm:p-6">
             <style>{`
                 /* Google Calendar Style Overrides for FullCalendar */
                 .calendar-container .fc {
@@ -222,15 +240,19 @@ export default function CalendarView({ onEventClick, onDateSelect, onEventDrop, 
                 }
 
             `}</style>
-            
+
             <FullCalendar
                 ref={calendarRef}
                 plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
-                initialView={typeof window !== 'undefined' && window.innerWidth < 768 ? 'timeGridDay' : 'timeGridWeek'}
+                initialView={
+                    typeof window !== 'undefined' && window.innerWidth < 768
+                        ? 'timeGridDay'
+                        : 'timeGridWeek'
+                }
                 headerToolbar={{
                     left: 'prev,next today',
                     center: 'title',
-                    right: 'dayGridMonth,timeGridWeek,timeGridDay'
+                    right: 'dayGridMonth,timeGridWeek,timeGridDay',
                 }}
                 locale={ptBrLocale}
                 events={{
@@ -242,8 +264,12 @@ export default function CalendarView({ onEventClick, onDateSelect, onEventDrop, 
                 eventDrop={(info) => {
                     if (onEventDrop) {
                         const newDate = info.event.startStr.split('T')[0];
-                        const newTime = info.event.startStr.split('T')[1]?.substring(0, 5) || '08:00';
-                        const isGroup = info.event.extendedProps.type === 'group';
+                        const newTime =
+                            info.event.startStr
+                                .split('T')[1]
+                                ?.substring(0, 5) || '08:00';
+                        const isGroup =
+                            info.event.extendedProps.type === 'group';
                         onEventDrop(info.event.id, newDate, newTime, isGroup);
                     }
                 }}
@@ -259,9 +285,15 @@ export default function CalendarView({ onEventClick, onDateSelect, onEventDrop, 
                 eventDidMount={(info) => {
                     // Hover tooltip listing the patients of a group class.
                     if (info.event.extendedProps.type !== 'group') return;
-                    const names = (info.event.extendedProps.patient_names as string[] | undefined) ?? [];
+                    const names =
+                        (info.event.extendedProps.patient_names as
+                            | string[]
+                            | undefined) ?? [];
                     if (names.length === 0) {
-                        info.el.setAttribute('title', `${info.event.title}\nSem alunos na turma`);
+                        info.el.setAttribute(
+                            'title',
+                            `${info.event.title}\nSem alunos na turma`,
+                        );
                         return;
                     }
                     info.el.setAttribute(
@@ -278,33 +310,54 @@ export default function CalendarView({ onEventClick, onDateSelect, onEventDrop, 
                         api.changeView('timeGridWeek');
                     }
                 }}
-                datesSet={(arg) => {
+                datesSet={() => {
                     isCalendarRestoring = true;
                     setTimeout(() => {
-                        const timegridBody = document.querySelector('.fc-timegrid-body');
+                        const timegridBody =
+                            document.querySelector('.fc-timegrid-body');
                         if (timegridBody) {
-                            const scroller = timegridBody.closest('.fc-scroller') as HTMLElement;
+                            const scroller = timegridBody.closest(
+                                '.fc-scroller',
+                            ) as HTMLElement;
                             if (scroller) {
-                                const savedScroll = localStorage.getItem('calendarScrollTop');
+                                const savedScroll =
+                                    localStorage.getItem('calendarScrollTop');
                                 if (savedScroll !== null) {
-                                    scroller.scrollTop = parseInt(savedScroll, 10);
+                                    scroller.scrollTop = parseInt(
+                                        savedScroll,
+                                        10,
+                                    );
                                 }
-                                
-                                if (!scroller.hasAttribute('data-scroll-listener')) {
-                                    scroller.setAttribute('data-scroll-listener', 'true');
-                                    scroller.addEventListener('scroll', (e) => {
-                                        if (isCalendarRestoring) return;
-                                        const target = e.target as HTMLElement;
-                                        localStorage.setItem('calendarScrollTop', target.scrollTop.toString());
-                                    }, { passive: true });
+
+                                if (
+                                    !scroller.hasAttribute(
+                                        'data-scroll-listener',
+                                    )
+                                ) {
+                                    scroller.setAttribute(
+                                        'data-scroll-listener',
+                                        'true',
+                                    );
+                                    scroller.addEventListener(
+                                        'scroll',
+                                        (e) => {
+                                            if (isCalendarRestoring) return;
+                                            const target =
+                                                e.target as HTMLElement;
+                                            localStorage.setItem(
+                                                'calendarScrollTop',
+                                                target.scrollTop.toString(),
+                                            );
+                                        },
+                                        { passive: true },
+                                    );
                                 }
                             }
                         }
-                        
+
                         setTimeout(() => {
                             isCalendarRestoring = false;
                         }, 100);
-                        
                     }, 50);
                 }}
                 nowIndicator={true}
@@ -313,22 +366,33 @@ export default function CalendarView({ onEventClick, onDateSelect, onEventDrop, 
                 dayHeaderContent={(args) => {
                     if (args.view.type === 'dayGridMonth') {
                         return (
-                            <div className="py-2 text-sm font-medium text-gray-500 uppercase tracking-wider">
-                                {args.date.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '')}
+                            <div className="py-2 text-sm font-medium tracking-wider text-gray-500 uppercase">
+                                {args.date
+                                    .toLocaleDateString('pt-BR', {
+                                        weekday: 'short',
+                                    })
+                                    .replace('.', '')}
                             </div>
                         );
                     }
                     // Custom Google-like header
-                    const dayName = args.date.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '').toUpperCase();
+                    const dayName = args.date
+                        .toLocaleDateString('pt-BR', { weekday: 'short' })
+                        .replace('.', '')
+                        .toUpperCase();
                     const dayNumber = args.date.getDate();
                     const isToday = args.isToday;
-                    
+
                     return (
                         <div className="flex flex-col items-center py-1">
-                            <span className={`text-[11px] font-medium mb-1 tracking-wider ${isToday ? 'text-blue-600' : 'text-gray-500'}`}>
+                            <span
+                                className={`mb-1 text-[11px] font-medium tracking-wider ${isToday ? 'text-blue-600' : 'text-gray-500'}`}
+                            >
                                 {dayName}
                             </span>
-                            <span className={`text-2xl font-normal w-[46px] h-[46px] flex items-center justify-center rounded-full transition-colors ${isToday ? 'bg-blue-600 text-white' : 'text-gray-700 hover:bg-gray-100'}`}>
+                            <span
+                                className={`flex h-[46px] w-[46px] items-center justify-center rounded-full text-2xl font-normal transition-colors ${isToday ? 'bg-blue-600 text-white' : 'text-gray-700 hover:bg-gray-100'}`}
+                            >
                                 {dayNumber}
                             </span>
                         </div>
@@ -337,21 +401,33 @@ export default function CalendarView({ onEventClick, onDateSelect, onEventDrop, 
                 eventTimeFormat={{
                     hour: '2-digit',
                     minute: '2-digit',
-                    meridiem: false
+                    meridiem: false,
                 }}
                 eventContent={(eventInfo) => {
-                    const isGroup = eventInfo.event.extendedProps.type === 'group';
+                    const isGroup =
+                        eventInfo.event.extendedProps.type === 'group';
                     return (
-                        <div className="px-1 w-full flex flex-col leading-none justify-center h-full">
+                        <div className="flex h-full w-full flex-col justify-center px-1 leading-none">
                             <div className="flex items-start justify-between gap-1">
-                                <span className="font-semibold text-xs truncate" title={eventInfo.event.title}>{eventInfo.event.title}</span>
+                                <span
+                                    className="truncate text-xs font-semibold"
+                                    title={eventInfo.event.title}
+                                >
+                                    {eventInfo.event.title}
+                                </span>
                                 {isGroup && (
-                                    <span className="text-[9px] font-medium bg-white/20 px-1 rounded shrink-0 mt-0.5">
-                                        {eventInfo.event.extendedProps.patient_count || 0}/{eventInfo.event.extendedProps.max_participants || 1}
+                                    <span className="mt-0.5 shrink-0 rounded bg-white/20 px-1 text-[9px] font-medium">
+                                        {eventInfo.event.extendedProps
+                                            .patient_count || 0}
+                                        /
+                                        {eventInfo.event.extendedProps
+                                            .max_participants || 1}
                                     </span>
                                 )}
                             </div>
-                            <div className="text-[10px] opacity-80 truncate">{eventInfo.timeText}</div>
+                            <div className="truncate text-[10px] opacity-80">
+                                {eventInfo.timeText}
+                            </div>
                         </div>
                     );
                 }}

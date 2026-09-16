@@ -3,6 +3,7 @@
 use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
+use Spatie\Permission\Models\Role;
 
 test('dev admin can impersonate a tenant and then leave impersonation', function () {
     $tenant = Tenant::factory()->create(['name' => 'Clínica Teste']);
@@ -53,12 +54,17 @@ test('dev admin can create a user for a tenant', function () {
         'tenant_id' => null,
     ]);
 
+    // Role must be one already seeded by AclSeeder — an arbitrary string
+    // used to silently create a brand-new, permission-less role instead of
+    // being rejected.
+    Role::findOrCreate('Fisioterapeuta', 'web');
+
     $this->actingAs($devAdmin);
     $response = $this->post(route('dev-admin.tenants.users.store', $tenant->id), [
         'name' => 'Novo Fisioterapeuta',
         'email' => 'fisio@clinicateste.com',
         'password' => 'secret1234',
-        'role' => 'professional',
+        'role' => 'Fisioterapeuta',
     ]);
 
     $response->assertRedirect();
@@ -67,6 +73,7 @@ test('dev admin can create a user for a tenant', function () {
         'tenant_id' => $tenant->id,
         'is_dev_admin' => false,
     ]);
+    $this->assertTrue(User::where('email', 'fisio@clinicateste.com')->first()->hasRole('Fisioterapeuta'));
 });
 
 test('dev admin can reset password for a tenant user', function () {

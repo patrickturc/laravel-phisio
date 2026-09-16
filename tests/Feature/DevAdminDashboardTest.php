@@ -1,6 +1,5 @@
 <?php
 
-use App\Models\Tenant;
 use App\Models\User;
 
 test('guests are redirected from dev-admin to login', function () {

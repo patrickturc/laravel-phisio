@@ -9,6 +9,7 @@ use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -64,7 +65,7 @@ class ProfileController extends Controller
     public function generateCalendarToken(Request $request): RedirectResponse
     {
         $request->user()->update([
-            'calendar_token' => \Illuminate\Support\Str::random(60),
+            'calendar_token' => Str::random(60),
         ]);
 
         return back()->with('status', 'calendar-token-generated');

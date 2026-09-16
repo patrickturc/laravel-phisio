@@ -43,7 +43,7 @@ return [
     'included_features' => [
         'Agenda com visualização semanal e reagendamento',
         'Prontuário do paciente com documentos anexados',
-        'Evoluções SOAP com fotos e exportação em PDF',
+        'Evoluções SOAP com exportação em PDF',
         'Protocolos clínicos e planos de tratamento',
         'Turmas de Pilates em grupo',
         'Matrículas, planos e pacotes comerciais',

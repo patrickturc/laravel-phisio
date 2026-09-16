@@ -2,9 +2,11 @@
 
 namespace Database\Seeders;
 
-use App\Models\User;
+use App\Models\Tenant;
 // use Illuminate\Database\Console\Seeds\WithoutModelEvents;
+use App\Models\User;
 use Illuminate\Database\Seeder;
+use Spatie\Permission\Models\Role;
 
 class DatabaseSeeder extends Seeder
 {
@@ -14,7 +16,7 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         // 1. Create Default Tenant
-        $tenant = \App\Models\Tenant::firstOrCreate(
+        $tenant = Tenant::firstOrCreate(
             ['slug' => 'fisio-principal'],
             [
                 'name' => 'Fisio Principal',
@@ -49,7 +51,7 @@ class DatabaseSeeder extends Seeder
         );
 
         // 4. Create basic roles and permissions for the tenant admin
-        $adminRole = \Spatie\Permission\Models\Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
+        $adminRole = Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
         $tenantAdmin->assignRole($adminRole);
 
         // Chama o seeder de permissões e perfis

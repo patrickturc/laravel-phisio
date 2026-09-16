@@ -12,6 +12,19 @@ class Appointment extends Model
 
     public $timestamps = false;
 
+    /**
+     * Eloquent's date-cast columns are always written to the database using
+     * this format, regardless of a "date" vs "datetime" cast, and regardless
+     * of what format the cast declares for reading. Left at the default
+     * (Y-m-d H:i:s), appointment_date is stored with a trailing "00:00:00" on
+     * sqlite (no native DATE type), which then fails exact-match and
+     * whereBetween date-string comparisons. Postgres silently swallows this by
+     * coercing to its native DATE column type, hiding the bug there — so it
+     * only surfaces in local dev and tests, where it breaks scheduling
+     * conflict checks and any query that compares appointment_date directly.
+     */
+    protected $dateFormat = 'Y-m-d';
+
     protected $fillable = [
         'tenant_id',
         'user_id',

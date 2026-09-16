@@ -9,7 +9,6 @@ import {
     SidebarGroup,
     SidebarGroupLabel,
     SidebarMenu,
-    SidebarMenuAction,
     SidebarMenuButton,
     SidebarMenuItem,
     SidebarMenuSub,
@@ -27,11 +26,20 @@ export function NavMain({ items = [] }: { items: NavItem[] }) {
             <SidebarGroupLabel>Menu Principal</SidebarGroupLabel>
             <SidebarMenu>
                 {items.map((item) => {
-                    const isActive = isCurrentUrl(item.href) || (item.items?.some((subItem) => isCurrentUrl(subItem.href)) ?? false);
+                    const isActive =
+                        isCurrentUrl(item.href) ||
+                        (item.items?.some((subItem) =>
+                            isCurrentUrl(subItem.href),
+                        ) ??
+                            false);
 
                     if (item.items && item.items.length > 0) {
                         return (
-                            <Collapsible key={item.title} asChild defaultOpen={isActive}>
+                            <Collapsible
+                                key={item.title}
+                                asChild
+                                defaultOpen={isActive}
+                            >
                                 <SidebarMenuItem>
                                     <CollapsibleTrigger asChild>
                                         <SidebarMenuButton
@@ -44,17 +52,26 @@ export function NavMain({ items = [] }: { items: NavItem[] }) {
                                             <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]:rotate-90" />
                                         </SidebarMenuButton>
                                     </CollapsibleTrigger>
-                                    
+
                                     <CollapsibleContent>
                                         <SidebarMenuSub>
                                             {item.items.map((subItem) => (
-                                                <SidebarMenuSubItem key={subItem.title}>
+                                                <SidebarMenuSubItem
+                                                    key={subItem.title}
+                                                >
                                                     <SidebarMenuSubButton
                                                         asChild
-                                                        isActive={isCurrentUrl(subItem.href)}
+                                                        isActive={isCurrentUrl(
+                                                            subItem.href,
+                                                        )}
                                                     >
-                                                        <Link href={subItem.href} prefetch>
-                                                            <span>{subItem.title}</span>
+                                                        <Link
+                                                            href={subItem.href}
+                                                            prefetch
+                                                        >
+                                                            <span>
+                                                                {subItem.title}
+                                                            </span>
                                                         </Link>
                                                     </SidebarMenuSubButton>
                                                 </SidebarMenuSubItem>
@@ -85,4 +102,3 @@ export function NavMain({ items = [] }: { items: NavItem[] }) {
         </SidebarGroup>
     );
 }
-

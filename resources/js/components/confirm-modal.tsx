@@ -1,6 +1,6 @@
-import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AlertTriangle, X } from 'lucide-react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 
 interface ConfirmModalProps {
@@ -45,35 +45,43 @@ export function ConfirmModal({
                         animate={{ opacity: 1, scale: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.95, y: 10 }}
                         transition={{ type: 'spring', duration: 0.3 }}
-                        className="relative bg-card border border-border rounded-2xl shadow-2xl p-6 w-full max-w-md"
+                        className="relative w-full max-w-md rounded-2xl border border-border bg-card p-6 shadow-2xl"
                     >
                         <button
                             onClick={onCancel}
-                            className="absolute top-4 right-4 p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+                            className="absolute top-4 right-4 rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
                         >
                             <X className="size-4" />
                         </button>
 
                         <div className="flex items-start gap-4">
-                            <div className={`p-3 rounded-xl ${variant === 'danger' ? 'bg-red-100 dark:bg-red-500/10' : 'bg-amber-100 dark:bg-amber-500/10'}`}>
-                                <AlertTriangle className={`size-6 ${variant === 'danger' ? 'text-red-600' : 'text-amber-600'}`} />
+                            <div
+                                className={`rounded-xl p-3 ${variant === 'danger' ? 'bg-red-100 dark:bg-red-500/10' : 'bg-amber-100 dark:bg-amber-500/10'}`}
+                            >
+                                <AlertTriangle
+                                    className={`size-6 ${variant === 'danger' ? 'text-red-600' : 'text-amber-600'}`}
+                                />
                             </div>
                             <div className="flex-1">
-                                <h3 className="text-lg font-bold text-foreground mb-1">{title}</h3>
-                                <p className="text-sm text-muted-foreground leading-relaxed">{message}</p>
+                                <h3 className="mb-1 text-lg font-bold text-foreground">
+                                    {title}
+                                </h3>
+                                <p className="text-sm leading-relaxed text-muted-foreground">
+                                    {message}
+                                </p>
                             </div>
                         </div>
 
-                        <div className="flex items-center justify-end gap-3 mt-6 pt-4 border-t border-border/30">
+                        <div className="mt-6 flex items-center justify-end gap-3 border-t border-border/30 pt-4">
                             <button
                                 onClick={onCancel}
-                                className="px-4 py-2 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+                                className="rounded-xl px-4 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
                             >
                                 {cancelLabel}
                             </button>
                             <Button
                                 onClick={onConfirm}
-                                className={`px-5 py-2 rounded-xl text-sm font-semibold text-white shadow-sm ${
+                                className={`rounded-xl px-5 py-2 text-sm font-semibold text-white shadow-sm ${
                                     variant === 'danger'
                                         ? 'bg-red-600 hover:bg-red-700'
                                         : 'bg-amber-600 hover:bg-amber-700'
@@ -100,7 +108,12 @@ export function useConfirmModal() {
         variant?: 'danger' | 'warning';
     }>({ open: false });
 
-    function confirm(options?: { title?: string; message?: string; confirmLabel?: string; variant?: 'danger' | 'warning' }): Promise<boolean> {
+    function confirm(options?: {
+        title?: string;
+        message?: string;
+        confirmLabel?: string;
+        variant?: 'danger' | 'warning';
+    }): Promise<boolean> {
         return new Promise((resolve) => {
             setState({ open: true, resolve, ...options });
         });
