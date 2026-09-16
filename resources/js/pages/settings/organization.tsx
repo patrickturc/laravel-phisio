@@ -7,7 +7,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import AppLayout from '@/layouts/app-layout';
-import SettingsLayout from '@/layouts/settings/layout';
 import type { BreadcrumbItem } from '@/types';
 
 type TenantForm = {
@@ -37,7 +36,8 @@ type Props = {
 };
 
 const breadcrumbs: BreadcrumbItem[] = [
-    { title: 'Dados da clínica', href: '/settings/organization' },
+    { title: 'Configurações', href: '/settings/organization' },
+    { title: 'Dados da Clínica', href: '/settings/organization' },
 ];
 
 export default function Organization({ tenant, missingFields }: Props) {
@@ -111,23 +111,33 @@ export default function Organization({ tenant, missingFields }: Props) {
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
-            <Head title="Dados da clínica" />
+            <Head title="Dados da Clínica" />
 
-            <SettingsLayout>
+            <div className="mx-auto flex h-full w-full max-w-4xl flex-1 flex-col gap-6 p-6 md:p-10">
+                <div>
+                    <h1 className="text-3xl font-bold tracking-tight text-foreground">
+                        Dados da Clínica
+                    </h1>
+                    <p className="mt-1 text-muted-foreground">
+                        Usados nos seus documentos, recibos e na contratação do
+                        plano.
+                    </p>
+                </div>
+
+                {missingFields.length > 0 && (
+                    <p className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-700/60 dark:bg-amber-950/40 dark:text-amber-100">
+                        Os campos destacados ainda precisam ser preenchidos para
+                        concluir o cadastro.
+                    </p>
+                )}
+
                 <form onSubmit={submit} className="space-y-10">
-                    <div className="space-y-6">
+                    <div className="space-y-6 rounded-xl border border-border bg-card p-6">
                         <Heading
                             variant="small"
-                            title="Dados da clínica"
-                            description="Usados nos seus documentos, recibos e na contratação do plano."
+                            title="Identificação"
+                            description="Nome e documento da organização."
                         />
-
-                        {missingFields.length > 0 && (
-                            <p className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-700/60 dark:bg-amber-950/40 dark:text-amber-100">
-                                Os campos destacados ainda precisam ser
-                                preenchidos para concluir o cadastro.
-                            </p>
-                        )}
 
                         <div className="grid gap-2">
                             <Label htmlFor="name">Nome fantasia</Label>
@@ -189,7 +199,7 @@ export default function Organization({ tenant, missingFields }: Props) {
                         </div>
                     </div>
 
-                    <div className="space-y-6">
+                    <div className="space-y-6 rounded-xl border border-border bg-card p-6">
                         <Heading
                             variant="small"
                             title="Contato"
@@ -247,7 +257,7 @@ export default function Organization({ tenant, missingFields }: Props) {
                         </div>
                     </div>
 
-                    <div className="space-y-6">
+                    <div className="space-y-6 rounded-xl border border-border bg-card p-6">
                         <Heading
                             variant="small"
                             title="Endereço"
@@ -365,7 +375,7 @@ export default function Organization({ tenant, missingFields }: Props) {
                         </div>
                     </div>
 
-                    <div className="space-y-6">
+                    <div className="space-y-6 rounded-xl border border-border bg-card p-6">
                         <Heading
                             variant="small"
                             title="Responsável técnico"
@@ -436,7 +446,7 @@ export default function Organization({ tenant, missingFields }: Props) {
                         )}
                     </div>
                 </form>
-            </SettingsLayout>
+            </div>
         </AppLayout>
     );
 }
