@@ -18,7 +18,7 @@ return new class extends Migration
             $table->timestamp('paid_at');
             $table->text('notes')->nullable();
             $table->string('receipt_url')->nullable();
-            $table->foreignUuid('recorded_by')->nullable()->constrained('users')->nullOnDelete();
+            $table->foreignId('recorded_by')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamps();
 
             $table->index(['tenant_id', 'paid_at']);
