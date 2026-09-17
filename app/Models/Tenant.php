@@ -462,6 +462,11 @@ class Tenant extends Model
         return $this->hasMany(TenantUsageLog::class);
     }
 
+    public function payments(): HasMany
+    {
+        return $this->hasMany(TenantPayment::class);
+    }
+
     public function isActive(): bool
     {
         return $this->status === 'active';

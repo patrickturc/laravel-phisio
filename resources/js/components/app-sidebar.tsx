@@ -117,6 +117,12 @@ export function AppSidebar() {
             show: can('settings.users.view'),
         },
         {
+            title: 'Plano e Cobrança',
+            href: '/settings/billing',
+            icon: CreditCard,
+            show: can('settings.users.view'),
+        },
+        {
             title: 'Protocolos Clínicos',
             href: '/clinical-protocols',
             icon: ClipboardList,

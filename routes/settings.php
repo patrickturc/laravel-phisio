@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\RoleController;
+use App\Http\Controllers\Settings\BillingController;
 use App\Http\Controllers\Settings\OrganizationController;
 use App\Http\Controllers\Settings\PasswordController;
 use App\Http\Controllers\Settings\ProfileController;
@@ -35,6 +36,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::middleware('permission:settings.users.view')->group(function () {
         Route::get('settings/organization', [OrganizationController::class, 'edit'])->name('organization.edit');
         Route::patch('settings/organization', [OrganizationController::class, 'update'])->name('organization.update');
+
+        // Billing — plan management and payment history.
+        Route::get('settings/billing', [BillingController::class, 'edit'])->name('billing.edit');
+        Route::post('settings/billing/request-plan', [BillingController::class, 'requestPlan'])->name('billing.request-plan');
     });
 
     // Users Management
