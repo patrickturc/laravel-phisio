@@ -18,6 +18,7 @@ export interface Patient {
     name: string;
     nickname: string | null;
     birthdate: string | null;
+    enrollment_date?: string | null;
     gender: string | null;
     phone: string | null;
     email: string | null;
@@ -56,6 +57,7 @@ export function PatientFormSheet({
             name: patient?.name || '',
             nickname: patient?.nickname || '',
             birthdate: patient?.birthdate || '',
+            enrollment_date: patient?.enrollment_date || '',
             gender: patient?.gender || '',
             phone: patient?.phone || '',
             email: patient?.email || '',
@@ -184,7 +186,7 @@ export function PatientFormSheet({
                             <InputError message={errors.name} />
                         </div>
 
-                        <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+                        <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
                             <div className="grid gap-2">
                                 <Label htmlFor="nickname">
                                     Nome curto (apelido)
@@ -211,6 +213,28 @@ export function PatientFormSheet({
                                     }
                                 />
                                 <InputError message={errors.birthdate} />
+                            </div>
+                            <div className="grid gap-2">
+                                <Label htmlFor="enrollment_date">
+                                    Data da matrícula
+                                </Label>
+                                <Input
+                                    id="enrollment_date"
+                                    type="date"
+                                    value={data.enrollment_date}
+                                    onChange={(e) =>
+                                        setData(
+                                            'enrollment_date',
+                                            e.target.value,
+                                        )
+                                    }
+                                />
+                                {!isEditing && (
+                                    <p className="text-xs text-muted-foreground">
+                                        Em branco, usa a data de hoje.
+                                    </p>
+                                )}
+                                <InputError message={errors.enrollment_date} />
                             </div>
                         </div>
 

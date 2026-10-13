@@ -1,6 +1,7 @@
 import { Link } from '@inertiajs/react';
 import {
     Building2,
+    Cake,
     LayoutGrid,
     Users,
     CalendarRange,
@@ -62,6 +63,12 @@ export function AppSidebar() {
             title: 'Pacientes',
             href: '/patients',
             icon: Users,
+            show: can('patients.manage.view'),
+        },
+        {
+            title: 'Aniversariantes',
+            href: '/celebrations',
+            icon: Cake,
             show: can('patients.manage.view'),
         },
         {

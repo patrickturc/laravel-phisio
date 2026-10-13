@@ -6,6 +6,12 @@ import { useConfirmModal } from '@/components/confirm-modal';
 import EvolutionFormSheet from '@/components/EvolutionFormSheet';
 import { usePermissions } from '@/hooks/use-permissions';
 import AppLayout from '@/layouts/app-layout';
+import {
+    EVOLUTION_TYPE_LABELS,
+    PILATES_SCALES,
+    pilatesLabel,
+    pilatesToneClass,
+} from '@/lib/pilates-scales';
 import type { BreadcrumbItem } from '@/types';
 
 interface Evolution {
@@ -28,6 +34,16 @@ interface Evolution {
     conduta_planejada: string | null;
     orientacoes_domiciliares: string | null;
     observacoes: string | null;
+    evolution_type: string;
+    estabilidade: string | null;
+    mobilidade: string | null;
+    forca: string | null;
+    coordenacao: string | null;
+    tem_dor: boolean | null;
+    tem_limitacao: boolean | null;
+    limitacao_detalhe: string | null;
+    tem_contraindicacao: boolean | null;
+    contraindicacao_detalhe: string | null;
     patient: { id: string; name: string; type: string };
     professional?: { id: string; name: string } | null;
 }
@@ -75,6 +91,120 @@ function Field({
             <p className="text-sm whitespace-pre-wrap">{value}</p>
         </div>
     ) : null;
+}
+
+function PlainSection({
+    title,
+    children,
+}: {
+    title: string;
+    children: React.ReactNode;
+}) {
+    return (
+        <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="space-y-4 rounded-2xl border border-border/50 bg-card/60 p-6 shadow-sm backdrop-blur-xl"
+        >
+            <h2 className="text-sm font-bold tracking-wide text-primary uppercase">
+                {title}
+            </h2>
+            {children}
+        </motion.div>
+    );
+}
+
+function YesNoRow({
+    label,
+    value,
+    detail,
+}: {
+    label: string;
+    value: boolean | null;
+    detail?: string | null;
+}) {
+    return (
+        <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:gap-4">
+            <span className="w-36 shrink-0 text-sm font-medium">{label}</span>
+            <div className="text-sm">
+                <span
+                    className={`rounded-md px-2 py-0.5 text-xs font-semibold ${
+                        value
+                            ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
+                            : 'bg-muted text-muted-foreground'
+                    }`}
+                >
+                    {value ? 'Sim' : 'Não'}
+                </span>
+                {value && detail && (
+                    <p className="mt-1 whitespace-pre-wrap text-foreground/80">
+                        {detail}
+                    </p>
+                )}
+            </div>
+        </div>
+    );
+}
+
+function PilatesDetails({ evolution }: { evolution: Evolution }) {
+    const painDetail = [
+        evolution.dor_eva != null ? `EVA ${evolution.dor_eva}/10` : null,
+        evolution.localizacao_dor,
+    ]
+        .filter(Boolean)
+        .join(' — ');
+
+    return (
+        <>
+            <PlainSection title="1. Execução do movimento">
+                <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+                    {PILATES_SCALES.map((scale) => (
+                        <div key={scale.field}>
+                            <p className="mb-1 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                                {scale.label}
+                            </p>
+                            <span
+                                className={`inline-flex rounded-md px-2.5 py-1 text-sm font-semibold ${pilatesToneClass(scale.field, evolution[scale.field])}`}
+                            >
+                                {pilatesLabel(
+                                    scale.field,
+                                    evolution[scale.field],
+                                ) ?? '—'}
+                            </span>
+                        </div>
+                    ))}
+                </div>
+            </PlainSection>
+
+            <PlainSection title="2. Queixas e cuidados">
+                <div className="space-y-3">
+                    <YesNoRow
+                        label="Dor"
+                        value={evolution.tem_dor}
+                        detail={painDetail}
+                    />
+                    <YesNoRow
+                        label="Limitação"
+                        value={evolution.tem_limitacao}
+                        detail={evolution.limitacao_detalhe}
+                    />
+                    <YesNoRow
+                        label="Contraindicação"
+                        value={evolution.tem_contraindicacao}
+                        detail={evolution.contraindicacao_detalhe}
+                    />
+                </div>
+            </PlainSection>
+
+            {evolution.observacoes && (
+                <PlainSection title="3. Observações gerais">
+                    <p className="text-sm whitespace-pre-wrap">
+                        {evolution.observacoes}
+                    </p>
+                </PlainSection>
+            )}
+        </>
+    );
 }
 
 export default function EvolutionShow({
@@ -139,6 +269,11 @@ export default function EvolutionShow({
                                     {tipoLabel[evolution.tipo_atendimento] ||
                                         evolution.tipo_atendimento}
                                 </span>
+                                <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-semibold text-primary">
+                                    {EVOLUTION_TYPE_LABELS[
+                                        evolution.evolution_type
+                                    ] ?? evolution.evolution_type}
+                                </span>
                             </div>
                         </div>
                     </div>
@@ -170,7 +305,9 @@ export default function EvolutionShow({
                     </div>
                 </div>
 
-                {evolution.observacoes ? (
+                {evolution.evolution_type === 'pilates' ? (
+                    <PilatesDetails evolution={evolution} />
+                ) : evolution.evolution_type === 'simple' ? (
                     <Section
                         title="Observações da Aula"
                         color="text-indigo-600"

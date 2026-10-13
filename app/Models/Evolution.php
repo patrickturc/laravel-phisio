@@ -19,6 +19,48 @@ class Evolution extends Model
      */
     public $timestamps = true;
 
+    public const TYPE_SOAP = 'soap';
+
+    public const TYPE_SIMPLE = 'simple';
+
+    public const TYPE_PILATES = 'pilates';
+
+    public const TYPES = [self::TYPE_SOAP, self::TYPE_SIMPLE, self::TYPE_PILATES];
+
+    /**
+     * Rating options for each Pilates movement quality, best to worst.
+     * Mirrored in resources/js/lib/pilates-scales.ts.
+     *
+     * @var array<string, array<string, string>>
+     */
+    public const PILATES_SCALES = [
+        'estabilidade' => ['excelente' => 'Excelente', 'boa' => 'Boa', 'regular' => 'Regular', 'comprometida' => 'Comprometida'],
+        'mobilidade' => ['excelente' => 'Excelente', 'boa' => 'Boa', 'regular' => 'Regular', 'restrita' => 'Restrita'],
+        'forca' => ['excelente' => 'Excelente', 'adequada' => 'Adequada', 'regular' => 'Regular', 'baixa' => 'Baixa'],
+        'coordenacao' => ['excelente' => 'Excelente', 'boa' => 'Boa', 'regular' => 'Regular', 'insuficiente' => 'Insuficiente'],
+    ];
+
+    /**
+     * Columns each form fills in. When a record switches form, the columns
+     * that only the previous form used are cleared so no stale data is left.
+     *
+     * @var array<string, list<string>>
+     */
+    public const FIELDS_BY_TYPE = [
+        self::TYPE_SOAP => [
+            'clinical_protocol_id', 'queixa_principal', 'relato_paciente', 'dor_eva', 'localizacao_dor',
+            'tipo_dor', 'pressao_arterial', 'frequencia_cardiaca', 'saturacao', 'amplitude_movimento',
+            'forca_muscular', 'avaliacao_funcional', 'avaliacao_postural', 'condutas_realizadas',
+            'parametros_conduta', 'resposta_tratamento', 'evolucao_status', 'analise_profissional',
+            'conduta_planejada', 'orientacoes_domiciliares',
+        ],
+        self::TYPE_SIMPLE => ['observacoes'],
+        self::TYPE_PILATES => [
+            'estabilidade', 'mobilidade', 'forca', 'coordenacao', 'tem_dor', 'dor_eva', 'localizacao_dor',
+            'tem_limitacao', 'limitacao_detalhe', 'tem_contraindicacao', 'contraindicacao_detalhe', 'observacoes',
+        ],
+    ];
+
     protected $fillable = [
         'tenant_id',
         'paciente_id',
@@ -50,6 +92,16 @@ class Evolution extends Model
         'proxima_sessao',
         'assinatura_digital',
         'observacoes',
+        'evolution_type',
+        'estabilidade',
+        'mobilidade',
+        'forca',
+        'coordenacao',
+        'tem_dor',
+        'tem_limitacao',
+        'limitacao_detalhe',
+        'tem_contraindicacao',
+        'contraindicacao_detalhe',
     ];
 
     protected function casts(): array
@@ -57,7 +109,30 @@ class Evolution extends Model
         return [
             'data_atendimento' => 'datetime',
             'proxima_sessao' => 'date',
+            'tem_dor' => 'boolean',
+            'tem_limitacao' => 'boolean',
+            'tem_contraindicacao' => 'boolean',
         ];
+    }
+
+    /**
+     * Columns that the given form does not use, to be cleared on a type switch.
+     *
+     * @return list<string>
+     */
+    public static function fieldsOutsideType(string $type): array
+    {
+        $all = array_unique(array_merge(...array_values(self::FIELDS_BY_TYPE)));
+
+        return array_values(array_diff($all, self::FIELDS_BY_TYPE[$type] ?? []));
+    }
+
+    /**
+     * Human label for a Pilates rating, e.g. ('forca', 'adequada') => 'Adequada'.
+     */
+    public static function pilatesLabel(string $field, ?string $value): ?string
+    {
+        return $value === null ? null : (self::PILATES_SCALES[$field][$value] ?? $value);
     }
 
     public function patient()

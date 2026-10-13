@@ -49,6 +49,7 @@ class PatientController extends Controller
             // Ignore soft-deleted patients so a reused CPF/e-mail isn't blocked.
             'email' => 'nullable|email|max:255|unique:patients,email,NULL,id,deleted_at,NULL',
             'birthdate' => 'nullable|date',
+            'enrollment_date' => 'nullable|date',
             'gender' => 'nullable|in:male,female,other',
             'type' => 'required|in:pilates,physiotherapy',
             'cpf' => 'nullable|string|max:14|unique:patients,cpf,NULL,id,deleted_at,NULL',
@@ -129,6 +130,7 @@ class PatientController extends Controller
             // Unique among active patients, ignoring this patient's own record.
             'email' => 'nullable|email|max:255|unique:patients,email,'.$patient->id.',id,deleted_at,NULL',
             'birthdate' => 'nullable|date',
+            'enrollment_date' => 'nullable|date',
             'gender' => 'nullable|in:male,female,other',
             'type' => 'sometimes|required|in:pilates,physiotherapy',
             'cpf' => 'nullable|string|max:14|unique:patients,cpf,'.$patient->id.',id,deleted_at,NULL',

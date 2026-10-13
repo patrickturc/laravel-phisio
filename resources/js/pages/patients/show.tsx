@@ -9,6 +9,7 @@ import {
     Calendar,
     FileText,
     Cake,
+    GraduationCap,
     Clock,
     Activity,
     Mail,
@@ -35,6 +36,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { usePermissions } from '@/hooks/use-permissions';
 import AppLayout from '@/layouts/app-layout';
+import { pilatesSummary } from '@/lib/pilates-scales';
 import type { BreadcrumbItem } from '@/types';
 import { AppointmentFormSheet } from '../appointments/appointment-form-sheet';
 import { MembershipFormSheet } from '../memberships/membership-form-sheet';
@@ -53,6 +55,7 @@ interface Patient {
     profession: string | null;
     address: string | null;
     birthdate: string | null;
+    enrollment_date?: string | null;
     emergency_contact_name: string | null;
     emergency_contact_phone: string | null;
     health_notes: string | null;
@@ -81,6 +84,11 @@ interface Patient {
         queixa_principal: string | null;
         condutas_realizadas: string | null;
         observacoes?: string | null;
+        evolution_type?: string;
+        estabilidade?: string | null;
+        mobilidade?: string | null;
+        forca?: string | null;
+        coordenacao?: string | null;
     }>;
     memberships?: Array<{
         id: string;
@@ -667,7 +675,28 @@ export default function PatientShow({
                                         <p className="text-sm font-semibold">
                                             {new Date(
                                                 patient.birthdate,
-                                            ).toLocaleDateString('pt-BR')}
+                                            ).toLocaleDateString('pt-BR', {
+                                                timeZone: 'UTC',
+                                            })}
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
+                            {patient.enrollment_date && (
+                                <div className="flex items-center gap-3 rounded-2xl border border-border/50 bg-card/60 p-5 backdrop-blur-xl">
+                                    <div className="rounded-xl bg-primary/10 p-2.5 text-primary">
+                                        <GraduationCap className="size-4" />
+                                    </div>
+                                    <div>
+                                        <p className="text-xs text-muted-foreground">
+                                            Matrícula
+                                        </p>
+                                        <p className="text-sm font-semibold">
+                                            {new Date(
+                                                patient.enrollment_date,
+                                            ).toLocaleDateString('pt-BR', {
+                                                timeZone: 'UTC',
+                                            })}
                                         </p>
                                     </div>
                                 </div>
@@ -1280,9 +1309,20 @@ export default function PatientShow({
                                                             ] ||
                                                                 evo.tipo_atendimento}
                                                         </span>
+                                                        {evo.evolution_type ===
+                                                            'pilates' && (
+                                                            <span className="rounded-md bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
+                                                                Pilates
+                                                            </span>
+                                                        )}
                                                     </div>
                                                     <p className="line-clamp-2 text-sm text-muted-foreground">
-                                                        {evo.observacoes ||
+                                                        {(evo.evolution_type ===
+                                                            'pilates' &&
+                                                            pilatesSummary(
+                                                                evo,
+                                                            )) ||
+                                                            evo.observacoes ||
                                                             evo.queixa_principal ||
                                                             evo.condutas_realizadas ||
                                                             'Sem detalhes'}
@@ -1760,6 +1800,7 @@ export default function PatientShow({
                 isOpen={isEvolutionSheetOpen}
                 onOpenChange={setIsEvolutionSheetOpen}
                 patientId={patient.id}
+                patientType={patient.type}
                 protocols={protocols}
                 evolution={editingEvolution}
             />

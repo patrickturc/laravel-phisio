@@ -19,6 +19,7 @@ class Patient extends Model
         'phone',
         'email',
         'birthdate',
+        'enrollment_date',
         'gender',
         'type',
         'cpf',
@@ -38,11 +39,23 @@ class Patient extends Model
         'user_id',
     ];
 
+    /**
+     * Dates go to the frontend as plain Y-m-d so <input type="date"> can show
+     * them and no timezone shift moves them a day back.
+     */
     protected function casts(): array
     {
         return [
-            'birthdate' => 'date',
+            'birthdate' => 'date:Y-m-d',
+            'enrollment_date' => 'date:Y-m-d',
         ];
+    }
+
+    protected static function booted(): void
+    {
+        static::creating(function (Patient $patient) {
+            $patient->enrollment_date ??= now()->toDateString();
+        });
     }
 
     public function user()

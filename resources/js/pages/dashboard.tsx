@@ -649,6 +649,14 @@ export default function Dashboard({
                             <span className="text-xl">🎂</span> Próximos
                             Aniversários
                         </h2>
+                        {can('patients.manage.view') && (
+                            <Link
+                                href="/celebrations"
+                                className="text-sm font-medium text-primary hover:underline"
+                            >
+                                Ver todos
+                            </Link>
+                        )}
                     </div>
 
                     {upcomingBirthdays.length === 0 ? (

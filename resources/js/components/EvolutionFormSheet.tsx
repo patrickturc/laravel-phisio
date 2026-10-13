@@ -1,6 +1,9 @@
 import { useForm } from '@inertiajs/react';
 import { useEffect } from 'react';
 import InputError from '@/components/input-error';
+import PilatesEvolutionFields from '@/components/pilates-evolution-fields';
+import type { PilatesEvolutionData } from '@/components/pilates-evolution-fields';
+import RecentEvolutions from '@/components/recent-evolutions';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -32,22 +35,46 @@ interface Evolution {
     conduta_planejada: string | null;
     orientacoes_domiciliares: string | null;
     observacoes: string | null;
+    evolution_type?: string | null;
+    estabilidade?: string | null;
+    mobilidade?: string | null;
+    forca?: string | null;
+    coordenacao?: string | null;
+    tem_dor?: boolean | null;
+    tem_limitacao?: boolean | null;
+    limitacao_detalhe?: string | null;
+    tem_contraindicacao?: boolean | null;
+    contraindicacao_detalhe?: string | null;
 }
 
 interface Props {
     isOpen: boolean;
     onOpenChange: (open: boolean) => void;
     patientId?: string;
+    /** Patient type ("pilates" | "physiotherapy"), picks the default model. */
+    patientType?: string;
     patients?: Array<{ id: string; name: string; type?: string }>;
     protocols?: Array<{ id: string; name: string }>;
     evolution?: Evolution | null; // If provided, we're editing
     appointmentId?: string; // If provided, we're linking to an appointment
 }
 
+/** Pilates patients default to the structured Pilates model. */
+function defaultTypeFor(patientType?: string): string {
+    return patientType === 'pilates' ? 'pilates' : 'soap';
+}
+
+const NEW_TITLES: Record<string, string> = {
+    soap: 'Nova Evolução (SOAP)',
+    simple: 'Nova Evolução Rápida',
+    pilates: 'Novo Registro de Pilates',
+};
+
 export default function EvolutionFormSheet({
     isOpen,
     onOpenChange,
     patientId = '',
+    patientType,
     patients = [],
     protocols = [],
     evolution,
@@ -77,6 +104,15 @@ export default function EvolutionFormSheet({
             orientacoes_domiciliares: '',
             evolution_type: 'soap',
             observacoes: '',
+            estabilidade: '',
+            mobilidade: '',
+            forca: '',
+            coordenacao: '',
+            tem_dor: false,
+            tem_limitacao: false,
+            limitacao_detalhe: '',
+            tem_contraindicacao: false,
+            contraindicacao_detalhe: '',
         });
 
     useEffect(() => {
@@ -106,8 +142,20 @@ export default function EvolutionFormSheet({
                     conduta_planejada: evolution.conduta_planejada || '',
                     orientacoes_domiciliares:
                         evolution.orientacoes_domiciliares || '',
-                    evolution_type: evolution.observacoes ? 'simple' : 'soap',
+                    evolution_type:
+                        evolution.evolution_type ||
+                        (evolution.observacoes ? 'simple' : 'soap'),
                     observacoes: evolution.observacoes || '',
+                    estabilidade: evolution.estabilidade || '',
+                    mobilidade: evolution.mobilidade || '',
+                    forca: evolution.forca || '',
+                    coordenacao: evolution.coordenacao || '',
+                    tem_dor: !!evolution.tem_dor,
+                    tem_limitacao: !!evolution.tem_limitacao,
+                    limitacao_detalhe: evolution.limitacao_detalhe || '',
+                    tem_contraindicacao: !!evolution.tem_contraindicacao,
+                    contraindicacao_detalhe:
+                        evolution.contraindicacao_detalhe || '',
                 });
             } else {
                 reset();
@@ -116,11 +164,18 @@ export default function EvolutionFormSheet({
                     paciente_id: patientId,
                     data_atendimento: new Date().toISOString().split('T')[0],
                     tipo_atendimento: 'sessao',
-                    evolution_type: 'soap',
+                    evolution_type: defaultTypeFor(patientType),
                 }));
             }
         }
-    }, [isOpen, isEdit, evolution, patientId]);
+    }, [isOpen, isEdit, evolution, patientId, patientType]);
+
+    function setPilatesField<K extends keyof PilatesEvolutionData>(
+        key: K,
+        value: PilatesEvolutionData[K],
+    ) {
+        setData((prev) => ({ ...prev, [key]: value }));
+    }
 
     function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
@@ -151,7 +206,9 @@ export default function EvolutionFormSheet({
             <SheetContent className="w-full overflow-y-auto sm:max-w-xl md:max-w-2xl">
                 <SheetHeader className="mb-6">
                     <SheetTitle>
-                        {isEdit ? 'Editar Evolução' : 'Nova Evolução (SOAP)'}
+                        {isEdit
+                            ? 'Editar Evolução'
+                            : NEW_TITLES[data.evolution_type]}
                     </SheetTitle>
                     <SheetDescription>
                         {isEdit
@@ -176,11 +233,9 @@ export default function EvolutionFormSheet({
                                         setData((prev) => ({
                                             ...prev,
                                             paciente_id: val,
-                                            evolution_type:
-                                                selectedPatient?.type ===
-                                                'pilates'
-                                                    ? 'simple'
-                                                    : 'soap',
+                                            evolution_type: defaultTypeFor(
+                                                selectedPatient?.type,
+                                            ),
                                         }));
                                     }}
                                     className="flex h-10 w-full rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2 text-sm focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none"
@@ -233,10 +288,13 @@ export default function EvolutionFormSheet({
                                     className="flex h-10 w-full rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2 text-sm focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none"
                                 >
                                     <option value="soap">
-                                        Fisioterapia (SOAP Completo)
+                                        Fisioterapia — SOAP completo
+                                    </option>
+                                    <option value="pilates">
+                                        Pilates — execução do movimento
                                     </option>
                                     <option value="simple">
-                                        Pilates (Observações)
+                                        Evolução rápida — observações
                                     </option>
                                 </select>
                             </div>
@@ -309,7 +367,20 @@ export default function EvolutionFormSheet({
                             )}
                     </div>
 
-                    {data.evolution_type === 'simple' ? (
+                    {data.paciente_id && (
+                        <RecentEvolutions
+                            patientId={data.paciente_id}
+                            excludeId={evolution?.id}
+                        />
+                    )}
+
+                    {data.evolution_type === 'pilates' ? (
+                        <PilatesEvolutionFields
+                            data={data}
+                            setField={setPilatesField}
+                            errors={errors}
+                        />
+                    ) : data.evolution_type === 'simple' ? (
                         <div className="space-y-4">
                             <div className="grid gap-2">
                                 <Label>Observações da Aula</Label>
@@ -573,7 +644,9 @@ export default function EvolutionFormSheet({
                                 ? 'Salvando...'
                                 : isEdit
                                   ? 'Salvar Alterações'
-                                  : 'Registrar Evolução'}
+                                  : data.evolution_type === 'pilates'
+                                    ? 'Salvar Avaliação'
+                                    : 'Registrar Evolução'}
                         </Button>
                     </div>
                 </form>

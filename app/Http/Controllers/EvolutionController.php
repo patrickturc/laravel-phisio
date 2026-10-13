@@ -9,7 +9,9 @@ use App\Models\Membership;
 use App\Models\Patient;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 
 class EvolutionController extends Controller
@@ -127,46 +129,7 @@ class EvolutionController extends Controller
 
     public function store(Request $request)
     {
-        $isSimple = $request->input('evolution_type') === 'simple';
-
-        $rules = [
-            'paciente_id' => 'required|uuid|exists:patients,id',
-            'agendamento_id' => 'nullable|uuid|exists:appointments,id',
-            'data_atendimento' => 'required|date',
-        ];
-
-        if ($isSimple) {
-            $rules['observacoes'] = 'required|string';
-            $rules['tipo_atendimento'] = 'nullable|string';
-        } else {
-            $rules['clinical_protocol_id'] = 'nullable|uuid|exists:clinical_protocols,id';
-            $rules['tipo_atendimento'] = 'required|in:avaliacao,reavaliacao,sessao';
-            $rules['queixa_principal'] = 'nullable|string';
-            $rules['relato_paciente'] = 'nullable|string';
-            $rules['dor_eva'] = 'nullable|integer|min:0|max:10';
-            $rules['localizacao_dor'] = 'nullable|string';
-            $rules['tipo_dor'] = 'nullable|string';
-            $rules['pressao_arterial'] = 'nullable|string';
-            $rules['frequencia_cardiaca'] = 'nullable|string';
-            $rules['saturacao'] = 'nullable|string';
-            $rules['amplitude_movimento'] = 'nullable|string';
-            $rules['forca_muscular'] = 'nullable|string';
-            $rules['avaliacao_funcional'] = 'nullable|string';
-            $rules['avaliacao_postural'] = 'nullable|string';
-            $rules['condutas_realizadas'] = 'nullable|string';
-            $rules['parametros_conduta'] = 'nullable|string';
-            $rules['resposta_tratamento'] = 'nullable|string';
-            $rules['evolucao_status'] = 'nullable|string';
-            $rules['analise_profissional'] = 'nullable|string';
-            $rules['conduta_planejada'] = 'nullable|string';
-            $rules['orientacoes_domiciliares'] = 'nullable|string';
-        }
-
-        $validated = $request->validate($rules);
-
-        if ($isSimple && empty($validated['tipo_atendimento'])) {
-            $validated['tipo_atendimento'] = 'sessao';
-        }
+        $validated = $this->validateEvolution($request, creating: true);
 
         $linkedAuto = false;
         if (empty($validated['agendamento_id'])) {
@@ -255,52 +218,12 @@ class EvolutionController extends Controller
 
     public function update(Request $request, Evolution $evolution)
     {
-        $isSimple = $request->input('evolution_type') === 'simple';
+        $validated = $this->validateEvolution($request, creating: false);
 
-        $rules = [
-            'paciente_id' => 'required|uuid|exists:patients,id',
-            'data_atendimento' => 'required|date',
-        ];
-
-        if ($isSimple) {
-            $rules['observacoes'] = 'required|string';
-            $rules['tipo_atendimento'] = 'nullable|string';
-        } else {
-            $rules['clinical_protocol_id'] = 'nullable|uuid|exists:clinical_protocols,id';
-            $rules['tipo_atendimento'] = 'required|in:avaliacao,reavaliacao,sessao';
-            $rules['queixa_principal'] = 'nullable|string';
-            $rules['relato_paciente'] = 'nullable|string';
-            $rules['dor_eva'] = 'nullable|integer|min:0|max:10';
-            $rules['localizacao_dor'] = 'nullable|string';
-            $rules['tipo_dor'] = 'nullable|string';
-            $rules['pressao_arterial'] = 'nullable|string';
-            $rules['frequencia_cardiaca'] = 'nullable|string';
-            $rules['saturacao'] = 'nullable|string';
-            $rules['amplitude_movimento'] = 'nullable|string';
-            $rules['forca_muscular'] = 'nullable|string';
-            $rules['avaliacao_funcional'] = 'nullable|string';
-            $rules['avaliacao_postural'] = 'nullable|string';
-            $rules['condutas_realizadas'] = 'nullable|string';
-            $rules['parametros_conduta'] = 'nullable|string';
-            $rules['resposta_tratamento'] = 'nullable|string';
-            $rules['evolucao_status'] = 'nullable|string';
-            $rules['analise_profissional'] = 'nullable|string';
-            $rules['conduta_planejada'] = 'nullable|string';
-            $rules['orientacoes_domiciliares'] = 'nullable|string';
-        }
-
-        $validated = $request->validate($rules);
-
-        if ($isSimple) {
-            if (empty($validated['tipo_atendimento'])) {
-                $validated['tipo_atendimento'] = 'sessao';
-            }
-            // Simple (Pilates) evolutions carry only a free-text note; clear the
-            // SOAP-specific fields so a type switch doesn't leave stale data.
-            $validated['clinical_protocol_id'] = null;
-        } else {
-            // Full SOAP evolution: ensure the simple-note field is cleared.
-            $validated['observacoes'] = null;
+        // Clear whatever the previous form filled in that this one does not
+        // use, so switching type never leaves stale data behind.
+        foreach (Evolution::fieldsOutsideType($validated['evolution_type']) as $field) {
+            $validated[$field] = null;
         }
 
         $evolution->update($validated);
@@ -308,9 +231,135 @@ class EvolutionController extends Controller
         return back()->with('success', 'Evolução atualizada!');
     }
 
-    public function destroy(Evolution $evolution)
+    /**
+     * Latest evolutions of a patient, for the "Histórico recente" panel of
+     * the evolution form.
+     */
+    public function recent(Patient $patient): JsonResponse
+    {
+        $evolutions = Evolution::with('professional:id,name')
+            ->where('paciente_id', $patient->id)
+            ->orderBy('data_atendimento', 'desc')
+            ->orderBy('created_at', 'desc')
+            ->take(5)
+            ->get([
+                'id', 'paciente_id', 'profissional_id', 'data_atendimento', 'evolution_type', 'tipo_atendimento',
+                'estabilidade', 'mobilidade', 'forca', 'coordenacao', 'observacoes', 'queixa_principal',
+            ]);
+
+        return response()->json($evolutions);
+    }
+
+    /**
+     * Validate an evolution against the rules of the form it came from and
+     * normalize the defaults each form relies on.
+     *
+     * @return array<string, mixed>
+     */
+    private function validateEvolution(Request $request, bool $creating): array
+    {
+        $type = $request->input('evolution_type') ?: Evolution::TYPE_SOAP;
+
+        $rules = [
+            'evolution_type' => ['nullable', Rule::in(Evolution::TYPES)],
+            'paciente_id' => 'required|uuid|exists:patients,id',
+            'data_atendimento' => 'required|date',
+            ...$this->rulesForType($type),
+        ];
+
+        if ($creating) {
+            $rules['agendamento_id'] = 'nullable|uuid|exists:appointments,id';
+        }
+
+        $validated = $request->validate($rules);
+        $validated['evolution_type'] = $type;
+
+        if ($type !== Evolution::TYPE_SOAP && empty($validated['tipo_atendimento'])) {
+            $validated['tipo_atendimento'] = 'sessao';
+        }
+
+        if ($type === Evolution::TYPE_PILATES) {
+            // Details only make sense when the matching question was "Sim".
+            if (! $validated['tem_dor']) {
+                $validated['dor_eva'] = null;
+                $validated['localizacao_dor'] = null;
+            }
+            if (! $validated['tem_limitacao']) {
+                $validated['limitacao_detalhe'] = null;
+            }
+            if (! $validated['tem_contraindicacao']) {
+                $validated['contraindicacao_detalhe'] = null;
+            }
+        }
+
+        return $validated;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function rulesForType(string $type): array
+    {
+        if ($type === Evolution::TYPE_SIMPLE) {
+            return [
+                'observacoes' => 'required|string',
+                'tipo_atendimento' => 'nullable|string',
+            ];
+        }
+
+        if ($type === Evolution::TYPE_PILATES) {
+            $scaleRules = [];
+            foreach (Evolution::PILATES_SCALES as $field => $options) {
+                $scaleRules[$field] = ['required', Rule::in(array_keys($options))];
+            }
+
+            return [
+                ...$scaleRules,
+                'tipo_atendimento' => 'nullable|in:avaliacao,reavaliacao,sessao',
+                'tem_dor' => 'required|boolean',
+                'dor_eva' => 'nullable|integer|min:0|max:10',
+                'localizacao_dor' => 'nullable|string|max:255',
+                'tem_limitacao' => 'required|boolean',
+                'limitacao_detalhe' => 'nullable|string|max:1000',
+                'tem_contraindicacao' => 'required|boolean',
+                'contraindicacao_detalhe' => 'nullable|string|max:1000',
+                'observacoes' => 'nullable|string',
+            ];
+        }
+
+        return [
+            'clinical_protocol_id' => 'nullable|uuid|exists:clinical_protocols,id',
+            'tipo_atendimento' => 'required|in:avaliacao,reavaliacao,sessao',
+            'queixa_principal' => 'nullable|string',
+            'relato_paciente' => 'nullable|string',
+            'dor_eva' => 'nullable|integer|min:0|max:10',
+            'localizacao_dor' => 'nullable|string',
+            'tipo_dor' => 'nullable|string',
+            'pressao_arterial' => 'nullable|string',
+            'frequencia_cardiaca' => 'nullable|string',
+            'saturacao' => 'nullable|string',
+            'amplitude_movimento' => 'nullable|string',
+            'forca_muscular' => 'nullable|string',
+            'avaliacao_funcional' => 'nullable|string',
+            'avaliacao_postural' => 'nullable|string',
+            'condutas_realizadas' => 'nullable|string',
+            'parametros_conduta' => 'nullable|string',
+            'resposta_tratamento' => 'nullable|string',
+            'evolucao_status' => 'nullable|string',
+            'analise_profissional' => 'nullable|string',
+            'conduta_planejada' => 'nullable|string',
+            'orientacoes_domiciliares' => 'nullable|string',
+        ];
+    }
+
+    public function destroy(Request $request, Evolution $evolution)
     {
         $evolution->delete();
+
+        // The "Histórico recente" panel deletes in place and must not navigate.
+        if ($request->wantsJson()) {
+            return response()->noContent();
+        }
 
         return redirect()->route('evolutions.index')
             ->with('success', 'Evolução excluída!');
@@ -335,15 +384,92 @@ class EvolutionController extends Controller
             .field-value { margin-top: 2px; }
             .vitals { display: flex; gap: 24px; }
             .vital-box { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 8px 16px; }
+            .scores { width: 100%; border-collapse: collapse; }
+            .scores td { width: 25%; padding: 8px; border: 1px solid #e5e7eb; vertical-align: top; }
             .footer { margin-top: 40px; padding-top: 16px; border-top: 1px solid #e5e7eb; color: #999; font-size: 11px; text-align: center; }
         </style></head><body>';
 
+        $title = [
+            Evolution::TYPE_SIMPLE => 'Evolução da Sessão',
+            Evolution::TYPE_PILATES => 'Evolução de Pilates',
+        ][$evolution->evolution_type] ?? 'Evolução Clínica (SOAP)';
+
         $html .= '<div class="header">';
-        $html .= '<h1>Evolução Clínica (SOAP)</h1>';
+        $html .= '<h1>'.$title.'</h1>';
         $html .= '<p class="meta"><strong>Paciente:</strong> '.e($evolution->patient->name ?? 'N/A').' &nbsp; | &nbsp; ';
         $html .= '<strong>Data:</strong> '.$date.' &nbsp; | &nbsp; ';
         $html .= '<strong>Tipo:</strong> '.$tipo.'</p>';
         $html .= '</div>';
+
+        $html .= match ($evolution->evolution_type) {
+            Evolution::TYPE_SIMPLE => $this->pdfSimpleBody($evolution),
+            Evolution::TYPE_PILATES => $this->pdfPilatesBody($evolution),
+            default => $this->pdfSoapBody($evolution),
+        };
+
+        $html .= '<div class="footer">Phisio &mdash; Gerado em '.now()->format('d/m/Y H:i').'</div>';
+        $html .= '</body></html>';
+
+        $filename = 'evolucao_'.($evolution->patient->name ?? 'paciente').'_'.\Str::slug($date).'.pdf';
+
+        return Pdf::loadHTML($html)->download($filename);
+    }
+
+    private function pdfField(string $label, ?string $value): string
+    {
+        if ($value === null || $value === '') {
+            return '';
+        }
+
+        return '<div class="field"><div class="field-label">'.$label.'</div><div class="field-value">'.nl2br(e($value)).'</div></div>';
+    }
+
+    private function pdfSimpleBody(Evolution $evolution): string
+    {
+        return '<h2>Observações da Aula</h2>'.$this->pdfField('Anotações', $evolution->observacoes);
+    }
+
+    private function pdfPilatesBody(Evolution $evolution): string
+    {
+        $labels = ['estabilidade' => 'Estabilidade', 'mobilidade' => 'Mobilidade', 'forca' => 'Força', 'coordenacao' => 'Coordenação'];
+
+        $html = '<h2>1. Execução do Movimento</h2><table class="scores"><tr>';
+        foreach ($labels as $field => $label) {
+            $html .= '<td><div class="field-label">'.$label.'</div><div class="field-value">'
+                .e(Evolution::pilatesLabel($field, $evolution->{$field}) ?? '—').'</div></td>';
+        }
+        $html .= '</tr></table>';
+
+        $yesNo = fn (?bool $value): string => $value ? 'Sim' : 'Não';
+
+        $pain = $yesNo($evolution->tem_dor);
+        if ($evolution->tem_dor && $evolution->dor_eva !== null) {
+            $pain .= ' — EVA '.$evolution->dor_eva.'/10';
+        }
+        if ($evolution->tem_dor && $evolution->localizacao_dor) {
+            $pain .= ' ('.$evolution->localizacao_dor.')';
+        }
+
+        $limitation = $yesNo($evolution->tem_limitacao)
+            .($evolution->tem_limitacao && $evolution->limitacao_detalhe ? ' — '.$evolution->limitacao_detalhe : '');
+        $contraindication = $yesNo($evolution->tem_contraindicacao)
+            .($evolution->tem_contraindicacao && $evolution->contraindicacao_detalhe ? ' — '.$evolution->contraindicacao_detalhe : '');
+
+        $html .= '<h2>2. Queixas e Cuidados</h2>';
+        $html .= $this->pdfField('Dor', $pain);
+        $html .= $this->pdfField('Limitação', $limitation);
+        $html .= $this->pdfField('Contraindicação', $contraindication);
+
+        if ($evolution->observacoes) {
+            $html .= '<h2>3. Observações Gerais</h2>'.$this->pdfField('Anotações', $evolution->observacoes);
+        }
+
+        return $html;
+    }
+
+    private function pdfSoapBody(Evolution $evolution): string
+    {
+        $html = '';
 
         // S - Subjetivo
         $html .= '<h2>S — Subjetivo</h2>';
@@ -400,11 +526,6 @@ class EvolutionController extends Controller
             $html .= '<div class="field"><div class="field-label">Orientações Domiciliares</div><div class="field-value">'.nl2br(e($evolution->orientacoes_domiciliares)).'</div></div>';
         }
 
-        $html .= '<div class="footer">Phisio &mdash; Gerado em '.now()->format('d/m/Y H:i').'</div>';
-        $html .= '</body></html>';
-
-        $filename = 'evolucao_'.($evolution->patient->name ?? 'paciente').'_'.\Str::slug($date).'.pdf';
-
-        return Pdf::loadHTML($html)->download($filename);
+        return $html;
     }
 }

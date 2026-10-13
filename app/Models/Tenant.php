@@ -33,6 +33,7 @@ class Tenant extends Model
         'technical_manager_name',
         'technical_manager_document',
         'notes',
+        'message_templates',
         'logo_path',
         'status',
         'plan',
@@ -109,6 +110,30 @@ class Tenant extends Model
      *
      * @var list<string>
      */
+    /**
+     * Built-in WhatsApp messages for the celebrations page, used until the
+     * clinic saves its own. Placeholders: {nome}, {primeiro_nome}, {idade},
+     * {anos} and {clinica}.
+     *
+     * @var array<string, string>
+     */
+    public const DEFAULT_MESSAGE_TEMPLATES = [
+        'birthday' => "Olá, {primeiro_nome}! 🎉\n\nToda a equipe da {clinica} deseja um feliz aniversário! Que seu novo ciclo venha com muita saúde, disposição e movimento.\n\nUm grande abraço!",
+        'enrollment' => "Olá, {primeiro_nome}! 💚\n\nHoje completamos {anos} de parceria aqui na {clinica}. Obrigado pela confiança e por fazer parte da nossa história.\n\nVamos juntos para o próximo ano!",
+    ];
+
+    /**
+     * The clinic's message templates, falling back to the defaults.
+     *
+     * @return array{birthday: string, enrollment: string}
+     */
+    public function messageTemplates(): array
+    {
+        $saved = array_filter($this->message_templates ?? [], fn ($text): bool => filled($text));
+
+        return array_merge(self::DEFAULT_MESSAGE_TEMPLATES, $saved);
+    }
+
     public const REQUIRED_PROFILE_FIELDS = [
         'document',
         'cep',
@@ -147,6 +172,7 @@ class Tenant extends Model
             'max_users' => 'integer',
             'max_storage_mb' => 'integer',
             'features' => 'array',
+            'message_templates' => 'array',
             'trial_started_at' => 'datetime',
             'trial_ends_at' => 'datetime',
             'plan_requested_at' => 'datetime',

@@ -11,13 +11,13 @@ import { useState } from 'react';
 import EvolutionFormSheet from '@/components/EvolutionFormSheet';
 import { usePermissions } from '@/hooks/use-permissions';
 import AppLayout from '@/layouts/app-layout';
+import { EVOLUTION_TYPE_LABELS, pilatesSummary } from '@/lib/pilates-scales';
 import type { BreadcrumbItem } from '@/types';
 
 const tipoLabel: Record<string, string> = {
     avaliacao: 'Avaliação',
     reavaliacao: 'Reavaliação',
     sessao: 'Sessão',
-    simple: 'Evolução Rápida',
 };
 
 export default function PatientEvolutions({
@@ -145,6 +145,16 @@ export default function PatientEvolutions({
                                                         ] ||
                                                             evo.tipo_atendimento}
                                                     </span>
+                                                    {evo.evolution_type !==
+                                                        'soap' && (
+                                                        <span className="rounded-md bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
+                                                            {EVOLUTION_TYPE_LABELS[
+                                                                evo
+                                                                    .evolution_type
+                                                            ] ??
+                                                                evo.evolution_type}
+                                                        </span>
+                                                    )}
                                                     {evo.dor_eva !== null &&
                                                         evo.dor_eva !==
                                                             undefined && (
@@ -155,7 +165,29 @@ export default function PatientEvolutions({
                                                         )}
                                                 </div>
                                                 <div className="mt-2 space-y-1 text-sm text-foreground">
-                                                    {evo.observacoes ? (
+                                                    {evo.evolution_type ===
+                                                    'pilates' ? (
+                                                        <>
+                                                            <p>
+                                                                <strong>
+                                                                    Execução:
+                                                                </strong>{' '}
+                                                                {pilatesSummary(
+                                                                    evo,
+                                                                )}
+                                                            </p>
+                                                            {evo.observacoes && (
+                                                                <p>
+                                                                    <strong>
+                                                                        Observações:
+                                                                    </strong>{' '}
+                                                                    {
+                                                                        evo.observacoes
+                                                                    }
+                                                                </p>
+                                                            )}
+                                                        </>
+                                                    ) : evo.observacoes ? (
                                                         <p>
                                                             <strong>
                                                                 Resumo:
@@ -250,6 +282,7 @@ export default function PatientEvolutions({
                 patients={[patient]}
                 protocols={protocols}
                 patientId={patient.id}
+                patientType={patient.type}
             />
         </AppLayout>
     );

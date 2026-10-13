@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AppointmentController;
 use App\Http\Controllers\CalendarFeedController;
+use App\Http\Controllers\CelebrationController;
 use App\Http\Controllers\ClinicalProtocolController;
 use App\Http\Controllers\CommercialPlanController;
 use App\Http\Controllers\DashboardController;
@@ -149,6 +150,14 @@ Route::middleware(['auth', 'verified', 'tenant.active'])->group(function () use 
         ->middleware('permission:patients.manage.edit')
         ->name('patients.documents.destroy');
 
+    // Celebrations (birthdays and enrollment anniversaries)
+    Route::get('celebrations', [CelebrationController::class, 'index'])
+        ->middleware('permission:patients.manage.view')
+        ->name('celebrations.index');
+    Route::patch('celebrations/templates', [CelebrationController::class, 'updateTemplates'])
+        ->middleware('permission:patients.manage.edit')
+        ->name('celebrations.templates.update');
+
     // Appointments
     Route::get('api/appointments/events', [AppointmentController::class, 'events'])
         ->middleware('permission:appointments.manage.view')
@@ -177,6 +186,9 @@ Route::middleware(['auth', 'verified', 'tenant.active'])->group(function () use 
     Route::get('evolutions/{evolution}/pdf', [EvolutionController::class, 'pdf'])
         ->middleware('permission:evolutions.manage.view')
         ->name('evolutions.pdf');
+    Route::get('api/patients/{patient}/recent-evolutions', [EvolutionController::class, 'recent'])
+        ->middleware('permission:evolutions.manage.view')
+        ->name('evolutions.recent');
     $resourceWithPermissions('evolutions', EvolutionController::class, 'evolutions.manage', ['create', 'edit']);
 
     // Memberships

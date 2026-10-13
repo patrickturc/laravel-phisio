@@ -38,7 +38,12 @@ interface Appointment {
     duration_minutes: number;
     status: string;
     notes: string | null;
-    patients?: Array<{ id: string; name: string; pivot?: { status: string } }>;
+    patients?: Array<{
+        id: string;
+        name: string;
+        type?: string;
+        pivot?: { status: string };
+    }>;
 }
 
 export default function AppointmentShow({
@@ -524,6 +529,7 @@ export default function AppointmentShow({
                     isOpen={isEvolutionSheetOpen}
                     onOpenChange={setIsEvolutionSheetOpen}
                     patientId={appointment.patients[0].id}
+                    patientType={appointment.patients[0].type}
                     appointmentId={appointment.id}
                     protocols={protocols}
                 />

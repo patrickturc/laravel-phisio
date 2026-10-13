@@ -15,6 +15,7 @@ import { MissedAttendanceModal } from '@/components/missed-attendance-modal';
 import { Pagination } from '@/components/pagination';
 import { usePermissions } from '@/hooks/use-permissions';
 import AppLayout from '@/layouts/app-layout';
+import { pilatesSummary } from '@/lib/pilates-scales';
 import type { BreadcrumbItem } from '@/types';
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -431,6 +432,12 @@ export default function EvolutionsIndex({
                                                                   ? 'Reavaliação'
                                                                   : 'Evolução'}
                                                         </span>
+                                                        {latestEvo.evolution_type ===
+                                                            'pilates' && (
+                                                            <span className="rounded-md bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary">
+                                                                Pilates
+                                                            </span>
+                                                        )}
                                                         {latestEvo.dor_eva !==
                                                             null && (
                                                             <span className="rounded-md border border-destructive/20 bg-destructive/10 px-2 py-1 text-xs font-medium text-destructive">
@@ -450,7 +457,17 @@ export default function EvolutionsIndex({
                                                     </h3>
 
                                                     <p className="mt-2 line-clamp-2 text-sm break-words text-muted-foreground">
-                                                        {latestEvo.observacoes ? (
+                                                        {latestEvo.evolution_type ===
+                                                        'pilates' ? (
+                                                            <span>
+                                                                <strong>
+                                                                    Execução:
+                                                                </strong>{' '}
+                                                                {pilatesSummary(
+                                                                    latestEvo,
+                                                                )}
+                                                            </span>
+                                                        ) : latestEvo.observacoes ? (
                                                             <span>
                                                                 <strong>
                                                                     Resumo:
