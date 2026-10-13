@@ -145,3 +145,92 @@ test('the grid requires permission to view the agenda', function () {
 
     $this->getJson('/api/appointments/grid')->assertForbidden();
 });
+
+function gridDesk(): User
+{
+    foreach (['appointments.manage.view', 'appointments.manage.edit', 'patients.manage.edit'] as $permission) {
+        Permission::findOrCreate($permission, 'web');
+    }
+
+    $user = User::factory()->create();
+    $user->givePermissionTo(['appointments.manage.view', 'appointments.manage.edit', 'patients.manage.edit']);
+    test()->actingAs($user);
+
+    return $user;
+}
+
+test('grid cards carry the room, the phone and the reminder state', function () {
+    $desk = gridDesk();
+    $appointment = gridBooking(gridProfessional($desk, 'Amanda'), 'Anizia', '2026-10-12', '08:00');
+    $appointment->update(['room' => 'Portal do Éden']);
+    $patient = $appointment->patients()->first();
+    $patient->update(['phone' => '(11) 98600-8482']);
+    $appointment->patients()->updateExistingPivot($patient->id, ['confirmed_at' => now()]);
+
+    $student = $this->getJson('/api/appointments/grid?date=2026-10-12')->json('cells.2026-10-12|08:00.students.0');
+
+    expect($student)
+        ->room->toBe('Portal do Éden')
+        ->phone->toBe('(11) 98600-8482')
+        ->reminded->toBeFalse()
+        ->confirmed->toBeTrue();
+});
+
+test('the reminders list shows tomorrow classes by default, cancelled ones left out', function () {
+    $this->travelTo('2026-10-12 10:00');
+    $desk = gridDesk();
+    $amanda = gridProfessional($desk, 'Amanda');
+    gridBooking($amanda, 'Maria', '2026-10-13', '09:00');
+    gridBooking($amanda, 'Anizia', '2026-10-13', '08:00');
+    gridBooking($amanda, 'Desmarcou', '2026-10-13', '08:00', 'cancelled');
+    gridBooking($amanda, 'Outro dia', '2026-10-14', '08:00');
+
+    $response = $this->getJson('/api/appointments/reminders')->assertOk();
+
+    expect($response->json('date'))->toBe('2026-10-13')
+        ->and(collect($response->json('rows'))->pluck('patient_name')->all())->toBe(['Anizia', 'Maria'])
+        ->and($response->json('rows.0.professional_name'))->toBe('Amanda')
+        ->and($response->json('template'))->toContain('{primeiro_nome}');
+});
+
+test('the front desk records the reminder and the confirmation', function () {
+    $desk = gridDesk();
+    $appointment = gridBooking(gridProfessional($desk, 'Amanda'), 'Anizia', '2026-10-13', '08:00');
+    $patientId = $appointment->patients()->first()->id;
+    $url = "/appointments/{$appointment->id}/patients/{$patientId}";
+
+    $this->postJson("{$url}/whatsapp-reminder")->assertOk();
+    $this->postJson("{$url}/confirmation", ['confirmed' => true])->assertOk();
+
+    $pivot = $appointment->patients()->first()->pivot;
+    expect($pivot->whatsapp_reminder_at)->not->toBeNull()
+        ->and($pivot->confirmed_at)->not->toBeNull()
+        ->and($pivot->reminder_sent_at)->toBeNull();
+
+    $this->postJson("{$url}/confirmation", ['confirmed' => false])->assertOk();
+    expect($appointment->patients()->first()->pivot->confirmed_at)->toBeNull();
+});
+
+test('reminders can only be recorded for a patient of that class, with permission', function () {
+    $desk = gridDesk();
+    $appointment = gridBooking(gridProfessional($desk, 'Amanda'), 'Anizia', '2026-10-13', '08:00');
+    $stranger = Patient::create(['name' => 'Outra', 'user_id' => $desk->id]);
+
+    $this->postJson("/appointments/{$appointment->id}/patients/{$stranger->id}/whatsapp-reminder")->assertNotFound();
+
+    $viewer = User::factory()->create(['tenant_id' => $desk->tenant_id]);
+    $viewer->givePermissionTo('appointments.manage.view');
+    $this->actingAs($viewer);
+    $patientId = $appointment->patients()->first()->id;
+
+    $this->postJson("/appointments/{$appointment->id}/patients/{$patientId}/confirmation", ['confirmed' => true])
+        ->assertForbidden();
+});
+
+test('the clinic can reword the reminder message', function () {
+    $desk = gridDesk();
+
+    $this->patch('/message-templates', ['reminder' => 'Oi {primeiro_nome}, até {data}!'])->assertSessionHasNoErrors();
+
+    expect($desk->tenant->fresh()->messageTemplates()['reminder'])->toBe('Oi {primeiro_nome}, até {data}!');
+});

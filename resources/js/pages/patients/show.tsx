@@ -127,6 +127,9 @@ interface Patient {
         start_time: string;
         starts_on: string;
         ends_on: string | null;
+        interval_weeks: number;
+        room: string | null;
+        rotation_names?: string[];
         professional: { id: number; name: string } | null;
     }>;
 }
@@ -1427,6 +1430,29 @@ export default function PatientShow({
                                                         {booking.ends_on &&
                                                             ` até ${shortDate(booking.ends_on)}`}
                                                     </p>
+                                                    {(booking.interval_weeks >
+                                                        1 ||
+                                                        booking.room ||
+                                                        (booking.rotation_names
+                                                            ?.length ?? 0) >
+                                                            0) && (
+                                                        <p className="text-xs text-muted-foreground">
+                                                            {[
+                                                                booking.interval_weeks >
+                                                                1
+                                                                    ? 'A cada 2 semanas'
+                                                                    : null,
+                                                                booking
+                                                                    .rotation_names
+                                                                    ?.length
+                                                                    ? `revezando com ${booking.rotation_names.join(', ')}`
+                                                                    : null,
+                                                                booking.room,
+                                                            ]
+                                                                .filter(Boolean)
+                                                                .join(' · ')}
+                                                        </p>
+                                                    )}
                                                 </div>
                                                 {can(
                                                     'appointments.manage.delete',

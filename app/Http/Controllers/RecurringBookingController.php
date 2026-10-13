@@ -28,6 +28,8 @@ class RecurringBookingController extends Controller
 
         abort_if(! $tenant, 404);
 
+        $rooms = $tenant->scheduleSettings()['rooms'];
+
         $validated = $request->validate([
             'mode' => ['required', Rule::in(['fixed', 'single'])],
             'patient_id' => ['required', 'uuid'],
@@ -39,7 +41,12 @@ class RecurringBookingController extends Controller
             'starts_on' => ['nullable', 'required_if:mode,fixed', 'date'],
             'ends_on' => ['nullable', 'date', 'after_or_equal:starts_on'],
             'date' => ['nullable', 'required_if:mode,single', 'date'],
+            'interval_weeks' => ['nullable', 'integer', Rule::in([1, 2])],
+            'rotation_user_ids' => ['nullable', 'array', 'max:5'],
+            'rotation_user_ids.*' => ['integer', 'distinct'],
+            'room' => ['nullable', 'string', Rule::in($rooms)],
         ], [
+            'room.in' => 'Escolha uma das salas da clínica.',
             'day_of_week.required_if' => 'Escolha o dia da semana.',
             'starts_on.required_if' => 'Informe a partir de quando.',
             'ends_on.after_or_equal' => 'O fim precisa ser depois do início.',
@@ -66,6 +73,23 @@ class RecurringBookingController extends Controller
     }
 
     /**
+     * Refuse a professional who doesn't take bookings on that weekday and
+     * hour (their availability in the agenda settings).
+     *
+     * @param  iterable<User>  $professionals
+     */
+    private function ensureAvailable(iterable $professionals, int $weekday, string $time, string $field): void
+    {
+        foreach ($professionals as $professional) {
+            if (! $professional->isAvailableAt($weekday, $time)) {
+                throw ValidationException::withMessages([
+                    $field => "{$professional->name} não atende neste dia e horário.",
+                ]);
+            }
+        }
+    }
+
+    /**
      * End a fixed slot today: its upcoming appointments nobody attended yet
      * are removed, past ones stay in the history.
      */
@@ -84,6 +108,7 @@ class RecurringBookingController extends Controller
         $date = Carbon::parse($validated['date']);
         $time = $validated['start_time'];
 
+        $this->ensureAvailable([$professional], $date->dayOfWeek, $time, 'user_id');
         $this->ensureRoom($tenant, $patient, $date->toDateString(), $time);
 
         DB::transaction(function () use ($patient, $professional, $validated, $date, $time, $duration) {
@@ -94,6 +119,7 @@ class RecurringBookingController extends Controller
                 'appointment_date' => $date->toDateString(),
                 'start_time' => $time,
                 'duration_minutes' => $duration,
+                'room' => $validated['room'] ?? null,
                 'notes' => $validated['notes'] ?? null,
                 'status' => 'scheduled',
             ]);
@@ -112,6 +138,19 @@ class RecurringBookingController extends Controller
         $time = $validated['start_time'];
         $dayOfWeek = (int) $validated['day_of_week'];
 
+        // Professionals taking turns with the main one, in the order picked.
+        $rotationIds = array_values(array_diff(array_map('intval', $validated['rotation_user_ids'] ?? []), [$professional->id]));
+        $rotation = User::professionals()->whereIn('id', $rotationIds)->get()->keyBy('id');
+
+        if ($rotation->count() !== count($rotationIds)) {
+            throw ValidationException::withMessages([
+                'rotation_user_ids' => 'Escolha profissionais da clínica para o revezamento.',
+            ]);
+        }
+
+        $this->ensureAvailable([$professional], $dayOfWeek, $time, 'user_id');
+        $this->ensureAvailable($rotation->values(), $dayOfWeek, $time, 'rotation_user_ids');
+
         $duplicate = RecurringBooking::active()
             ->where('patient_id', $patient->id)
             ->where('day_of_week', $dayOfWeek)
@@ -124,14 +163,17 @@ class RecurringBookingController extends Controller
             ]);
         }
 
-        $result = DB::transaction(function () use ($tenant, $patient, $professional, $validated, $time, $dayOfWeek, $duration) {
+        $result = DB::transaction(function () use ($tenant, $patient, $professional, $validated, $time, $dayOfWeek, $duration, $rotationIds) {
             $booking = RecurringBooking::create([
                 'tenant_id' => $tenant->id,
                 'patient_id' => $patient->id,
                 'user_id' => $professional->id,
+                'rotation_user_ids' => $rotationIds ?: null,
                 'day_of_week' => $dayOfWeek,
+                'interval_weeks' => (int) ($validated['interval_weeks'] ?? 1),
                 'start_time' => $time,
                 'duration_minutes' => $duration,
+                'room' => $validated['room'] ?? null,
                 'starts_on' => $validated['starts_on'],
                 'ends_on' => $validated['ends_on'] ?? null,
                 'notes' => $validated['notes'] ?? null,

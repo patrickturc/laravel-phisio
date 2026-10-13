@@ -110,7 +110,7 @@ test('the clinic can save its own message and go back to the default', function 
         ->where('templates.birthday', Tenant::DEFAULT_MESSAGE_TEMPLATES['birthday'])
     );
 
-    $this->patch('/celebrations/templates', ['birthday' => 'Parabéns, {primeiro_nome}!'])
+    $this->patch('/message-templates', ['birthday' => 'Parabéns, {primeiro_nome}!'])
         ->assertRedirect()
         ->assertSessionHasNoErrors();
 
@@ -119,7 +119,7 @@ test('the clinic can save its own message and go back to the default', function 
         ->where('templates.enrollment', Tenant::DEFAULT_MESSAGE_TEMPLATES['enrollment'])
     );
 
-    $this->patch('/celebrations/templates', ['birthday' => '']);
+    $this->patch('/message-templates', ['birthday' => '']);
 
     expect($user->tenant->fresh()->messageTemplates()['birthday'])
         ->toBe(Tenant::DEFAULT_MESSAGE_TEMPLATES['birthday']);
@@ -128,7 +128,7 @@ test('the clinic can save its own message and go back to the default', function 
 test('saving a message template requires permission to edit patients', function () {
     celebrationsUser(['patients.manage.view']);
 
-    $this->patch('/celebrations/templates', ['birthday' => 'Oi'])->assertForbidden();
+    $this->patch('/message-templates', ['birthday' => 'Oi'])->assertForbidden();
 });
 
 test('a new patient is enrolled today unless a date is given', function () {

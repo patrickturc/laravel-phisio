@@ -7,6 +7,7 @@ import {
     ChevronRight,
     List,
     Loader2,
+    MessageCircle,
     Search,
     Settings,
 } from 'lucide-react';
@@ -14,6 +15,7 @@ import { useEffect, useState } from 'react';
 import { AgendaBookingSheet } from '@/components/agenda-booking-sheet';
 import { AgendaGrid } from '@/components/agenda-grid';
 import { AgendaMonth } from '@/components/agenda-month';
+import { AgendaRemindersSheet } from '@/components/agenda-reminders-sheet';
 import { AgendaSettingsDialog } from '@/components/agenda-settings-dialog';
 import { AgendaStudentDialog } from '@/components/agenda-student-dialog';
 import { MissedAttendanceModal } from '@/components/missed-attendance-modal';
@@ -76,6 +78,8 @@ export default function AppointmentsIndex({
     groupClasses = [],
     users = [],
     scheduleSettings,
+    reminderTemplate,
+    clinicName,
 }: {
     appointments: any;
     filters?: Record<string, string | undefined>;
@@ -83,6 +87,8 @@ export default function AppointmentsIndex({
     groupClasses?: any[];
     users?: Professional[];
     scheduleSettings: ScheduleSettings;
+    reminderTemplate: string;
+    clinicName: string;
 }) {
     const { can } = usePermissions();
 
@@ -99,6 +105,7 @@ export default function AppointmentsIndex({
 
     const [booking, setBooking] = useState<BookingState | null>(bookingFromUrl);
     const [settingsKey, setSettingsKey] = useState<number | null>(null);
+    const [remindersOpen, setRemindersOpen] = useState(false);
     const [selected, setSelected] = useState<SelectedStudent | null>(null);
     const [missed, setMissed] = useState<SelectedStudent | null>(null);
 
@@ -214,6 +221,14 @@ export default function AppointmentsIndex({
                         </p>
                     </div>
                     <div className="flex flex-wrap gap-2">
+                        <Button
+                            variant="outline"
+                            onClick={() => setRemindersOpen(true)}
+                            className="rounded-xl"
+                        >
+                            <MessageCircle className="size-4" />
+                            Lembretes
+                        </Button>
                         {can('appointments.settings.manage') && (
                             <Button
                                 variant="outline"
@@ -418,6 +433,7 @@ export default function AppointmentsIndex({
                     patients={patients}
                     professionals={users}
                     defaultDuration={scheduleSettings.default_duration}
+                    rooms={scheduleSettings.rooms ?? []}
                     preset={booking.preset}
                     onBooked={refresh}
                 />
@@ -445,6 +461,16 @@ export default function AppointmentsIndex({
                         setMissed(student);
                     }}
                     onEdit={openEdit}
+                    reminderTemplate={reminderTemplate}
+                    clinicName={clinicName}
+                />
+            )}
+
+            {remindersOpen && (
+                <AgendaRemindersSheet
+                    open
+                    onOpenChange={setRemindersOpen}
+                    onChanged={refresh}
                 />
             )}
 

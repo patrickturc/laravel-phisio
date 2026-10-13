@@ -44,7 +44,8 @@ class HandleInertiaRequests extends Middleware
                 'user' => $request->user() ? array_merge($request->user()->makeVisible('calendar_token')->toArray(), [
                     'roles' => $request->user()->getRoleNames(),
                     'permissions' => $request->user()->getAllPermissions()->pluck('name'),
-                    'tenant' => $request->user()->tenant,
+                    // "notes" are the dev admin's internal notes about the clinic.
+                    'tenant' => $request->user()->tenant?->makeHidden('notes'),
                     'is_dev_admin' => $request->user()->is_dev_admin,
                 ]) : null,
             ],

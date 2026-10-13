@@ -130,21 +130,24 @@ class Tenant extends Model
      * @var list<string>
      */
     /**
-     * Built-in WhatsApp messages for the celebrations page, used until the
-     * clinic saves its own. Placeholders: {nome}, {primeiro_nome}, {idade},
-     * {anos} and {clinica}.
+     * Built-in WhatsApp messages, used until the clinic saves its own:
+     * birthday and enrollment anniversary (celebrations page) and the class
+     * reminder (agenda). Placeholders: {nome}, {primeiro_nome}, {idade},
+     * {anos}, {clinica}, and for the reminder {data}, {horario},
+     * {profissional} and {sala}.
      *
      * @var array<string, string>
      */
     public const DEFAULT_MESSAGE_TEMPLATES = [
         'birthday' => "Olá, {primeiro_nome}! 🎉\n\nToda a equipe da {clinica} deseja um feliz aniversário! Que seu novo ciclo venha com muita saúde, disposição e movimento.\n\nUm grande abraço!",
         'enrollment' => "Olá, {primeiro_nome}! 💚\n\nHoje completamos {anos} de parceria aqui na {clinica}. Obrigado pela confiança e por fazer parte da nossa história.\n\nVamos juntos para o próximo ano!",
+        'reminder' => "Olá, {primeiro_nome}! 😊\n\nPassando para lembrar da sua aula na {clinica}: {data}, às {horario}, com {profissional}.\n\nPode confirmar sua presença respondendo esta mensagem?",
     ];
 
     /**
      * The clinic's message templates, falling back to the defaults.
      *
-     * @return array{birthday: string, enrollment: string}
+     * @return array{birthday: string, enrollment: string, reminder: string}
      */
     public function messageTemplates(): array
     {
@@ -158,7 +161,7 @@ class Tenant extends Model
      * weekday (0 = Sunday), breaks hidden from the agenda, students per time
      * slot and the default session length in minutes.
      *
-     * @var array{business_hours: list<array{open: bool, start: string, end: string}>, breaks: list<array{start: string, end: string}>, slot_capacity: int, default_duration: int}
+     * @var array{business_hours: list<array{open: bool, start: string, end: string}>, breaks: list<array{start: string, end: string}>, slot_capacity: int, default_duration: int, rooms: list<string>}
      */
     public const DEFAULT_SCHEDULE_SETTINGS = [
         'business_hours' => [
@@ -173,12 +176,13 @@ class Tenant extends Model
         'breaks' => [],
         'slot_capacity' => 6,
         'default_duration' => 50,
+        'rooms' => [],
     ];
 
     /**
      * The clinic's agenda settings, filled in with the defaults.
      *
-     * @return array{business_hours: list<array{open: bool, start: string, end: string}>, breaks: list<array{start: string, end: string}>, slot_capacity: int, default_duration: int}
+     * @return array{business_hours: list<array{open: bool, start: string, end: string}>, breaks: list<array{start: string, end: string}>, slot_capacity: int, default_duration: int, rooms: list<string>}
      */
     public function scheduleSettings(): array
     {

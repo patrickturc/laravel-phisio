@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\ClinicalProtocol;
 use App\Models\CommercialPlan;
 use App\Models\Patient;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -89,6 +90,14 @@ class PatientController extends Controller
             'recurringBookings' => fn ($q) => $q->active()->with('professional:id,name')
                 ->orderBy('day_of_week')->orderBy('start_time'),
         ]);
+
+        // Names of the professionals taking turns on each fixed slot.
+        $rotationNames = User::whereIn('id', $patient->recurringBookings->pluck('rotation_user_ids')->flatten()->filter())
+            ->pluck('name', 'id');
+        $patient->recurringBookings->each(fn ($booking) => $booking->setAttribute(
+            'rotation_names',
+            collect($booking->rotation_user_ids ?? [])->map(fn ($id) => $rotationNames[$id] ?? null)->filter()->values(),
+        ));
 
         // Expose the monthly session quota usage on each membership card.
         $patient->memberships->each->append([

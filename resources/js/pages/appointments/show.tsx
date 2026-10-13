@@ -27,6 +27,7 @@ import {
 import { usePermissions } from '@/hooks/use-permissions';
 import AppLayout from '@/layouts/app-layout';
 import type { BreadcrumbItem } from '@/types';
+import { AppointmentFormSheet } from './appointment-form-sheet';
 
 interface Appointment {
     id: string;
@@ -49,9 +50,19 @@ interface Appointment {
 export default function AppointmentShow({
     appointment,
     protocols = [],
+    patients = [],
+    users = [],
+    groupClasses = [],
 }: {
     appointment: Appointment;
     protocols?: Array<{ id: string; name: string }>;
+    patients?: Array<{ id: string; name: string }>;
+    users?: Array<{ id: number; name: string }>;
+    groupClasses?: Array<{
+        id: string;
+        name: string;
+        max_participants: number;
+    }>;
 }) {
     const breadcrumbs: BreadcrumbItem[] = [
         { title: 'Agenda', href: '/appointments' },
@@ -63,6 +74,7 @@ export default function AppointmentShow({
 
     const { can } = usePermissions();
     const [isEvolutionSheetOpen, setIsEvolutionSheetOpen] = useState(false);
+    const [isEditSheetOpen, setIsEditSheetOpen] = useState(false);
     const { modal } = useConfirmModal();
 
     const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -178,12 +190,14 @@ export default function AppointmentShow({
                     </div>
                     <div className="flex items-center gap-2">
                         {can('appointments.manage.edit') && (
-                            <Link
-                                href={`/appointments/${appointment.id}/edit`}
+                            <button
+                                type="button"
+                                onClick={() => setIsEditSheetOpen(true)}
                                 className="rounded-xl border border-border/50 p-2.5 text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
+                                title="Editar agendamento"
                             >
                                 <Edit className="size-4" />
-                            </Link>
+                            </button>
                         )}
                         {can('appointments.manage.delete') && (
                             <button
@@ -540,6 +554,14 @@ export default function AppointmentShow({
                 patientName={missedFor?.name}
                 onConfirm={confirmMissed}
                 onCancel={() => setMissedFor(null)}
+            />
+            <AppointmentFormSheet
+                isOpen={isEditSheetOpen}
+                setIsOpen={setIsEditSheetOpen}
+                patients={patients}
+                users={users}
+                groupClasses={groupClasses}
+                editingAppointment={appointment}
             />
         </AppLayout>
     );

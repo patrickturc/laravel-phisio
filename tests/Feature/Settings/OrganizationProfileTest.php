@@ -88,6 +88,17 @@ test('the owner personal data reaches the profile page but not every other page'
         );
 });
 
+test('the dev admin internal notes about the clinic are not shared with its users', function () {
+    $user = clinicProfileAdmin();
+    $user->tenant->update(['notes' => 'Cliente atrasou duas faturas']);
+
+    $this->get('/settings/organization')
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('auth.user.tenant.name', $user->tenant->name)
+            ->missing('auth.user.tenant.notes')
+        );
+});
+
 test('uploading a logo stores it in the clinic folder and replaces the previous one', function () {
     Storage::fake();
     $user = clinicProfileAdmin();

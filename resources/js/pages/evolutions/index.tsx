@@ -268,114 +268,131 @@ export default function EvolutionsIndex({
 
                 {/* Pending Evolutions Section */}
                 <AnimatePresence>
-                    {filteredPendingEvolutions.length > 0 && !hasFilters && (
-                        <motion.div
-                            initial={{ opacity: 0, height: 0 }}
-                            animate={{ opacity: 1, height: 'auto' }}
-                            exit={{ opacity: 0, height: 0 }}
-                            className="mb-6 space-y-4"
-                        >
-                            <div className="mb-2 flex items-center gap-2 px-1 text-amber-600 dark:text-amber-500">
-                                <AlertCircle className="size-5" />
-                                <h2 className="text-lg font-semibold">
-                                    Evoluções Pendentes
-                                </h2>
-                                <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-700 dark:bg-amber-900/40 dark:text-amber-400">
-                                    {filteredPendingEvolutions.length}
-                                </span>
-                            </div>
+                    {/* Tabs filter the pending list too, so only a search hides it. */}
+                    {filteredPendingEvolutions.length > 0 &&
+                        !filters.search &&
+                        !filters.tipo && (
+                            <motion.div
+                                initial={{ opacity: 0, height: 0 }}
+                                animate={{ opacity: 1, height: 'auto' }}
+                                exit={{ opacity: 0, height: 0 }}
+                                className="mb-6 space-y-4"
+                            >
+                                <div className="mb-2 flex items-center gap-2 px-1 text-amber-600 dark:text-amber-500">
+                                    <AlertCircle className="size-5" />
+                                    <h2 className="text-lg font-semibold">
+                                        Evoluções Pendentes
+                                    </h2>
+                                    <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-700 dark:bg-amber-900/40 dark:text-amber-400">
+                                        {filteredPendingEvolutions.length}
+                                    </span>
+                                </div>
 
-                            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-                                {filteredPendingEvolutions.map((pending) => (
-                                    <div
-                                        key={pending.id}
-                                        className="relative flex flex-col overflow-hidden rounded-2xl border border-amber-200/50 bg-amber-50/50 p-5 shadow-sm dark:border-amber-900/50 dark:bg-amber-950/10"
-                                    >
-                                        <div className="absolute top-0 right-0 -z-10 h-24 w-24 rounded-bl-[100px] bg-amber-500/5" />
-
-                                        <div className="mb-3 flex items-start justify-between">
-                                            <div>
-                                                <h3
-                                                    className="truncate pr-2 text-base font-bold text-foreground"
-                                                    title={pending.patient_name}
-                                                >
-                                                    {pending.patient_name}
-                                                </h3>
-                                                <p className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
-                                                    <span className="font-medium text-amber-700/80 dark:text-amber-400/80">
-                                                        {pending.title}
-                                                    </span>
-                                                    <span>&bull;</span>
-                                                    <span>
-                                                        {new Date(
-                                                            pending.appointment_date +
-                                                                'T00:00:00',
-                                                        ).toLocaleDateString(
-                                                            'pt-BR',
-                                                        )}{' '}
-                                                        às {pending.start_time}
-                                                    </span>
-                                                </p>
-                                            </div>
-                                        </div>
-
-                                        <textarea
-                                            placeholder="Observações da aula..."
-                                            value={
-                                                observations[pending.id] || ''
-                                            }
-                                            onChange={(e) =>
-                                                setObservations({
-                                                    ...observations,
-                                                    [pending.id]:
-                                                        e.target.value,
-                                                })
-                                            }
-                                            className="mb-3 h-24 w-full resize-none rounded-xl border border-amber-200/50 bg-background/50 p-3 text-sm transition-all focus:ring-2 focus:ring-amber-500/50 focus:outline-none dark:border-amber-800/50"
-                                        />
-
-                                        <div className="mt-auto flex items-center gap-2">
-                                            {can(
-                                                'evolutions.manage.create',
-                                            ) && (
-                                                <button
-                                                    onClick={() =>
-                                                        handleSaveSimple(
-                                                            pending,
-                                                        )
-                                                    }
-                                                    disabled={
-                                                        isSubmitting ===
-                                                            pending.id ||
-                                                        !observations[
-                                                            pending.id
-                                                        ]?.trim()
-                                                    }
-                                                    className="flex h-9 flex-1 items-center justify-center gap-1.5 rounded-lg bg-amber-600 text-sm font-medium text-white transition-colors hover:bg-amber-700 disabled:cursor-not-allowed disabled:opacity-50"
-                                                >
-                                                    <CheckCircle2 className="size-4" />
-                                                    Salvar
-                                                </button>
-                                            )}
-                                            <button
-                                                onClick={() =>
-                                                    handleMarkMissed(pending)
-                                                }
-                                                disabled={
-                                                    isSubmitting ===
-                                                    pending.id + '_missed'
-                                                }
-                                                className="flex h-9 items-center justify-center gap-1.5 rounded-lg border border-border bg-background px-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted disabled:opacity-50"
-                                                title="Marcar como Falta"
+                                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+                                    {filteredPendingEvolutions.map(
+                                        (pending) => (
+                                            <div
+                                                key={pending.id}
+                                                className="relative flex flex-col overflow-hidden rounded-2xl border border-amber-200/50 bg-amber-50/50 p-5 shadow-sm dark:border-amber-900/50 dark:bg-amber-950/10"
                                             >
-                                                <UserMinus className="size-4" />
-                                            </button>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </motion.div>
-                    )}
+                                                <div className="absolute top-0 right-0 -z-10 h-24 w-24 rounded-bl-[100px] bg-amber-500/5" />
+
+                                                <div className="mb-3 flex items-start justify-between">
+                                                    <div>
+                                                        <h3
+                                                            className="truncate pr-2 text-base font-bold text-foreground"
+                                                            title={
+                                                                pending.patient_name
+                                                            }
+                                                        >
+                                                            {
+                                                                pending.patient_name
+                                                            }
+                                                        </h3>
+                                                        <p className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
+                                                            <span className="font-medium text-amber-700/80 dark:text-amber-400/80">
+                                                                {pending.title}
+                                                            </span>
+                                                            <span>&bull;</span>
+                                                            <span>
+                                                                {new Date(
+                                                                    pending.appointment_date +
+                                                                        'T00:00:00',
+                                                                ).toLocaleDateString(
+                                                                    'pt-BR',
+                                                                )}{' '}
+                                                                às{' '}
+                                                                {
+                                                                    pending.start_time
+                                                                }
+                                                            </span>
+                                                        </p>
+                                                    </div>
+                                                </div>
+
+                                                <textarea
+                                                    placeholder="Observações da aula..."
+                                                    value={
+                                                        observations[
+                                                            pending.id
+                                                        ] || ''
+                                                    }
+                                                    onChange={(e) =>
+                                                        setObservations({
+                                                            ...observations,
+                                                            [pending.id]:
+                                                                e.target.value,
+                                                        })
+                                                    }
+                                                    className="mb-3 h-24 w-full resize-none rounded-xl border border-amber-200/50 bg-background/50 p-3 text-sm transition-all focus:ring-2 focus:ring-amber-500/50 focus:outline-none dark:border-amber-800/50"
+                                                />
+
+                                                <div className="mt-auto flex items-center gap-2">
+                                                    {can(
+                                                        'evolutions.manage.create',
+                                                    ) && (
+                                                        <button
+                                                            onClick={() =>
+                                                                handleSaveSimple(
+                                                                    pending,
+                                                                )
+                                                            }
+                                                            disabled={
+                                                                isSubmitting ===
+                                                                    pending.id ||
+                                                                !observations[
+                                                                    pending.id
+                                                                ]?.trim()
+                                                            }
+                                                            className="flex h-9 flex-1 items-center justify-center gap-1.5 rounded-lg bg-amber-600 text-sm font-medium text-white transition-colors hover:bg-amber-700 disabled:cursor-not-allowed disabled:opacity-50"
+                                                        >
+                                                            <CheckCircle2 className="size-4" />
+                                                            Salvar
+                                                        </button>
+                                                    )}
+                                                    <button
+                                                        onClick={() =>
+                                                            handleMarkMissed(
+                                                                pending,
+                                                            )
+                                                        }
+                                                        disabled={
+                                                            isSubmitting ===
+                                                            pending.id +
+                                                                '_missed'
+                                                        }
+                                                        className="flex h-9 items-center justify-center gap-1.5 rounded-lg border border-border bg-background px-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted disabled:opacity-50"
+                                                        title="Marcar como Falta"
+                                                    >
+                                                        <UserMinus className="size-4" />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ),
+                                    )}
+                                </div>
+                            </motion.div>
+                        )}
                 </AnimatePresence>
 
                 {/* List section with Glassmorphism */}

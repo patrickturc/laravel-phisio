@@ -250,23 +250,31 @@ class GroupClassController extends Controller
             'color' => 'sometimes|nullable|string',
         ]);
 
+        // Only an explicit choice changes the professional: a status toggle or
+        // roster change doesn't send user_id and must keep the current one.
+        // An empty choice still means "me", as when creating.
+        $userId = $request->has('user_id')
+            ? ($request->input('user_id') ?: auth()->id())
+            : $groupClass->user_id;
+
         DB::beginTransaction();
         try {
             $groupClass->update([
-                'user_id' => $request->input('user_id', auth()->id()),
+                'user_id' => $userId,
                 'name' => $request->has('name') ? $validated['name'] : $groupClass->name,
                 'color' => $request->has('color') ? $validated['color'] : $groupClass->color,
                 'max_participants' => $request->has('max_participants') ? $validated['max_participants'] : $groupClass->max_participants,
                 'status' => $request->has('status') ? $validated['status'] : $groupClass->status,
             ]);
 
-            // Sync the name and max_participants to all future scheduled appointments automatically
+            // Sync the name, capacity and professional to all future scheduled appointments
             Appointment::where('group_class_id', $groupClass->id)
                 ->where('appointment_date', '>=', now()->format('Y-m-d'))
                 ->where('status', 'scheduled')
                 ->update([
                     'title' => $groupClass->name,
                     'max_participants' => $groupClass->max_participants,
+                    'user_id' => $groupClass->user_id,
                 ]);
 
             if ($request->has('schedules') && isset($validated['schedules'])) {

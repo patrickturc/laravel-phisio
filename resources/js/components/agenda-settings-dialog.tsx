@@ -14,12 +14,13 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import type {
+    Availability,
     BusinessHours,
     Professional,
     ScheduleSettings,
     TimeRange,
 } from '@/lib/agenda';
-import { WEEK_ORDER, WEEKDAY_LONG } from '@/lib/agenda';
+import { WEEK_ORDER, WEEKDAY_LONG, WEEKDAY_SHORT } from '@/lib/agenda';
 
 interface Props {
     open: boolean;
@@ -30,9 +31,25 @@ interface Props {
 }
 
 /**
+ * Whole hours the clinic opens on that weekday, e.g. 07:00–20:00 → 7…19.
+ */
+function openHoursOf(hours: BusinessHours): number[] {
+    if (!hours.open) return [];
+
+    const first = Number(hours.start.slice(0, 2));
+    const [endHour, endMinute] = hours.end.split(':').map(Number);
+    const last = endMinute > 0 ? endHour : endHour - 1;
+
+    return first > last
+        ? []
+        : Array.from({ length: last - first + 1 }, (_, i) => first + i);
+}
+
+/**
  * "Configurar agenda": opening hours per weekday, breaks hidden from the
- * agenda, students per time slot, default length, and each professional's
- * colour. Mounted with a fresh key per opening.
+ * agenda, students per time slot, default length, rooms, and each
+ * professional's colour and availability. Mounted with a fresh key per
+ * opening.
  */
 export function AgendaSettingsDialog({
     open,
@@ -54,7 +71,54 @@ export function AgendaSettingsDialog({
                 professional.color,
             ]),
         ) as Record<string, string>,
+        rooms: settings.rooms ?? [],
+        availability: Object.fromEntries(
+            professionals.map((professional) => [
+                String(professional.id),
+                professional.availability ?? null,
+            ]),
+        ) as Record<string, Availability | null>,
     });
+
+    // Rows of the availability grid: every hour the clinic opens on any day.
+    const gridHours = Array.from(
+        new Set(data.business_hours.flatMap(openHoursOf)),
+    ).sort((a, b) => a - b);
+
+    function setAvailability(
+        professionalId: number,
+        value: Availability | null,
+    ) {
+        setData('availability', {
+            ...data.availability,
+            [String(professionalId)]: value,
+        });
+    }
+
+    /** Restricting starts from the clinic hours, then hours get unticked. */
+    function restrictAvailability(professionalId: number) {
+        setAvailability(
+            professionalId,
+            Object.fromEntries(
+                data.business_hours.map((hours, weekday) => [
+                    String(weekday),
+                    openHoursOf(hours),
+                ]),
+            ),
+        );
+    }
+
+    function toggleHour(professionalId: number, weekday: number, hour: number) {
+        const current = data.availability[String(professionalId)] ?? {};
+        const hours = current[String(weekday)] ?? [];
+
+        setAvailability(professionalId, {
+            ...current,
+            [String(weekday)]: hours.includes(hour)
+                ? hours.filter((h) => h !== hour)
+                : [...hours, hour].sort((a, b) => a - b),
+        });
+    }
 
     const fieldErrors = errors as Record<string, string | undefined>;
 
@@ -306,6 +370,70 @@ export function AgendaSettingsDialog({
                                 <InputError message={errors.default_duration} />
                             </div>
                         </section>
+
+                        <section className="space-y-3">
+                            <div>
+                                <h3 className="text-sm font-semibold">
+                                    Salas / unidades
+                                </h3>
+                                <p className="text-xs text-muted-foreground">
+                                    Opcional. Aparecem no agendamento e no card
+                                    da agenda.
+                                </p>
+                            </div>
+                            {data.rooms.map((room, index) => (
+                                <div key={index} className="space-y-1">
+                                    <div className="flex items-center gap-2">
+                                        <Input
+                                            value={room}
+                                            onChange={(e) =>
+                                                setData(
+                                                    'rooms',
+                                                    data.rooms.map((r, i) =>
+                                                        i === index
+                                                            ? e.target.value
+                                                            : r,
+                                                    ),
+                                                )
+                                            }
+                                            placeholder="Ex.: Sala 1, Unidade Centro"
+                                            maxLength={60}
+                                            className="max-w-xs"
+                                        />
+                                        <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="icon"
+                                            onClick={() =>
+                                                setData(
+                                                    'rooms',
+                                                    data.rooms.filter(
+                                                        (_, i) => i !== index,
+                                                    ),
+                                                )
+                                            }
+                                            title="Remover sala"
+                                        >
+                                            <Trash2 className="size-4" />
+                                        </Button>
+                                    </div>
+                                    <InputError
+                                        message={fieldErrors[`rooms.${index}`]}
+                                    />
+                                </div>
+                            ))}
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() =>
+                                    setData('rooms', [...data.rooms, ''])
+                                }
+                            >
+                                <Plus className="size-4" />
+                                Adicionar sala
+                            </Button>
+                        </section>
                     </div>
                 ) : (
                     <section className="space-y-3">
@@ -320,31 +448,143 @@ export function AgendaSettingsDialog({
                         )}
                         {professionals.map((professional) => {
                             const color = data.colors[String(professional.id)];
+                            const availability =
+                                data.availability[String(professional.id)];
 
                             return (
-                                <label
+                                <div
                                     key={professional.id}
-                                    className="flex cursor-pointer items-center gap-3 rounded-lg border border-border/60 p-3"
+                                    className="space-y-3 rounded-lg border border-border/60 p-3"
                                     style={{
                                         borderLeft: `4px solid ${color}`,
                                     }}
                                 >
-                                    <input
-                                        type="color"
-                                        value={color}
-                                        onChange={(e) =>
-                                            setData('colors', {
-                                                ...data.colors,
-                                                [String(professional.id)]:
-                                                    e.target.value,
-                                            })
-                                        }
-                                        className="size-8 cursor-pointer rounded border-0 bg-transparent p-0"
-                                    />
-                                    <span className="text-sm font-medium">
-                                        {professional.name}
-                                    </span>
-                                </label>
+                                    <div className="flex flex-wrap items-center gap-3">
+                                        <input
+                                            type="color"
+                                            value={color}
+                                            onChange={(e) =>
+                                                setData('colors', {
+                                                    ...data.colors,
+                                                    [String(professional.id)]:
+                                                        e.target.value,
+                                                })
+                                            }
+                                            className="size-8 cursor-pointer rounded border-0 bg-transparent p-0"
+                                            aria-label={`Cor de ${professional.name}`}
+                                        />
+                                        <span className="text-sm font-medium">
+                                            {professional.name}
+                                        </span>
+                                        <label className="ml-auto flex cursor-pointer items-center gap-2 text-xs text-muted-foreground">
+                                            <input
+                                                type="checkbox"
+                                                checked={availability !== null}
+                                                onChange={(e) =>
+                                                    e.target.checked
+                                                        ? restrictAvailability(
+                                                              professional.id,
+                                                          )
+                                                        : setAvailability(
+                                                              professional.id,
+                                                              null,
+                                                          )
+                                                }
+                                                className="size-4 accent-primary"
+                                            />
+                                            Definir horários de atendimento
+                                        </label>
+                                    </div>
+
+                                    {availability !== null && (
+                                        <div className="overflow-x-auto">
+                                            <table className="text-xs">
+                                                <thead>
+                                                    <tr>
+                                                        <th />
+                                                        {WEEK_ORDER.map(
+                                                            (weekday) => (
+                                                                <th
+                                                                    key={
+                                                                        weekday
+                                                                    }
+                                                                    className="px-1 pb-1 font-semibold text-muted-foreground"
+                                                                >
+                                                                    {
+                                                                        WEEKDAY_SHORT[
+                                                                            weekday
+                                                                        ]
+                                                                    }
+                                                                </th>
+                                                            ),
+                                                        )}
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {gridHours.map((hour) => (
+                                                        <tr key={hour}>
+                                                            <td className="pr-2 text-right text-muted-foreground tabular-nums">
+                                                                {String(
+                                                                    hour,
+                                                                ).padStart(
+                                                                    2,
+                                                                    '0',
+                                                                )}
+                                                                h
+                                                            </td>
+                                                            {WEEK_ORDER.map(
+                                                                (weekday) => {
+                                                                    const on = (
+                                                                        availability[
+                                                                            String(
+                                                                                weekday,
+                                                                            )
+                                                                        ] ?? []
+                                                                    ).includes(
+                                                                        hour,
+                                                                    );
+
+                                                                    return (
+                                                                        <td
+                                                                            key={
+                                                                                weekday
+                                                                            }
+                                                                            className="p-0.5"
+                                                                        >
+                                                                            <button
+                                                                                type="button"
+                                                                                onClick={() =>
+                                                                                    toggleHour(
+                                                                                        professional.id,
+                                                                                        weekday,
+                                                                                        hour,
+                                                                                    )
+                                                                                }
+                                                                                className={`h-5 w-9 rounded transition-colors ${on ? '' : 'bg-muted hover:bg-muted-foreground/20'}`}
+                                                                                style={
+                                                                                    on
+                                                                                        ? {
+                                                                                              backgroundColor:
+                                                                                                  color,
+                                                                                          }
+                                                                                        : undefined
+                                                                                }
+                                                                                aria-pressed={
+                                                                                    on
+                                                                                }
+                                                                                aria-label={`${WEEKDAY_SHORT[weekday]} ${hour}h`}
+                                                                            />
+                                                                        </td>
+                                                                    );
+                                                                },
+                                                            )}
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    )}
+                                </div>
                             );
                         })}
                     </section>

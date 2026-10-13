@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\Patient;
 use App\Models\Tenant;
-use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Inertia\Inertia;
@@ -53,28 +52,6 @@ class CelebrationController extends Controller
             'templates' => $tenant?->messageTemplates() ?? Tenant::DEFAULT_MESSAGE_TEMPLATES,
             'clinicName' => $tenant?->name ?? config('app.name'),
         ]);
-    }
-
-    /**
-     * Save the clinic's wording for the birthday / enrollment messages. An
-     * empty text restores the built-in default.
-     */
-    public function updateTemplates(Request $request): RedirectResponse
-    {
-        $tenant = $request->user()->tenant;
-
-        abort_if(! $tenant, 404);
-
-        $validated = $request->validate([
-            'birthday' => ['nullable', 'string', 'max:1000'],
-            'enrollment' => ['nullable', 'string', 'max:1000'],
-        ]);
-
-        $tenant->update([
-            'message_templates' => array_merge($tenant->message_templates ?? [], $validated),
-        ]);
-
-        return back()->with('success', 'Modelo de mensagem salvo.');
     }
 
     /**

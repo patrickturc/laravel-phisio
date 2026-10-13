@@ -340,3 +340,70 @@ test('the regular appointment form lets a professional see several patients at o
 
     expect(Appointment::where('appointment_date', '2026-10-13')->count())->toBe(2);
 });
+
+test('an alternate-week fixed slot books every other week, counting from its first class', function () {
+    $desk = bookingDesk();
+    bookFixed(bookingPatient($desk, 'Anizia'), bookingProfessional($desk, 'Amanda'), ['interval_weeks' => 2])
+        ->assertSessionHasNoErrors();
+    $booking = RecurringBooking::sole();
+
+    expect(bookedDates($booking))->toBe(['2026-10-12', '2026-10-26', '2026-11-09', '2026-11-23', '2026-12-07']);
+
+    $this->travelTo('2026-10-19 09:00');
+    $this->artisan('bookings:generate');
+    expect($booking->appointments()->count())->toBe(5);
+
+    $this->travelTo('2026-10-26 09:00');
+    $this->artisan('bookings:generate');
+    expect(bookedDates($booking))->toContain('2026-12-21')->toHaveCount(6);
+});
+
+test('professionals take turns on a fixed slot in the order chosen', function () {
+    $desk = bookingDesk();
+    $amanda = bookingProfessional($desk, 'Amanda');
+    $silvana = bookingProfessional($desk, 'Silvana');
+
+    bookFixed(bookingPatient($desk, 'Anizia'), $amanda, ['rotation_user_ids' => [$silvana->id]])
+        ->assertSessionHasNoErrors();
+
+    $professionals = RecurringBooking::sole()->appointments()->orderBy('appointment_date')->pluck('user_id')->all();
+
+    expect(array_slice($professionals, 0, 4))->toBe([$amanda->id, $silvana->id, $amanda->id, $silvana->id]);
+});
+
+test('the rotation only accepts professionals of the clinic', function () {
+    $desk = bookingDesk();
+    $outsider = bookingProfessional(User::factory()->create(), 'De fora');
+
+    bookFixed(bookingPatient($desk, 'Anizia'), bookingProfessional($desk, 'Amanda'), ['rotation_user_ids' => [$outsider->id]])
+        ->assertSessionHasErrors('rotation_user_ids');
+});
+
+test('a booking can take one of the clinic rooms', function () {
+    $desk = bookingDesk();
+    $desk->tenant->update(['schedule_settings' => ['rooms' => ['Sala 1', 'Portal do Éden']]]);
+    $amanda = bookingProfessional($desk, 'Amanda');
+
+    bookFixed(bookingPatient($desk, 'Anizia'), $amanda, ['room' => 'Portal do Éden'])->assertSessionHasNoErrors();
+    bookFixed(bookingPatient($desk, 'Maria'), $amanda, ['room' => 'Sala inexistente'])->assertSessionHasErrors('room');
+
+    expect(RecurringBooking::sole()->room)->toBe('Portal do Éden')
+        ->and(RecurringBooking::sole()->appointments()->first()->room)->toBe('Portal do Éden');
+});
+
+test('a professional is only booked within their availability', function () {
+    $desk = bookingDesk();
+    $amanda = bookingProfessional($desk, 'Amanda');
+    $amanda->update(['agenda_availability' => [1 => [9, 10]]]);
+    $silvana = bookingProfessional($desk, 'Silvana');
+    $silvana->update(['agenda_availability' => [1 => [8]]]);
+
+    bookFixed(bookingPatient($desk, 'Cedo'), $amanda, ['start_time' => '08:00'])
+        ->assertSessionHasErrors(['user_id' => 'Amanda não atende neste dia e horário.']);
+    bookSingle(bookingPatient($desk, 'Avulso'), $amanda, '2026-10-13', '09:00')
+        ->assertSessionHasErrors('user_id');
+    bookFixed(bookingPatient($desk, 'Revezando'), $amanda, ['start_time' => '09:00', 'rotation_user_ids' => [$silvana->id]])
+        ->assertSessionHasErrors('rotation_user_ids');
+
+    bookFixed(bookingPatient($desk, 'Certo'), $amanda, ['start_time' => '09:00'])->assertSessionHasNoErrors();
+});

@@ -264,3 +264,27 @@ test('creating an evolution requires permission', function () {
 
     $this->post('/evolutions', pilatesPayload($patient))->assertForbidden();
 });
+
+test('heart rate and SpO2 keep only the number that was typed', function () {
+    $user = professionalWithEvolutionAccess();
+    $patient = pilatesPatient($user);
+
+    $this->post('/evolutions', [
+        'paciente_id' => $patient->id,
+        'data_atendimento' => '2026-10-13',
+        'tipo_atendimento' => 'sessao',
+        'frequencia_cardiaca' => '72 bpm',
+        'saturacao' => '98%',
+    ])->assertSessionHasNoErrors();
+
+    expect(Evolution::sole())
+        ->frequencia_cardiaca->toBe(72)
+        ->saturacao->toBe(98);
+
+    $this->post('/evolutions', [
+        'paciente_id' => $patient->id,
+        'data_atendimento' => '2026-10-14',
+        'tipo_atendimento' => 'sessao',
+        'saturacao' => '140',
+    ])->assertSessionHasErrors('saturacao');
+});

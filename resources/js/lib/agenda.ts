@@ -12,6 +12,8 @@ export interface GridStudent {
     appointment_id: string;
     patient_id: string;
     patient_name: string;
+    nickname: string | null;
+    phone: string | null;
     professional_id: number;
     professional_name: string | null;
     color: string;
@@ -21,7 +23,12 @@ export interface GridStudent {
     duration_minutes: number;
     type: 'individual' | 'group';
     group_class: string | null;
+    room: string | null;
     recurring: boolean;
+    /** WhatsApp reminder sent. */
+    reminded: boolean;
+    /** The patient confirmed they are coming. */
+    confirmed: boolean;
 }
 
 export interface GridCell {
@@ -65,12 +72,31 @@ export interface ScheduleSettings {
     breaks: TimeRange[];
     slot_capacity: number;
     default_duration: number;
+    rooms: string[];
 }
+
+/** Hours the professional takes bookings, per weekday (0 = Sunday). */
+export type Availability = Record<string, number[]>;
 
 export interface Professional {
     id: number;
     name: string;
     color: string;
+    /** Null: takes bookings at any time. */
+    availability?: Availability | null;
+}
+
+/** Whether the professional takes bookings on that weekday and time. */
+export function isAvailable(
+    professional: Professional,
+    weekday: number,
+    time: string,
+): boolean {
+    if (!professional.availability) return true;
+
+    const hour = Number(time.slice(0, 2));
+
+    return (professional.availability[String(weekday)] ?? []).includes(hour);
 }
 
 /** A student card together with the day it sits on. */
@@ -223,5 +249,48 @@ export function matchesSearch(student: GridStudent, search: string): boolean {
     return (
         normalize(student.patient_name).includes(term) ||
         normalize(student.professional_name ?? '').includes(term)
+    );
+}
+
+/** Weekday name used in messages, e.g. "terça-feira". */
+const WEEKDAY_SPOKEN = [
+    'domingo',
+    'segunda-feira',
+    'terça-feira',
+    'quarta-feira',
+    'quinta-feira',
+    'sexta-feira',
+    'sábado',
+];
+
+/**
+ * Fill the clinic's reminder template for one class. Placeholders: {nome},
+ * {primeiro_nome}, {data}, {horario}, {profissional}, {sala}, {clinica}.
+ */
+export function renderReminder(
+    template: string,
+    values: {
+        name: string;
+        nickname?: string | null;
+        date: string;
+        time: string;
+        professional?: string | null;
+        room?: string | null;
+        clinic: string;
+    },
+): string {
+    const filled: Record<string, string> = {
+        nome: values.name,
+        primeiro_nome: (values.nickname || values.name).trim().split(/\s+/)[0],
+        data: `${WEEKDAY_SPOKEN[weekdayOf(values.date)]}, ${shortDate(values.date)}`,
+        horario: values.time,
+        profissional: values.professional ?? '',
+        sala: values.room ?? '',
+        clinica: values.clinic,
+    };
+
+    return template.replace(
+        /\{(\w+)\}/g,
+        (match, key: string) => filled[key] ?? match,
     );
 }

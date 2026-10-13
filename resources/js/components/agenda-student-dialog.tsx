@@ -1,9 +1,12 @@
 import { Link, router } from '@inertiajs/react';
 import axios from 'axios';
 import {
+    BadgeCheck,
     Ban,
     CalendarClock,
     CheckCircle2,
+    DoorOpen,
+    MessageCircle,
     Pencil,
     Repeat,
     RotateCcw,
@@ -27,11 +30,13 @@ import { Label } from '@/components/ui/label';
 import { usePermissions } from '@/hooks/use-permissions';
 import type { SelectedStudent, StudentStatus } from '@/lib/agenda';
 import {
+    renderReminder,
     shortDate,
     STATUS_LABELS,
     WEEKDAY_LONG,
     weekdayOf,
 } from '@/lib/agenda';
+import { whatsappUrl } from '@/lib/whatsapp';
 
 interface Props {
     student: SelectedStudent;
@@ -41,6 +46,8 @@ interface Props {
     /** "Falta" asks whether it was justified in its own modal. */
     onMarkMissed: (student: SelectedStudent) => void;
     onEdit: (appointmentId: string) => void;
+    reminderTemplate: string;
+    clinicName: string;
 }
 
 const STATUS_BADGE: Record<StudentStatus, string> = {
@@ -62,6 +69,8 @@ export function AgendaStudentDialog({
     onChanged,
     onMarkMissed,
     onEdit,
+    reminderTemplate,
+    clinicName,
 }: Props) {
     const { can } = usePermissions();
     const [step, setStep] = useState<'actions' | 'reschedule' | 'delete'>(
@@ -72,9 +81,44 @@ export function AgendaStudentDialog({
     const [scope, setScope] = useState<'single' | 'future'>('single');
     const [error, setError] = useState<string | null>(null);
     const [busy, setBusy] = useState(false);
+    const [reminded, setReminded] = useState(student.reminded);
+    const [confirmed, setConfirmed] = useState(student.confirmed);
 
     const isIndividual = student.type === 'individual';
     const appointmentUrl = `/appointments/${student.appointment_id}`;
+    const patientUrl = `${appointmentUrl}/patients/${student.patient_id}`;
+    const reminderUrl = whatsappUrl(
+        student.phone,
+        renderReminder(reminderTemplate, {
+            name: student.patient_name,
+            nickname: student.nickname,
+            date: student.date,
+            time: student.time,
+            professional: student.professional_name,
+            room: student.room,
+            clinic: clinicName,
+        }),
+    );
+
+    function sendReminder() {
+        if (!reminderUrl) return;
+
+        // Open WhatsApp straight from the click so the browser allows it.
+        window.open(reminderUrl, '_blank', 'noopener,noreferrer');
+        axios.post(`${patientUrl}/whatsapp-reminder`).then(() => {
+            setReminded(true);
+            onChanged();
+        });
+    }
+
+    function toggleConfirmed() {
+        axios
+            .post(`${patientUrl}/confirmation`, { confirmed: !confirmed })
+            .then(() => {
+                setConfirmed(!confirmed);
+                onChanged();
+            });
+    }
 
     const visitOptions = {
         preserveScroll: true,
@@ -167,10 +211,61 @@ export function AgendaStudentDialog({
                             {student.group_class}
                         </span>
                     )}
+                    {student.room && (
+                        <span className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-0.5 text-xs font-medium">
+                            <DoorOpen className="size-3" />
+                            {student.room}
+                        </span>
+                    )}
+                    {confirmed && (
+                        <span className="inline-flex items-center gap-1 rounded-md bg-sky-100 px-2 py-0.5 text-xs font-medium text-sky-700 dark:bg-sky-900/40 dark:text-sky-300">
+                            <BadgeCheck className="size-3" />
+                            Confirmou
+                        </span>
+                    )}
                 </div>
 
                 {step === 'actions' && (
                     <div className="space-y-4">
+                        {can('appointments.manage.edit') &&
+                            student.status === 'scheduled' && (
+                                <div className="flex flex-wrap items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50/60 p-2 dark:border-emerald-900/50 dark:bg-emerald-950/20">
+                                    <Button
+                                        size="sm"
+                                        disabled={!reminderUrl}
+                                        onClick={sendReminder}
+                                        className="bg-emerald-600 text-white hover:bg-emerald-700"
+                                        title={
+                                            reminderUrl
+                                                ? undefined
+                                                : 'Paciente sem telefone válido'
+                                        }
+                                    >
+                                        <MessageCircle className="size-4" />
+                                        {reminded
+                                            ? 'Reenviar lembrete'
+                                            : 'Enviar lembrete'}
+                                    </Button>
+                                    <Button
+                                        size="sm"
+                                        variant={
+                                            confirmed ? 'secondary' : 'outline'
+                                        }
+                                        onClick={toggleConfirmed}
+                                    >
+                                        <BadgeCheck className="size-4" />
+                                        {confirmed
+                                            ? 'Desfazer confirmação'
+                                            : 'Confirmou presença'}
+                                    </Button>
+                                    {reminded && (
+                                        <span className="text-xs text-muted-foreground">
+                                            Lembrete enviado
+                                        </span>
+                                    )}
+                                </div>
+                            )}
+
                         {can('appointments.manage.edit') && (
                             <div className="grid grid-cols-2 gap-2">
                                 <Button

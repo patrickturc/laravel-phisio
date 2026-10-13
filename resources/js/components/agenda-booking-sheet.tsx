@@ -17,6 +17,7 @@ import type { Professional } from '@/lib/agenda';
 import {
     addDays,
     capacityToneClass,
+    isAvailable,
     shortDate,
     todayISO,
     WEEK_ORDER,
@@ -30,6 +31,8 @@ interface Props {
     patients: Array<{ id: string; name: string }>;
     professionals: Professional[];
     defaultDuration: number;
+    /** The clinic's rooms; the room field only shows when there are some. */
+    rooms: string[];
     /** Prefilled from the slot clicked in the grid. */
     preset: { date: string; time: string; patientId?: string };
     onBooked: () => void;
@@ -60,6 +63,7 @@ export function AgendaBookingSheet({
     patients,
     professionals,
     defaultDuration,
+    rooms,
     preset,
     onBooked,
 }: Props) {
@@ -74,7 +78,30 @@ export function AgendaBookingSheet({
         start_time: preset.time,
         duration_minutes: String(defaultDuration),
         notes: '',
+        room: '',
+        interval_weeks: 1,
+        rotation_user_ids: [] as number[],
     });
+
+    const weekday =
+        data.mode === 'single'
+            ? weekdayOf(data.date)
+            : Number(data.day_of_week);
+    const timeChosen = /^\d{2}:\d{2}$/.test(data.start_time);
+    const availableAtSlot = (professional: Professional) =>
+        !timeChosen || isAvailable(professional, weekday, data.start_time);
+    const others = professionals.filter(
+        (professional) => String(professional.id) !== data.user_id,
+    );
+
+    function toggleRotation(professionalId: number) {
+        setData(
+            'rotation_user_ids',
+            data.rotation_user_ids.includes(professionalId)
+                ? data.rotation_user_ids.filter((id) => id !== professionalId)
+                : [...data.rotation_user_ids, professionalId],
+        );
+    }
 
     const targetDate =
         data.mode === 'single'
@@ -201,6 +228,9 @@ export function AgendaBookingSheet({
                                     value={professional.id}
                                 >
                                     {professional.name}
+                                    {availableAtSlot(professional)
+                                        ? ''
+                                        : ' — não atende neste horário'}
                                 </option>
                             ))}
                         </select>
@@ -285,6 +315,70 @@ export function AgendaBookingSheet({
                                     <InputError message={errors.ends_on} />
                                 </div>
                             </div>
+
+                            <label className="flex cursor-pointer items-center gap-2 text-sm">
+                                <input
+                                    type="checkbox"
+                                    checked={data.interval_weeks === 2}
+                                    onChange={(e) =>
+                                        setData(
+                                            'interval_weeks',
+                                            e.target.checked ? 2 : 1,
+                                        )
+                                    }
+                                    className="size-4 accent-primary"
+                                />
+                                Semana alternada (a cada 2 semanas)
+                            </label>
+
+                            {others.length > 0 && (
+                                <div className="space-y-2">
+                                    <Label>Revezar com (opcional)</Label>
+                                    <p className="text-xs text-muted-foreground">
+                                        Os profissionais se alternam a cada
+                                        aula, na ordem marcada.
+                                    </p>
+                                    <div className="flex flex-wrap gap-2">
+                                        {others.map((professional) => {
+                                            const position =
+                                                data.rotation_user_ids.indexOf(
+                                                    professional.id,
+                                                );
+
+                                            return (
+                                                <button
+                                                    key={professional.id}
+                                                    type="button"
+                                                    onClick={() =>
+                                                        toggleRotation(
+                                                            professional.id,
+                                                        )
+                                                    }
+                                                    className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+                                                        position >= 0
+                                                            ? 'border-primary bg-primary/10 text-primary'
+                                                            : 'border-border text-muted-foreground hover:text-foreground'
+                                                    } ${availableAtSlot(professional) ? '' : 'opacity-50'}`}
+                                                >
+                                                    <span
+                                                        className="size-2 rounded-full"
+                                                        style={{
+                                                            backgroundColor:
+                                                                professional.color,
+                                                        }}
+                                                    />
+                                                    {position >= 0 &&
+                                                        `${position + 2}º · `}
+                                                    {professional.name}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                    <InputError
+                                        message={errors.rotation_user_ids}
+                                    />
+                                </div>
+                            )}
                         </>
                     ) : (
                         <div className="grid grid-cols-2 gap-3">
@@ -346,6 +440,29 @@ export function AgendaBookingSheet({
                             />
                             <InputError message={errors.duration_minutes} />
                         </div>
+                        {rooms.length > 0 && (
+                            <div className="grid gap-2">
+                                <Label htmlFor="booking-room">
+                                    Sala / unidade
+                                </Label>
+                                <select
+                                    id="booking-room"
+                                    value={data.room}
+                                    onChange={(e) =>
+                                        setData('room', e.target.value)
+                                    }
+                                    className={selectClass}
+                                >
+                                    <option value="">Sem sala</option>
+                                    {rooms.map((room) => (
+                                        <option key={room} value={room}>
+                                            {room}
+                                        </option>
+                                    ))}
+                                </select>
+                                <InputError message={errors.room} />
+                            </div>
+                        )}
                     </div>
 
                     <div className="grid gap-2">

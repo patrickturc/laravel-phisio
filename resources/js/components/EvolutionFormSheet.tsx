@@ -27,8 +27,8 @@ interface Evolution {
     localizacao_dor: string | null;
     tipo_dor: string | null;
     pressao_arterial: string | null;
-    frequencia_cardiaca: string | null;
-    saturacao: string | null;
+    frequencia_cardiaca: string | number | null;
+    saturacao: string | number | null;
     condutas_realizadas: string | null;
     analise_profissional: string | null;
     resposta_tratamento: string | null;
@@ -134,8 +134,14 @@ export default function EvolutionFormSheet({
                     localizacao_dor: evolution.localizacao_dor || '',
                     tipo_dor: evolution.tipo_dor || '',
                     pressao_arterial: evolution.pressao_arterial || '',
-                    frequencia_cardiaca: evolution.frequencia_cardiaca || '',
-                    saturacao: evolution.saturacao || '',
+                    frequencia_cardiaca:
+                        evolution.frequencia_cardiaca != null
+                            ? String(evolution.frequencia_cardiaca)
+                            : '',
+                    saturacao:
+                        evolution.saturacao != null
+                            ? String(evolution.saturacao)
+                            : '',
                     condutas_realizadas: evolution.condutas_realizadas || '',
                     analise_profissional: evolution.analise_profissional || '',
                     resposta_tratamento: evolution.resposta_tratamento || '',
@@ -504,8 +510,11 @@ export default function EvolutionFormSheet({
                                         />
                                     </div>
                                     <div className="grid gap-2">
-                                        <Label>FC</Label>
+                                        <Label>FC (bpm)</Label>
                                         <Input
+                                            type="number"
+                                            min={20}
+                                            max={250}
                                             value={data.frequencia_cardiaca}
                                             onChange={(e) =>
                                                 setData(
@@ -514,12 +523,18 @@ export default function EvolutionFormSheet({
                                                 )
                                             }
                                             className="border-neutral-200 bg-neutral-50"
-                                            placeholder="72 bpm"
+                                            placeholder="72"
+                                        />
+                                        <InputError
+                                            message={errors.frequencia_cardiaca}
                                         />
                                     </div>
                                     <div className="grid gap-2">
-                                        <Label>SpO2</Label>
+                                        <Label>SpO2 (%)</Label>
                                         <Input
+                                            type="number"
+                                            min={50}
+                                            max={100}
                                             value={data.saturacao}
                                             onChange={(e) =>
                                                 setData(
@@ -528,7 +543,10 @@ export default function EvolutionFormSheet({
                                                 )
                                             }
                                             className="border-neutral-200 bg-neutral-50"
-                                            placeholder="98%"
+                                            placeholder="98"
+                                        />
+                                        <InputError
+                                            message={errors.saturacao}
                                         />
                                     </div>
                                 </div>

@@ -170,7 +170,7 @@ export default function CelebrationsIndex({
 
     function saveTemplate() {
         router.patch(
-            '/celebrations/templates',
+            '/message-templates',
             { [templateKey]: templateText },
             {
                 preserveScroll: true,

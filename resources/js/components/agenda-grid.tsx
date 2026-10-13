@@ -1,4 +1,4 @@
-import { CheckCircle2, Plus, Repeat, XCircle } from 'lucide-react';
+import { BadgeCheck, CheckCircle2, Plus, Repeat, XCircle } from 'lucide-react';
 import type { GridData, GridStudent } from '@/lib/agenda';
 import {
     capacityToneClass,
@@ -56,6 +56,12 @@ function StudentCard({
                 {student.status === 'missed' && (
                     <XCircle className="size-3 shrink-0 text-amber-600" />
                 )}
+                {student.status === 'scheduled' && student.confirmed && (
+                    <BadgeCheck
+                        className="size-3 shrink-0 text-sky-600"
+                        aria-label="Confirmou presença"
+                    />
+                )}
                 {student.recurring && (
                     <Repeat className="ml-auto size-3 shrink-0 text-muted-foreground/60" />
                 )}
@@ -64,6 +70,11 @@ function StudentCard({
                 {student.professional_name}
                 {student.time !== hour && ` · ${student.time}`}
             </div>
+            {student.room && (
+                <div className="truncate text-[10px] text-muted-foreground/80">
+                    {student.room}
+                </div>
+            )}
             {student.group_class && (
                 <div className="truncate text-[10px] font-medium text-primary">
                     {student.group_class}

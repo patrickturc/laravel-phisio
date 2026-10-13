@@ -124,3 +124,34 @@ test('the migration grants the agenda settings to administrators', function () {
 
     expect($admin->fresh()->hasPermissionTo('appointments.settings.manage'))->toBeTrue();
 });
+
+test('the clinic saves its rooms and each professional availability', function () {
+    $manager = agendaManager();
+    $amanda = teamMember($manager, 'Amanda');
+    $silvana = teamMember($manager, 'Silvana');
+    $silvana->update(['agenda_availability' => [1 => [8]]]);
+
+    $this->patch('/settings/schedule', scheduleSettingsPayload([
+        'rooms' => ['Sala 1', ' Portal do Éden '],
+        'availability' => [
+            $amanda->id => [1 => [8, 7], 3 => [18]],
+            $silvana->id => null,
+        ],
+    ]))->assertSessionHasNoErrors();
+
+    $amanda->refresh();
+    expect($manager->tenant->fresh()->scheduleSettings()['rooms'])->toBe(['Sala 1', 'Portal do Éden'])
+        ->and($amanda->agenda_availability[1])->toBe([7, 8])
+        ->and($amanda->isAvailableAt(1, '08:00'))->toBeTrue()
+        ->and($amanda->isAvailableAt(1, '09:00'))->toBeFalse()
+        ->and($amanda->isAvailableAt(2, '08:00'))->toBeFalse()
+        ->and($silvana->fresh()->agenda_availability)->toBeNull()
+        ->and($silvana->fresh()->isAvailableAt(5, '20:00'))->toBeTrue();
+});
+
+test('rooms need distinct names', function () {
+    agendaManager();
+
+    $this->patch('/settings/schedule', scheduleSettingsPayload(['rooms' => ['Sala 1', 'Sala 1']]))
+        ->assertSessionHasErrors('rooms.1');
+});

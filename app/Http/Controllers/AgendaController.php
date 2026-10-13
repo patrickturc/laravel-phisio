@@ -61,6 +61,8 @@ class AgendaController extends Controller
                     'appointment_id' => $appointment->id,
                     'patient_id' => $patient->id,
                     'patient_name' => $patient->name,
+                    'nickname' => $patient->nickname,
+                    'phone' => $patient->phone,
                     'professional_id' => $appointment->user_id,
                     'professional_name' => $appointment->user?->name,
                     'color' => $appointment->user?->agendaColor() ?? '#64748b',
@@ -70,7 +72,10 @@ class AgendaController extends Controller
                     'duration_minutes' => $appointment->duration_minutes,
                     'type' => $appointment->type,
                     'group_class' => $appointment->groupClass?->name,
+                    'room' => $appointment->room,
                     'recurring' => $appointment->recurring_booking_id !== null,
+                    'reminded' => $patient->pivot->whatsapp_reminder_at !== null,
+                    'confirmed' => $patient->pivot->confirmed_at !== null,
                 ];
 
                 if ($status !== 'cancelled') {
@@ -115,6 +120,46 @@ class AgendaController extends Controller
                 'checkins' => $checkins,
                 'occupancy' => $openSlots > 0 ? (int) round($classes / ($openSlots * $capacity) * 100) : 0,
             ],
+        ]);
+    }
+
+    /**
+     * Everyone with a class on one day (tomorrow by default), with what is
+     * needed to send the WhatsApp reminder and track who confirmed.
+     */
+    public function reminders(Request $request): JsonResponse
+    {
+        $validated = $request->validate(['date' => ['nullable', 'date']]);
+
+        $tenant = $this->tenant($request);
+        $date = Carbon::parse($validated['date'] ?? Carbon::tomorrow())->toDateString();
+
+        $rows = Appointment::with(['patients', 'user'])
+            ->where('appointment_date', $date)
+            ->where('status', '!=', 'cancelled')
+            ->get()
+            ->flatMap(fn (Appointment $appointment) => $appointment->patients
+                ->reject(fn ($patient): bool => $patient->pivot->status === 'cancelled')
+                ->map(fn ($patient): array => [
+                    'appointment_id' => $appointment->id,
+                    'patient_id' => $patient->id,
+                    'patient_name' => $patient->name,
+                    'nickname' => $patient->nickname,
+                    'phone' => $patient->phone,
+                    'time' => substr((string) $appointment->start_time, 0, 5),
+                    'professional_name' => $appointment->user?->name,
+                    'room' => $appointment->room,
+                    'reminded_at' => $patient->pivot->whatsapp_reminder_at,
+                    'confirmed_at' => $patient->pivot->confirmed_at,
+                ]))
+            ->sortBy([['time', 'asc'], ['patient_name', 'asc']])
+            ->values();
+
+        return response()->json([
+            'date' => $date,
+            'rows' => $rows,
+            'template' => $tenant->messageTemplates()['reminder'],
+            'clinic_name' => $tenant->name,
         ]);
     }
 

@@ -164,3 +164,38 @@ test('showing class details displays detailed absences', function () {
         ->where('absences.0.appointment_date', $app->appointment_date->format('Y-m-d'))
     );
 });
+
+test('editing a class without choosing a professional keeps its professional', function () {
+    $owner = userCanManageClasses();
+    $gc = classWithMondaySchedule($owner);
+
+    // A colleague toggles the class off: the form sends no user_id.
+    $colleague = User::factory()->create(['tenant_id' => $owner->tenant_id]);
+    $colleague->givePermissionTo('group_classes.manage.edit');
+    $this->actingAs($colleague);
+
+    $this->put("/group-classes/{$gc->id}", ['status' => 'inactive'])->assertRedirect();
+
+    expect($gc->fresh()->user_id)->toBe($owner->id);
+});
+
+test('changing the class professional moves its upcoming classes to them', function () {
+    $owner = userCanManageClasses();
+    $gc = classWithMondaySchedule($owner);
+    $newProfessional = User::factory()->create(['tenant_id' => $owner->tenant_id]);
+    $upcoming = Appointment::create([
+        'user_id' => $owner->id,
+        'group_class_id' => $gc->id,
+        'type' => 'group',
+        'max_participants' => 4,
+        'appointment_date' => now()->addWeek()->toDateString(),
+        'start_time' => '18:00',
+        'duration_minutes' => 50,
+        'status' => 'scheduled',
+    ]);
+
+    $this->put("/group-classes/{$gc->id}", ['user_id' => $newProfessional->id])->assertRedirect();
+
+    expect($gc->fresh()->user_id)->toBe($newProfessional->id)
+        ->and($upcoming->fresh()->user_id)->toBe($newProfessional->id);
+});

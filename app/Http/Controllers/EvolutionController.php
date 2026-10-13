@@ -260,6 +260,14 @@ class EvolutionController extends Controller
     {
         $type = $request->input('evolution_type') ?: Evolution::TYPE_SOAP;
 
+        // Heart rate and SpO2 are integer columns; people type "72 bpm" or
+        // "98%", so keep only the number before validating it.
+        foreach (['frequencia_cardiaca', 'saturacao'] as $field) {
+            if (is_string($request->input($field))) {
+                $request->merge([$field => preg_replace('/\D/', '', $request->input($field)) ?: null]);
+            }
+        }
+
         $rules = [
             'evolution_type' => ['nullable', Rule::in(Evolution::TYPES)],
             'paciente_id' => 'required|uuid|exists:patients,id',
@@ -336,8 +344,8 @@ class EvolutionController extends Controller
             'localizacao_dor' => 'nullable|string',
             'tipo_dor' => 'nullable|string',
             'pressao_arterial' => 'nullable|string',
-            'frequencia_cardiaca' => 'nullable|string',
-            'saturacao' => 'nullable|string',
+            'frequencia_cardiaca' => 'nullable|integer|between:20,250',
+            'saturacao' => 'nullable|integer|between:50,100',
             'amplitude_movimento' => 'nullable|string',
             'forca_muscular' => 'nullable|string',
             'avaliacao_funcional' => 'nullable|string',

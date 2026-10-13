@@ -31,9 +31,12 @@ class RecurringBooking extends Model
         'tenant_id',
         'patient_id',
         'user_id',
+        'rotation_user_ids',
         'day_of_week',
+        'interval_weeks',
         'start_time',
         'duration_minutes',
+        'room',
         'starts_on',
         'ends_on',
         'notes',
@@ -43,6 +46,8 @@ class RecurringBooking extends Model
     {
         return [
             'day_of_week' => 'integer',
+            'interval_weeks' => 'integer',
+            'rotation_user_ids' => 'array',
             'duration_minutes' => 'integer',
             'starts_on' => 'date:Y-m-d',
             'ends_on' => 'date:Y-m-d',
@@ -83,6 +88,47 @@ class RecurringBooking extends Model
     }
 
     /**
+     * The first class: the booking's weekday on or after its start date.
+     * Alternate weeks and the professional rotation count from here.
+     */
+    public function anchorDate(): Carbon
+    {
+        $date = Carbon::parse($this->starts_on)->startOfDay();
+
+        while ($date->dayOfWeek !== $this->day_of_week) {
+            $date->addDay();
+        }
+
+        return $date;
+    }
+
+    /**
+     * Whether the booking has a class in the week of this date; with
+     * "semana alternada" only every other week does.
+     */
+    public function hasClassOn(CarbonInterface $date): bool
+    {
+        return $this->weeksSinceAnchor($date) % max(1, $this->interval_weeks) === 0;
+    }
+
+    /**
+     * Professional of the class on this date: the main one, or whoever's
+     * turn it is when professionals take turns ("revezar instrutores").
+     */
+    public function professionalIdFor(CarbonInterface $date): int
+    {
+        $rotation = [$this->user_id, ...($this->rotation_user_ids ?? [])];
+        $occurrence = intdiv($this->weeksSinceAnchor($date), max(1, $this->interval_weeks));
+
+        return (int) $rotation[$occurrence % count($rotation)];
+    }
+
+    private function weeksSinceAnchor(CarbonInterface $date): int
+    {
+        return intdiv((int) $this->anchorDate()->diffInDays($date->copy()->startOfDay()), 7);
+    }
+
+    /**
      * Create the weekly appointments that are still missing, from today (or
      * the start date) up to the horizon (or the end date). Weeks already
      * generated are skipped, so running it again is harmless. A week whose
@@ -120,7 +166,7 @@ class RecurringBooking extends Model
         for (; $date->lte($until); $date->addWeek()) {
             $day = $date->toDateString();
 
-            if (in_array($day, $generated, true)) {
+            if (in_array($day, $generated, true) || ! $this->hasClassOn($date)) {
                 continue;
             }
 
@@ -136,10 +182,10 @@ class RecurringBooking extends Model
                 continue;
             }
 
-            DB::transaction(function () use ($day) {
+            DB::transaction(function () use ($day, $date) {
                 $appointment = Appointment::create([
                     'tenant_id' => $this->tenant_id,
-                    'user_id' => $this->user_id,
+                    'user_id' => $this->professionalIdFor($date),
                     'recurring_booking_id' => $this->id,
                     'recurrence_date' => $day,
                     'type' => 'individual',
@@ -147,6 +193,7 @@ class RecurringBooking extends Model
                     'appointment_date' => $day,
                     'start_time' => $this->startTime(),
                     'duration_minutes' => $this->duration_minutes,
+                    'room' => $this->room,
                     'notes' => $this->notes,
                     'status' => 'scheduled',
                 ]);

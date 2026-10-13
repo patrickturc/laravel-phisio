@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AgendaController;
+use App\Http\Controllers\AppointmentConfirmationController;
 use App\Http\Controllers\AppointmentController;
 use App\Http\Controllers\CalendarFeedController;
 use App\Http\Controllers\CelebrationController;
@@ -14,6 +15,7 @@ use App\Http\Controllers\EvolutionController;
 use App\Http\Controllers\FinancialTransactionController;
 use App\Http\Controllers\GroupClassController;
 use App\Http\Controllers\MembershipController;
+use App\Http\Controllers\MessageTemplateController;
 use App\Http\Controllers\PatientController;
 use App\Http\Controllers\PatientDocumentController;
 use App\Http\Controllers\RecurringBookingController;
@@ -157,9 +159,11 @@ Route::middleware(['auth', 'verified', 'tenant.active'])->group(function () use 
     Route::get('celebrations', [CelebrationController::class, 'index'])
         ->middleware('permission:patients.manage.view')
         ->name('celebrations.index');
-    Route::patch('celebrations/templates', [CelebrationController::class, 'updateTemplates'])
+
+    // WhatsApp message templates (birthday, enrollment anniversary, reminder)
+    Route::patch('message-templates', [MessageTemplateController::class, 'update'])
         ->middleware('permission:patients.manage.edit')
-        ->name('celebrations.templates.update');
+        ->name('message-templates.update');
 
     // Appointments
     Route::get('api/appointments/grid', [AgendaController::class, 'grid'])
@@ -168,12 +172,21 @@ Route::middleware(['auth', 'verified', 'tenant.active'])->group(function () use 
     Route::get('api/appointments/slot-occupancy', [AgendaController::class, 'occupancy'])
         ->middleware('permission:appointments.manage.view')
         ->name('appointments.slot-occupancy');
+    Route::get('api/appointments/reminders', [AgendaController::class, 'reminders'])
+        ->middleware('permission:appointments.manage.view')
+        ->name('appointments.reminders');
     Route::get('api/appointments/{appointment}', [AppointmentController::class, 'details'])
         ->middleware('permission:appointments.manage.view')
         ->name('appointments.details');
     Route::post('appointments/{appointment}/patients/{patientId}/status', [AppointmentController::class, 'updateStatus'])
         ->middleware('permission:appointments.manage.edit')
         ->name('appointments.update-status');
+    Route::post('appointments/{appointment}/patients/{patientId}/whatsapp-reminder', [AppointmentConfirmationController::class, 'reminded'])
+        ->middleware('permission:appointments.manage.edit')
+        ->name('appointments.whatsapp-reminder');
+    Route::post('appointments/{appointment}/patients/{patientId}/confirmation', [AppointmentConfirmationController::class, 'confirmation'])
+        ->middleware('permission:appointments.manage.edit')
+        ->name('appointments.confirmation');
     Route::patch('appointments/{appointment}/status', [AppointmentController::class, 'updateAppointmentStatus'])
         ->middleware('permission:appointments.manage.edit')
         ->name('appointments.update-session-status');

@@ -32,6 +32,7 @@ class Appointment extends Model
         'appointment_date',
         'start_time',
         'duration_minutes',
+        'room',
         'notes',
         'title',
         'type',
@@ -60,7 +61,7 @@ class Appointment extends Model
         }
 
         $relation = $this->belongsToMany(Patient::class)
-            ->withPivot('status', 'reminder_sent_at', 'membership_id', 'missed_justified', 'missed_reason')
+            ->withPivot('status', 'reminder_sent_at', 'whatsapp_reminder_at', 'confirmed_at', 'membership_id', 'missed_justified', 'missed_reason')
             ->withTimestamps();
 
         if ($tenantId) {

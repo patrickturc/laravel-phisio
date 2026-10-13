@@ -49,8 +49,14 @@ class AppointmentController extends Controller
         $groupClasses = GroupClass::orderBy('name')->get(['id', 'name', 'color', 'max_participants']);
         // Only users flagged as treating professionals (permission-based, so it
         // survives renaming the role) can be the "Profissional Responsável".
-        $users = User::professionals()->orderBy('name')->get(['id', 'name', 'agenda_color'])
-            ->map(fn (User $user): array => ['id' => $user->id, 'name' => $user->name, 'color' => $user->agendaColor()]);
+        $users = User::professionals()->orderBy('name')->get(['id', 'name', 'agenda_color', 'agenda_availability'])
+            ->map(fn (User $user): array => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'color' => $user->agendaColor(),
+                'availability' => $user->agenda_availability,
+            ]);
+        $tenant = $request->user()->tenant;
 
         return Inertia::render('appointments/index', [
             'appointments' => $appointments,
@@ -58,7 +64,9 @@ class AppointmentController extends Controller
             'patients' => $patients,
             'groupClasses' => $groupClasses,
             'users' => $users,
-            'scheduleSettings' => $request->user()->tenant?->scheduleSettings() ?? Tenant::DEFAULT_SCHEDULE_SETTINGS,
+            'scheduleSettings' => $tenant?->scheduleSettings() ?? Tenant::DEFAULT_SCHEDULE_SETTINGS,
+            'reminderTemplate' => $tenant?->messageTemplates()['reminder'] ?? Tenant::DEFAULT_MESSAGE_TEMPLATES['reminder'],
+            'clinicName' => $tenant?->name ?? config('app.name'),
         ]);
     }
 
@@ -708,8 +716,14 @@ class AppointmentController extends Controller
                 ->where('status', 'scheduled');
 
             if ($appointment->group_class_id) {
-                // For group classes: delete all future of the same group class
+                // Only this weekly slot of the class, not its other days/times.
                 $query->where('group_class_id', $appointment->group_class_id);
+
+                if ($appointment->schedule_id) {
+                    $query->where('schedule_id', $appointment->schedule_id);
+                } else {
+                    $query->where('start_time', $appointment->start_time);
+                }
             } else {
                 // No group class link (individual sessions OR orphaned group
                 // appointments left over from a deleted class): match the same
@@ -724,8 +738,8 @@ class AppointmentController extends Controller
 
             $toDelete = $query->get();
 
-            // Filter by day of week for individual appointments to be safe
-            if (! $appointment->group_class_id) {
+            // Same weekday only, unless the exact class slot is already known.
+            if (! $appointment->schedule_id) {
                 $dayOfWeek = Carbon::parse($appointment->appointment_date)->dayOfWeek;
                 $toDelete = $toDelete->filter(function ($app) use ($dayOfWeek) {
                     return Carbon::parse($app->appointment_date)->dayOfWeek === $dayOfWeek;

@@ -27,6 +27,7 @@ class User extends Authenticatable
         'password',
         'calendar_token',
         'agenda_color',
+        'agenda_availability',
         'tenant_id',
         'is_dev_admin',
     ];
@@ -57,6 +58,7 @@ class User extends Authenticatable
             'password' => 'hashed',
             'two_factor_confirmed_at' => 'datetime',
             'is_dev_admin' => 'boolean',
+            'agenda_availability' => 'array',
         ];
     }
 
@@ -93,5 +95,20 @@ class User extends Authenticatable
     public function agendaColor(): string
     {
         return $this->agenda_color ?: self::AGENDA_PALETTE[$this->id % count(self::AGENDA_PALETTE)];
+    }
+
+    /**
+     * Whether the professional takes bookings on this weekday (0 = Sunday)
+     * at this time. No availability set means always.
+     */
+    public function isAvailableAt(int $weekday, string $time): bool
+    {
+        if ($this->agenda_availability === null) {
+            return true;
+        }
+
+        $hours = array_map('intval', $this->agenda_availability[$weekday] ?? []);
+
+        return in_array((int) substr($time, 0, 2), $hours, true);
     }
 }
