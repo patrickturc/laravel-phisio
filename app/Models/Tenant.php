@@ -15,6 +15,10 @@ class Tenant extends Model
     protected $fillable = [
         'name',
         'legal_name',
+        'owner_name',
+        'owner_document',
+        'owner_birthdate',
+        'owner_photo_path',
         'slug',
         'document',
         'state_registration',
@@ -22,6 +26,8 @@ class Tenant extends Model
         'phone',
         'whatsapp',
         'website',
+        'bio',
+        'instagram',
         'address',
         'cep',
         'street',
@@ -34,6 +40,7 @@ class Tenant extends Model
         'technical_manager_document',
         'notes',
         'message_templates',
+        'schedule_settings',
         'logo_path',
         'status',
         'plan',
@@ -49,6 +56,18 @@ class Tenant extends Model
         'extra_users',
         'requested_extra_users',
         'profile_completed_at',
+    ];
+
+    /**
+     * The tenant is shared with every page (HandleInertiaRequests), so the
+     * owner's personal data stays out of it. The profile page reads these
+     * explicitly.
+     *
+     * @var list<string>
+     */
+    protected $hidden = [
+        'owner_document',
+        'owner_birthdate',
     ];
 
     protected $appends = [
@@ -134,6 +153,57 @@ class Tenant extends Model
         return array_merge(self::DEFAULT_MESSAGE_TEMPLATES, $saved);
     }
 
+    /**
+     * Agenda defaults until the clinic saves its own: business hours per
+     * weekday (0 = Sunday), breaks hidden from the agenda, students per time
+     * slot and the default session length in minutes.
+     *
+     * @var array{business_hours: list<array{open: bool, start: string, end: string}>, breaks: list<array{start: string, end: string}>, slot_capacity: int, default_duration: int}
+     */
+    public const DEFAULT_SCHEDULE_SETTINGS = [
+        'business_hours' => [
+            ['open' => false, 'start' => '08:00', 'end' => '12:00'],
+            ['open' => true, 'start' => '07:00', 'end' => '20:00'],
+            ['open' => true, 'start' => '07:00', 'end' => '20:00'],
+            ['open' => true, 'start' => '07:00', 'end' => '20:00'],
+            ['open' => true, 'start' => '07:00', 'end' => '20:00'],
+            ['open' => true, 'start' => '07:00', 'end' => '20:00'],
+            ['open' => true, 'start' => '08:00', 'end' => '12:00'],
+        ],
+        'breaks' => [],
+        'slot_capacity' => 6,
+        'default_duration' => 50,
+    ];
+
+    /**
+     * The clinic's agenda settings, filled in with the defaults.
+     *
+     * @return array{business_hours: list<array{open: bool, start: string, end: string}>, breaks: list<array{start: string, end: string}>, slot_capacity: int, default_duration: int}
+     */
+    public function scheduleSettings(): array
+    {
+        $saved = $this->schedule_settings ?? [];
+        $settings = array_merge(self::DEFAULT_SCHEDULE_SETTINGS, $saved);
+
+        $settings['business_hours'] = array_map(
+            fn (int $day): array => array_merge(
+                self::DEFAULT_SCHEDULE_SETTINGS['business_hours'][$day],
+                $saved['business_hours'][$day] ?? [],
+            ),
+            range(0, 6),
+        );
+
+        return $settings;
+    }
+
+    /**
+     * How many students fit in one time slot.
+     */
+    public function slotCapacity(): int
+    {
+        return (int) $this->scheduleSettings()['slot_capacity'];
+    }
+
     public const REQUIRED_PROFILE_FIELDS = [
         'document',
         'cep',
@@ -173,6 +243,8 @@ class Tenant extends Model
             'max_storage_mb' => 'integer',
             'features' => 'array',
             'message_templates' => 'array',
+            'schedule_settings' => 'array',
+            'owner_birthdate' => 'date:Y-m-d',
             'trial_started_at' => 'datetime',
             'trial_ends_at' => 'datetime',
             'plan_requested_at' => 'datetime',

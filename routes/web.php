@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AgendaController;
 use App\Http\Controllers\AppointmentController;
 use App\Http\Controllers\CalendarFeedController;
 use App\Http\Controllers\CelebrationController;
@@ -15,8 +16,10 @@ use App\Http\Controllers\GroupClassController;
 use App\Http\Controllers\MembershipController;
 use App\Http\Controllers\PatientController;
 use App\Http\Controllers\PatientDocumentController;
+use App\Http\Controllers\RecurringBookingController;
 use App\Http\Controllers\RecurringExpenseController;
 use App\Http\Controllers\ReportController;
+use App\Http\Controllers\ScheduleSettingsController;
 use App\Http\Controllers\SubscriptionController;
 use App\Models\Tenant;
 use Illuminate\Support\Facades\Route;
@@ -159,12 +162,12 @@ Route::middleware(['auth', 'verified', 'tenant.active'])->group(function () use 
         ->name('celebrations.templates.update');
 
     // Appointments
-    Route::get('api/appointments/events', [AppointmentController::class, 'events'])
+    Route::get('api/appointments/grid', [AgendaController::class, 'grid'])
         ->middleware('permission:appointments.manage.view')
-        ->name('appointments.events');
-    Route::get('api/appointments/slots-view', [AppointmentController::class, 'slotsView'])
+        ->name('appointments.grid');
+    Route::get('api/appointments/slot-occupancy', [AgendaController::class, 'occupancy'])
         ->middleware('permission:appointments.manage.view')
-        ->name('appointments.slots-view');
+        ->name('appointments.slot-occupancy');
     Route::get('api/appointments/{appointment}', [AppointmentController::class, 'details'])
         ->middleware('permission:appointments.manage.view')
         ->name('appointments.details');
@@ -178,6 +181,19 @@ Route::middleware(['auth', 'verified', 'tenant.active'])->group(function () use 
         ->middleware('permission:appointments.manage.edit')
         ->name('appointments.reschedule');
     $resourceWithPermissions('appointments', AppointmentController::class, 'appointments.manage');
+
+    // Fixed weekly slots ("horário fixo") and one-off bookings
+    Route::post('recurring-bookings', [RecurringBookingController::class, 'store'])
+        ->middleware('permission:appointments.manage.create')
+        ->name('recurring-bookings.store');
+    Route::delete('recurring-bookings/{recurringBooking}', [RecurringBookingController::class, 'destroy'])
+        ->middleware('permission:appointments.manage.delete')
+        ->name('recurring-bookings.destroy');
+
+    // Agenda settings: business hours, slot capacity, professional colours
+    Route::patch('settings/schedule', [ScheduleSettingsController::class, 'update'])
+        ->middleware('permission:appointments.settings.manage')
+        ->name('schedule-settings.update');
 
     // Evolutions
     Route::get('evolutions/patient/{patient}', [EvolutionController::class, 'patientEvolutions'])

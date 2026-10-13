@@ -26,6 +26,7 @@ class User extends Authenticatable
         'email',
         'password',
         'calendar_token',
+        'agenda_color',
         'tenant_id',
         'is_dev_admin',
     ];
@@ -72,5 +73,25 @@ class User extends Authenticatable
             $q->whereHas('roles.permissions', fn ($p) => $p->where('name', 'professional.attend'))
                 ->orWhereHas('permissions', fn ($p) => $p->where('name', 'professional.attend'));
         });
+    }
+
+    /**
+     * Card colours for professionals that never picked one, distinct enough
+     * to tell apart side by side in the agenda.
+     *
+     * @var list<string>
+     */
+    public const AGENDA_PALETTE = [
+        '#3b82f6', '#f97316', '#10b981', '#a855f7',
+        '#ec4899', '#eab308', '#06b6d4', '#ef4444',
+    ];
+
+    /**
+     * The professional's colour in the agenda; a stable palette colour
+     * (by id) until one is chosen.
+     */
+    public function agendaColor(): string
+    {
+        return $this->agenda_color ?: self::AGENDA_PALETTE[$this->id % count(self::AGENDA_PALETTE)];
     }
 }

@@ -34,6 +34,8 @@ class AclSeeder extends Seeder
             'appointments.manage.create',
             'appointments.manage.edit',
             'appointments.manage.delete',
+            // Business hours, slot capacity and professional colours.
+            'appointments.settings.manage',
 
             // Group Classes
             'group_classes.manage.view',

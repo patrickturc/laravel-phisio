@@ -10,6 +10,7 @@ import {
     FileText,
     Cake,
     GraduationCap,
+    Repeat,
     Clock,
     Activity,
     Mail,
@@ -36,6 +37,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { usePermissions } from '@/hooks/use-permissions';
 import AppLayout from '@/layouts/app-layout';
+import { shortDate, WEEKDAY_LONG } from '@/lib/agenda';
 import { pilatesSummary } from '@/lib/pilates-scales';
 import type { BreadcrumbItem } from '@/types';
 import { AppointmentFormSheet } from '../appointments/appointment-form-sheet';
@@ -119,6 +121,14 @@ interface Patient {
         description: string | null;
         created_at: string;
     }>;
+    recurring_bookings?: Array<{
+        id: string;
+        day_of_week: number;
+        start_time: string;
+        starts_on: string;
+        ends_on: string | null;
+        professional: { id: number; name: string } | null;
+    }>;
 }
 
 interface FinancialSummary {
@@ -173,6 +183,21 @@ export default function PatientShow({
     } | null>(null);
     const { confirm, modal } = useConfirmModal();
     const { can } = usePermissions();
+
+    async function endRecurringBooking(bookingId: string) {
+        const confirmed = await confirm({
+            title: 'Encerrar horário fixo',
+            message:
+                'As próximas aulas deste horário serão removidas da agenda. As aulas já realizadas continuam no histórico.',
+            confirmLabel: 'Encerrar',
+        });
+
+        if (confirmed) {
+            router.delete(`/recurring-bookings/${bookingId}`, {
+                preserveScroll: true,
+            });
+        }
+    }
 
     async function handleDelete() {
         const confirmed = await confirm({
@@ -1363,7 +1388,68 @@ export default function PatientShow({
                     <motion.div
                         initial={{ opacity: 0, y: 8 }}
                         animate={{ opacity: 1, y: 0 }}
+                        className="space-y-6"
                     >
+                        {(patient.recurring_bookings?.length ?? 0) > 0 && (
+                            <div className="rounded-2xl border border-border/50 bg-card/60 p-6 shadow-sm backdrop-blur-xl">
+                                <h2 className="mb-4 flex items-center gap-2 text-lg font-bold">
+                                    <Repeat className="size-5 text-primary" />
+                                    Horários fixos
+                                </h2>
+                                <ul className="divide-y divide-border/50">
+                                    {patient.recurring_bookings?.map(
+                                        (booking) => (
+                                            <li
+                                                key={booking.id}
+                                                className="flex flex-wrap items-center justify-between gap-3 py-3"
+                                            >
+                                                <div>
+                                                    <p className="font-semibold">
+                                                        {
+                                                            WEEKDAY_LONG[
+                                                                booking
+                                                                    .day_of_week
+                                                            ]
+                                                        }{' '}
+                                                        às{' '}
+                                                        {booking.start_time.slice(
+                                                            0,
+                                                            5,
+                                                        )}
+                                                    </p>
+                                                    <p className="text-sm text-muted-foreground">
+                                                        {booking.professional
+                                                            ?.name ?? '—'}{' '}
+                                                        · desde{' '}
+                                                        {shortDate(
+                                                            booking.starts_on,
+                                                        )}
+                                                        {booking.ends_on &&
+                                                            ` até ${shortDate(booking.ends_on)}`}
+                                                    </p>
+                                                </div>
+                                                {can(
+                                                    'appointments.manage.delete',
+                                                ) && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() =>
+                                                            endRecurringBooking(
+                                                                booking.id,
+                                                            )
+                                                        }
+                                                        className="rounded-lg border border-border px-3 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:border-red-200 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/30"
+                                                    >
+                                                        Encerrar
+                                                    </button>
+                                                )}
+                                            </li>
+                                        ),
+                                    )}
+                                </ul>
+                            </div>
+                        )}
+
                         <div className="rounded-2xl border border-border/50 bg-card/60 p-6 shadow-sm backdrop-blur-xl">
                             <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
                                 <h2 className="flex items-center gap-2 text-lg font-bold">

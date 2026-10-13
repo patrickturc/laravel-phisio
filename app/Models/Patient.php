@@ -58,6 +58,11 @@ class Patient extends Model
         });
     }
 
+    public function recurringBookings()
+    {
+        return $this->hasMany(RecurringBooking::class);
+    }
+
     public function user()
     {
         return $this->belongsTo(User::class);

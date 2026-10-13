@@ -8,6 +8,7 @@ use App\Models\GroupClass;
 use App\Models\GroupClassSchedule;
 use App\Models\Membership;
 use App\Models\Patient;
+use App\Models\Tenant;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -48,7 +49,8 @@ class AppointmentController extends Controller
         $groupClasses = GroupClass::orderBy('name')->get(['id', 'name', 'color', 'max_participants']);
         // Only users flagged as treating professionals (permission-based, so it
         // survives renaming the role) can be the "Profissional Responsável".
-        $users = User::professionals()->orderBy('name')->get(['id', 'name']);
+        $users = User::professionals()->orderBy('name')->get(['id', 'name', 'agenda_color'])
+            ->map(fn (User $user): array => ['id' => $user->id, 'name' => $user->name, 'color' => $user->agendaColor()]);
 
         return Inertia::render('appointments/index', [
             'appointments' => $appointments,
@@ -56,6 +58,7 @@ class AppointmentController extends Controller
             'patients' => $patients,
             'groupClasses' => $groupClasses,
             'users' => $users,
+            'scheduleSettings' => $request->user()->tenant?->scheduleSettings() ?? Tenant::DEFAULT_SCHEDULE_SETTINGS,
         ]);
     }
 
@@ -123,36 +126,32 @@ class AppointmentController extends Controller
 
         $createdCount = 0;
         $conflictCount = 0;
+        $overlapCount = 0;
 
         DB::beginTransaction();
         try {
             while ($currentDate->lessThanOrEqualTo($endDate)) {
                 $dateString = $currentDate->format('Y-m-d');
 
-                // Check for schedule conflict (same user_id overlapping times)
-                $conflict = $this->hasOverlappingAppointment(
+                // The time slot's capacity is what blocks a booking now; the
+                // same professional seeing several patients at once is allowed
+                // and only flagged.
+                $conflictMessage = $this->slotConflict(
+                    $request,
                     $dateString,
-                    $userId,
                     $validated['start_time'],
-                    (int) $validated['duration_minutes'],
+                    $validated['patient_ids'],
                 );
 
-                // Guard against duplicates (e.g. re-submitting a recurring
-                // series): the same patient already booked at that date/time.
-                $patientAlreadyBooked = Appointment::where('appointment_date', $dateString)
-                    ->where('start_time', $validated['start_time'])
-                    ->where('status', '!=', 'cancelled')
-                    ->whereHas('patients', function ($q) use ($validated) {
-                        $q->whereIn('patients.id', $validated['patient_ids']);
-                    })->exists();
+                if ($this->hasOverlappingAppointment($dateString, $userId, $validated['start_time'], (int) $validated['duration_minutes'])) {
+                    $overlapCount++;
+                }
 
-                $conflict = $conflict || $patientAlreadyBooked;
-
-                if ($conflict) {
+                if ($conflictMessage !== null) {
                     if ($createdCount === 0 && ! $isRecurring) {
                         DB::rollBack();
 
-                        return back()->withErrors(['start_time' => 'Já existe um agendamento neste horário.'])->withInput();
+                        return back()->withErrors(['start_time' => $conflictMessage])->withInput();
                     }
                     $conflictCount++;
                 } else {
@@ -191,75 +190,22 @@ class AppointmentController extends Controller
         if ($isRecurring) {
             $message = "Foram criados $createdCount agendamentos.";
             if ($conflictCount > 0) {
-                $message .= " Atenção: $conflictCount agendamento(s) ignorados devido a conflito de horário.";
+                $message .= " Atenção: $conflictCount agendamento(s) ignorados por horário lotado ou paciente já agendado.";
             }
+        }
+
+        $warnings = [];
+        if (count($exhaustedPatients) > 0) {
+            $names = implode(', ', $exhaustedPatients);
+            $warnings[] = "⚠️ Cota mensal de aulas já atingida: $names. Esta é uma aula extra (fora da cota do plano).";
+        }
+        if ($overlapCount > 0) {
+            $warnings[] = 'O profissional já tem outro atendimento no mesmo horário.';
         }
 
         $redirect = redirect()->route('appointments.index')->with('success', $message);
 
-        if (count($exhaustedPatients) > 0) {
-            $names = implode(', ', $exhaustedPatients);
-            $redirect->with('warning', "⚠️ Cota mensal de aulas já atingida: $names. Esta é uma aula extra (fora da cota do plano).");
-        }
-
-        return $redirect;
-    }
-
-    public function events(Request $request)
-    {
-        $query = Appointment::with(['patients', 'groupClass']);
-
-        if ($request->filled('start')) {
-            $query->where('appointment_date', '>=', substr($request->start, 0, 10));
-        }
-
-        if ($request->filled('end')) {
-            $query->where('appointment_date', '<', substr($request->end, 0, 10));
-        }
-
-        if ($request->filled('user_id')) {
-            $query->where('user_id', $request->user_id);
-        }
-
-        $appointments = $query->get();
-
-        $events = $appointments->map(function ($app) {
-            $start_datetime = $app->appointment_date->format('Y-m-d').'T'.$app->start_time;
-            $end_datetime = date('Y-m-d\TH:i:s', strtotime($start_datetime) + ($app->duration_minutes * 60));
-
-            // Use the group class color if available, otherwise default purple for group / blue for individual
-            if ($app->type === 'group' && $app->groupClass) {
-                $bgColor = $app->groupClass->color ?: '#8b5cf6';
-            } else {
-                $bgColor = $app->type === 'group' ? '#8b5cf6' : '#3b82f6';
-            }
-
-            $title = $app->title;
-            if (! $title && $app->patients->count() > 0) {
-                $title = $app->patients->first()->name;
-                if ($app->patients->count() > 1) {
-                    $title .= ' + '.($app->patients->count() - 1);
-                }
-            }
-
-            return [
-                'id' => $app->id,
-                'title' => $title ?: 'Agendamento',
-                'start' => $start_datetime,
-                'end' => $end_datetime,
-                'backgroundColor' => $bgColor,
-                'borderColor' => 'transparent',
-                'extendedProps' => [
-                    'type' => $app->type,
-                    'status' => $app->status,
-                    'patient_count' => $app->patients->count(),
-                    'max_participants' => $app->max_participants,
-                    'patient_names' => $app->patients->pluck('name')->values(),
-                ],
-            ];
-        });
-
-        return response()->json($events);
+        return $warnings ? $redirect->with('warning', implode(' ', $warnings)) : $redirect;
     }
 
     public function details(Appointment $appointment)
@@ -278,6 +224,12 @@ class AppointmentController extends Controller
         ]);
 
         $updateMode = $validated['update_mode'] ?? 'single';
+        $newDate = Carbon::parse($validated['appointment_date']);
+        $newTime = substr($validated['start_time'], 0, 5);
+
+        if ($updateMode === 'future' && $appointment->recurring_booking_id) {
+            return $this->rescheduleRecurringBooking($request, $appointment, $newDate, $newTime);
+        }
 
         if ($updateMode === 'future' && $appointment->type === 'group' && $appointment->group_class_id) {
             DB::beginTransaction();
@@ -344,12 +296,117 @@ class AppointmentController extends Controller
         }
 
         // Default single update
+        $conflictMessage = $this->slotConflict(
+            $request,
+            $newDate->toDateString(),
+            $newTime,
+            $appointment->patients()->wherePivot('status', '!=', 'cancelled')->pluck('patients.id')->all(),
+            $appointment->id,
+        );
+
+        if ($conflictMessage !== null) {
+            return response()->json(['success' => false, 'message' => $conflictMessage], 422);
+        }
+
         $appointment->update([
-            'appointment_date' => $validated['appointment_date'],
-            'start_time' => $validated['start_time'],
+            'appointment_date' => $newDate->toDateString(),
+            'start_time' => $newTime,
         ]);
 
         return response()->json(['success' => true]);
+    }
+
+    /**
+     * Move a fixed slot from this week on: its upcoming appointments shift by
+     * the same number of days to the new time, and the slot itself follows,
+     * so the weeks generated next land on the new day. Nothing moves unless
+     * every target slot has room.
+     */
+    private function rescheduleRecurringBooking(Request $request, Appointment $appointment, Carbon $newDate, string $newTime)
+    {
+        $booking = $appointment->recurringBooking;
+        $daysDiff = (int) $appointment->appointment_date->copy()->startOfDay()->diffInDays($newDate->copy()->startOfDay(), false);
+
+        $upcoming = $booking->appointments()
+            ->where('appointment_date', '>=', $appointment->appointment_date->toDateString())
+            ->where('status', 'scheduled')
+            ->orderBy('appointment_date')
+            ->get();
+
+        $full = $upcoming
+            ->filter(fn (Appointment $a): bool => $this->slotConflict(
+                $request,
+                $a->appointment_date->copy()->addDays($daysDiff)->toDateString(),
+                $newTime,
+                [$booking->patient_id],
+                $a->id,
+            ) !== null)
+            ->map(fn (Appointment $a): string => $a->appointment_date->copy()->addDays($daysDiff)->format('d/m'));
+
+        if ($full->isNotEmpty()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Sem vaga no novo horário em: '.$full->implode(', ').'.',
+            ], 422);
+        }
+
+        DB::transaction(function () use ($upcoming, $booking, $daysDiff, $newDate, $newTime) {
+            foreach ($upcoming as $a) {
+                $target = $a->appointment_date->copy()->addDays($daysDiff)->toDateString();
+                $a->update([
+                    'appointment_date' => $target,
+                    'recurrence_date' => $target,
+                    'start_time' => $newTime,
+                ]);
+            }
+
+            // The new day and time hold from the first moved week on, so the
+            // generator doesn't also fill the new weekday before that week.
+            $booking->update([
+                'day_of_week' => $newDate->dayOfWeek,
+                'start_time' => $newTime,
+                'starts_on' => $newDate->toDateString(),
+            ]);
+        });
+
+        return response()->json(['success' => true]);
+    }
+
+    /**
+     * Why these patients can't take this date and time, or null when they
+     * can: one of them is already booked then, or the slot has no room left.
+     *
+     * @param  list<string>  $patientIds
+     */
+    private function slotConflict(
+        Request $request,
+        string $date,
+        string $startTime,
+        array $patientIds,
+        ?string $exceptAppointmentId = null,
+    ): ?string {
+        $tenant = $request->user()->tenant;
+
+        if (! $tenant) {
+            return null;
+        }
+
+        foreach ($patientIds as $patientId) {
+            if (Appointment::patientBookedAt($tenant->id, $patientId, $date, $startTime, $exceptAppointmentId)) {
+                $name = Patient::find($patientId)?->name ?? 'O paciente';
+
+                return "{$name} já está agendado(a) neste horário.";
+            }
+        }
+
+        $capacity = $tenant->slotCapacity();
+        $students = Appointment::studentsInSlot($tenant->id, $date, $startTime, $exceptAppointmentId);
+
+        if ($students + count($patientIds) > $capacity) {
+            return "Horário lotado: {$students}/{$capacity} alunos.";
+        }
+
+        return null;
     }
 
     public function show(Appointment $appointment)
@@ -426,18 +483,25 @@ class AppointmentController extends Controller
 
         $userId = $request->user_id ?? auth()->id();
 
-        // Check for schedule conflict
-        $conflict = $this->hasOverlappingAppointment(
+        $conflictMessage = $this->slotConflict(
+            $request,
+            Carbon::parse($validated['appointment_date'])->toDateString(),
+            $validated['start_time'],
+            $validated['patient_ids'],
+            $appointment->id,
+        );
+
+        if ($conflictMessage !== null) {
+            return back()->withErrors(['start_time' => $conflictMessage])->withInput();
+        }
+
+        $overlap = $this->hasOverlappingAppointment(
             $validated['appointment_date'],
             $userId,
             $validated['start_time'],
             (int) $validated['duration_minutes'],
             $appointment->id,
         );
-
-        if ($conflict) {
-            return back()->withErrors(['start_time' => 'Já existe um agendamento neste horário.'])->withInput();
-        }
 
         $newStatus = $validated['status'] ?? $appointment->status;
         $statusChanged = $newStatus !== $appointment->status;
@@ -477,8 +541,12 @@ class AppointmentController extends Controller
             throw $e;
         }
 
-        return redirect()->route('appointments.show', $appointment)
+        $redirect = redirect()->route('appointments.show', $appointment)
             ->with('success', 'Agendamento atualizado!');
+
+        return $overlap
+            ? $redirect->with('warning', 'O profissional já tem outro atendimento no mesmo horário.')
+            : $redirect;
     }
 
     public function updateStatus(Request $request, Appointment $appointment, $patientId)
@@ -613,6 +681,23 @@ class AppointmentController extends Controller
     {
         $deleteMode = $request->query('delete_mode', 'single');
 
+        // Fixed slots: "this and the next ones" ends the slot; a single week
+        // is cancelled rather than deleted so the generator doesn't recreate it.
+        if ($appointment->recurring_booking_id) {
+            if ($deleteMode === 'future') {
+                $removed = $appointment->recurringBooking->endFrom($appointment->appointment_date);
+
+                return back()->with('success', "Horário fixo encerrado: {$removed} aula(s) removida(s).");
+            }
+
+            DB::transaction(function () use ($appointment) {
+                $appointment->update(['status' => 'cancelled']);
+                $this->cascadeSessionStatus($appointment, 'cancelled');
+            });
+
+            return back()->with('success', 'Aula desta semana cancelada. O horário fixo continua.');
+        }
+
         if ($deleteMode === 'future') {
             // Delete this and all future scheduled appointments
             // Bind the plain date string, not the Carbon instance: Laravel's
@@ -663,115 +748,5 @@ class AppointmentController extends Controller
 
         return redirect()->route('appointments.index')
             ->with('success', 'Agendamento excluído!');
-    }
-
-    /**
-     * Return appointments formatted for the slots/vagas table view.
-     * Time rows are derived from GroupClassSchedule definitions so that
-     * every configured class time appears even when no appointment exists yet.
-     */
-    public function slotsView(Request $request)
-    {
-        $startDate = $request->filled('start_date')
-            ? Carbon::parse($request->start_date)->startOfWeek(Carbon::MONDAY)
-            : Carbon::now()->startOfWeek(Carbon::MONDAY);
-
-        $endDate = $startDate->copy()->endOfWeek(Carbon::SATURDAY);
-
-        $userId = $request->input('user_id');
-
-        // 1. Load all active group class schedules with their class info
-        $schedules = GroupClassSchedule::with(['groupClass' => function ($q) {
-            $q->withTrashed(); // include soft-deleted so we don't break existing slots
-        }])
-            ->whereHas('groupClass', function ($q) use ($userId) {
-                $q->where('status', 'active')->withTrashed();
-                if ($userId) {
-                    $q->where('user_id', $userId);
-                }
-            })
-            ->orderBy('start_time')
-            ->get();
-
-        // 2. Load all appointments for the week (to match against schedules)
-        $appointments = Appointment::with(['patients', 'groupClass'])
-            ->where('appointment_date', '>=', $startDate->format('Y-m-d'))
-            ->where('appointment_date', '<=', $endDate->format('Y-m-d'))
-            ->where('status', '!=', 'cancelled')
-            ->when($userId, fn ($q) => $q->where('user_id', $userId))
-            ->orderBy('start_time')
-            ->get();
-
-        // Index appointments by date+time for fast lookup
-        $appointmentIndex = [];
-        foreach ($appointments as $app) {
-            $key = $app->appointment_date->format('Y-m-d').'|'.substr($app->start_time, 0, 5);
-            $appointmentIndex[$key][] = $app;
-        }
-
-        // 3. Build slots: iterate each day, find matching schedules by day_of_week
-        $slots = [];
-
-        for ($day = $startDate->copy(); $day->lte($endDate); $day->addDay()) {
-            $dateKey = $day->format('Y-m-d');
-            $dayOfWeek = $day->dayOfWeek; // 0=Sun, 1=Mon ... 6=Sat
-
-            $daySchedules = $schedules->where('day_of_week', $dayOfWeek);
-
-            foreach ($daySchedules as $schedule) {
-                $timeKey = substr($schedule->start_time, 0, 5);
-                $gc = $schedule->groupClass;
-                if (! $gc) {
-                    continue;
-                }
-
-                // Find the matching appointment for this date+time
-                $lookupKey = $dateKey.'|'.$timeKey;
-                $matchedApps = $appointmentIndex[$lookupKey] ?? [];
-
-                // Try to find the appointment that belongs to this group class
-                $matchedApp = null;
-                foreach ($matchedApps as $app) {
-                    if ($app->group_class_id === $gc->id) {
-                        $matchedApp = $app;
-                        break;
-                    }
-                }
-
-                $patients = [];
-                $appointmentId = null;
-
-                if ($matchedApp) {
-                    $appointmentId = $matchedApp->id;
-                    $patients = $matchedApp->patients->values()->map(function ($patient, $index) {
-                        return [
-                            'slot' => $index + 1,
-                            'name' => $patient->name,
-                            'id' => $patient->id,
-                            'status' => $patient->pivot->status ?? 'scheduled',
-                        ];
-                    })->toArray();
-                }
-
-                $slots[$dateKey][] = [
-                    'time' => $timeKey,
-                    'appointment_id' => $appointmentId,
-                    'type' => 'group',
-                    'title' => $gc->name,
-                    'max_participants' => $gc->max_participants ?? 4,
-                    'group_class_name' => $gc->name,
-                    'group_class_id' => $gc->id,
-                    'color' => $gc->color ?? '#8b5cf6',
-                    'patients' => $patients,
-                    'duration_minutes' => $schedule->duration_minutes,
-                ];
-            }
-        }
-
-        return response()->json([
-            'slots' => $slots,
-            'week_start' => $startDate->format('Y-m-d'),
-            'week_end' => $endDate->format('Y-m-d'),
-        ]);
     }
 }

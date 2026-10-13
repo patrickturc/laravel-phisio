@@ -86,6 +86,8 @@ class PatientController extends Controller
             'memberships' => fn ($q) => $q->with('commercialPlan')->orderBy('end_date', 'desc'),
             'financialTransactions' => fn ($q) => $q->orderBy('date', 'desc'),
             'documents' => fn ($q) => $q->orderBy('created_at', 'desc'),
+            'recurringBookings' => fn ($q) => $q->active()->with('professional:id,name')
+                ->orderBy('day_of_week')->orderBy('start_time'),
         ]);
 
         // Expose the monthly session quota usage on each membership card.

@@ -118,16 +118,12 @@ export function AppSidebar() {
 
     const settingsNavItems = [
         {
-            title: 'Dados da Clínica',
+            title: 'Perfil da Clínica',
             href: '/settings/organization',
             icon: Building2,
             show: can('settings.users.view'),
-        },
-        {
-            title: 'Plano e Cobrança',
-            href: '/settings/billing',
-            icon: CreditCard,
-            show: can('settings.users.view'),
+            // The plan page is a tab of the clinic profile.
+            activeFor: ['/settings/organization', '/settings/billing'],
         },
         {
             title: 'Protocolos Clínicos',
@@ -156,6 +152,11 @@ export function AppSidebar() {
             show: can('settings.roles.view'),
         },
     ].filter((item) => item.show);
+
+    const isSettingsItemActive = (item: {
+        href: string;
+        activeFor?: string[];
+    }) => (item.activeFor ?? [item.href]).some((href) => isCurrentUrl(href));
 
     return (
         <Sidebar
@@ -187,8 +188,8 @@ export function AppSidebar() {
                         <SidebarMenu>
                             <Collapsible
                                 asChild
-                                defaultOpen={settingsNavItems.some((item) =>
-                                    isCurrentUrl(item.href),
+                                defaultOpen={settingsNavItems.some(
+                                    isSettingsItemActive,
                                 )}
                             >
                                 <SidebarMenuItem>
@@ -210,8 +211,8 @@ export function AppSidebar() {
                                                 >
                                                     <SidebarMenuSubButton
                                                         asChild
-                                                        isActive={isCurrentUrl(
-                                                            item.href,
+                                                        isActive={isSettingsItemActive(
+                                                            item,
                                                         )}
                                                     >
                                                         <Link

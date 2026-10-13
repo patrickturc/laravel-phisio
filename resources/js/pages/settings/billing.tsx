@@ -4,7 +4,6 @@ import {
     ArrowRight,
     Check,
     Clock,
-    CreditCard,
     Download,
     HardDrive,
     Mail,
@@ -17,6 +16,7 @@ import { useEffect } from 'react';
 import { Toaster, toast } from 'sonner';
 import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
+import { OrganizationHeader } from '@/components/organization-header';
 import { Pagination } from '@/components/pagination';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -99,7 +99,8 @@ type Props = {
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Configurações', href: '/settings/organization' },
-    { title: 'Plano e Cobrança', href: '/settings/billing' },
+    { title: 'Perfil da Clínica', href: '/settings/organization' },
+    { title: 'Plano', href: '/settings/billing' },
 ];
 
 const money = (value: number | string) =>
@@ -209,15 +210,7 @@ export default function Billing({
             <Head title="Plano e Cobrança" />
 
             <div className="mx-auto flex h-full w-full max-w-4xl flex-1 flex-col gap-6 p-6 md:p-10">
-                <div>
-                    <h1 className="text-3xl font-bold tracking-tight text-foreground">
-                        Plano e Cobrança
-                    </h1>
-                    <p className="mt-1 text-muted-foreground">
-                        Gerencie o plano da sua clínica e veja o histórico de
-                        pagamentos.
-                    </p>
-                </div>
+                <OrganizationHeader />
 
                 {/* Current Plan Status */}
                 <div
@@ -329,8 +322,7 @@ export default function Billing({
 
                         <div className="grid gap-3 sm:grid-cols-3">
                             {plans.map((plan) => {
-                                const active =
-                                    data.requested_plan === plan.key;
+                                const active = data.requested_plan === plan.key;
                                 const current = tenant.plan === plan.key;
 
                                 return (
@@ -338,10 +330,7 @@ export default function Billing({
                                         key={plan.key}
                                         type="button"
                                         onClick={() =>
-                                            setData(
-                                                'requested_plan',
-                                                plan.key,
-                                            )
+                                            setData('requested_plan', plan.key)
                                         }
                                         className={`flex flex-col rounded-xl border p-4 text-left transition-all ${
                                             active
@@ -423,8 +412,8 @@ export default function Billing({
                                         <p className="mt-0.5 text-xs text-muted-foreground">
                                             O plano {selected.name} inclui{' '}
                                             {selected.users} usuários. Cada
-                                            extra custa{' '}
-                                            {money(extraUserPrice)}/mês.
+                                            extra custa {money(extraUserPrice)}
+                                            /mês.
                                         </p>
                                     </div>
 
@@ -450,9 +439,7 @@ export default function Billing({
                                             variant="outline"
                                             size="icon"
                                             className="size-8"
-                                            disabled={
-                                                extras >= maxExtraUsers
-                                            }
+                                            disabled={extras >= maxExtraUsers}
                                             onClick={() =>
                                                 setExtras(extras + 1)
                                             }
@@ -518,9 +505,7 @@ export default function Billing({
                                 placeholder="Melhor horário para contato, forma de pagamento preferida..."
                                 className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
                             />
-                            <InputError
-                                message={errors.plan_request_notes}
-                            />
+                            <InputError message={errors.plan_request_notes} />
                         </div>
 
                         {/* Submit */}
@@ -530,9 +515,7 @@ export default function Billing({
                                 disabled={processing}
                                 className="gap-2"
                             >
-                                {processing && (
-                                    <Spinner className="mr-1" />
-                                )}
+                                {processing && <Spinner className="mr-1" />}
                                 {tenant.has_pending_plan_request
                                     ? 'Atualizar solicitação'
                                     : 'Solicitar plano'}

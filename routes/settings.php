@@ -3,6 +3,7 @@
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\Settings\BillingController;
 use App\Http\Controllers\Settings\OrganizationController;
+use App\Http\Controllers\Settings\OrganizationImageController;
 use App\Http\Controllers\Settings\PasswordController;
 use App\Http\Controllers\Settings\ProfileController;
 use App\Http\Controllers\Settings\TwoFactorAuthenticationController;
@@ -29,6 +30,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::inertia('settings/appearance', 'settings/appearance')->name('appearance.edit');
 
+    // Clinic logo and owner photo, viewable by every user of the clinic.
+    Route::get('settings/organization/images/{image}', [OrganizationImageController::class, 'show'])
+        ->whereIn('image', array_keys(OrganizationImageController::IMAGES))
+        ->name('organization.images.show');
+
     Route::get('settings/two-factor', [TwoFactorAuthenticationController::class, 'show'])
         ->name('two-factor.show');
 
@@ -36,6 +42,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::middleware('permission:settings.users.view')->group(function () {
         Route::get('settings/organization', [OrganizationController::class, 'edit'])->name('organization.edit');
         Route::patch('settings/organization', [OrganizationController::class, 'update'])->name('organization.update');
+        Route::post('settings/organization/images/{image}', [OrganizationImageController::class, 'store'])
+            ->whereIn('image', array_keys(OrganizationImageController::IMAGES))
+            ->name('organization.images.store');
+        Route::delete('settings/organization/images/{image}', [OrganizationImageController::class, 'destroy'])
+            ->whereIn('image', array_keys(OrganizationImageController::IMAGES))
+            ->name('organization.images.destroy');
 
         // Billing — plan management and payment history.
         Route::get('settings/billing', [BillingController::class, 'edit'])->name('billing.edit');
