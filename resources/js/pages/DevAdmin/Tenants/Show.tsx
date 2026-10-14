@@ -111,6 +111,18 @@ export default function Show({
         }
     };
 
+    const handleImpersonateUser = (user: { id: number; name: string }) => {
+        if (
+            confirm(
+                `Deseja acessar o sistema como ${user.name}, com as permissões desse usuário?`,
+            )
+        ) {
+            router.post(`/dev-admin/tenants/${tenant.id}/impersonate`, {
+                user_id: user.id,
+            });
+        }
+    };
+
     const handleCreateUser = (e: React.FormEvent) => {
         e.preventDefault();
         userForm.post(`/dev-admin/tenants/${tenant.id}/users`, {
@@ -704,6 +716,19 @@ export default function Show({
                                                     </span>
                                                 </TableCell>
                                                 <TableCell className="text-right">
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        onClick={() =>
+                                                            handleImpersonateUser(
+                                                                u,
+                                                            )
+                                                        }
+                                                        className="gap-1 text-xs"
+                                                    >
+                                                        <LogIn className="h-3.5 w-3.5" />
+                                                        Acessar como
+                                                    </Button>
                                                     <Button
                                                         variant="ghost"
                                                         size="sm"

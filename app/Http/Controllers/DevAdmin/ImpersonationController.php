@@ -8,31 +8,51 @@ use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 class ImpersonationController extends Controller
 {
     /**
-     * Start impersonating a tenant.
+     * Start impersonating a tenant: as the user picked in the panel, or else
+     * as the clinic's administrator, so support sees what the owner sees.
      */
     public function impersonate(Request $request, Tenant $tenant): RedirectResponse
     {
-        $originalAdminId = Auth::id();
+        $validated = $request->validate(['user_id' => ['nullable', 'integer']]);
 
-        // Find a tenant user to impersonate (prefer tenant admin or any active user)
-        $targetUser = $tenant->users()
-            ->where('is_dev_admin', false)
-            ->first();
+        $users = fn () => $tenant->users()->where('is_dev_admin', false)->orderBy('id');
+
+        $targetUser = isset($validated['user_id'])
+            ? $users()->whereKey($validated['user_id'])->first()
+            : ($users()->whereHas('roles', fn ($query) => $query->where('name', 'Administrador'))->first()
+                ?? $users()->first());
 
         if (! $targetUser) {
-            return back()->with('error', 'Esta organização ainda não possui usuários cadastrados para acesso.');
+            return back()->with('error', isset($validated['user_id'])
+                ? 'Usuário não encontrado nesta organização.'
+                : 'Esta organização ainda não possui usuários cadastrados para acesso.');
         }
 
-        session()->put('impersonated_by', $originalAdminId);
+        Log::notice('Dev admin impersonation started', [
+            'dev_admin_id' => Auth::id(),
+            'tenant_id' => $tenant->id,
+            'user_id' => $targetUser->id,
+            'ip' => $request->ip(),
+        ]);
+
+        session()->put('impersonated_by', Auth::id());
         session()->put('impersonated_tenant_id', $tenant->id);
 
         Auth::login($targetUser);
 
-        return redirect()->route('dashboard')
+        // Land on a page the user can open: not every role sees the dashboard.
+        // can() (not hasPermissionTo) so a permission missing from the
+        // database just means "no".
+        $landing = $targetUser->can('dashboard.view')
+            ? route('dashboard')
+            : ($targetUser->can('appointments.manage.view') ? route('appointments.index') : route('profile.edit'));
+
+        return redirect($landing)
             ->with('success', "Acessando como {$targetUser->name} ({$tenant->name}).");
     }
 
@@ -49,6 +69,12 @@ class ImpersonationController extends Controller
         $tenantId = session()->pull('impersonated_tenant_id');
 
         $originalAdmin = User::withoutGlobalScopes()->find($originalAdminId);
+
+        Log::notice('Dev admin impersonation ended', [
+            'dev_admin_id' => $originalAdminId,
+            'tenant_id' => $tenantId,
+            'user_id' => Auth::id(),
+        ]);
 
         if ($originalAdmin && $originalAdmin->is_dev_admin) {
             Auth::login($originalAdmin);

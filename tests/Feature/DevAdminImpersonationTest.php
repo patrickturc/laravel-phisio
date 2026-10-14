@@ -3,6 +3,7 @@
 use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
+use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 
 test('dev admin can impersonate a tenant and then leave impersonation', function () {
@@ -12,6 +13,7 @@ test('dev admin can impersonate a tenant and then leave impersonation', function
         'name' => 'Dr. Tenant Admin',
         'is_dev_admin' => false,
     ]);
+    $tenantUser->givePermissionTo(Permission::findOrCreate('dashboard.view', 'web'));
 
     $devAdmin = User::factory()->create([
         'is_dev_admin' => true,
@@ -97,4 +99,52 @@ test('dev admin can reset password for a tenant user', function () {
     $response->assertRedirect();
     $tenantUser->refresh();
     $this->assertTrue(Hash::check('newpassword123', $tenantUser->password));
+});
+
+test('impersonating a clinic logs in as its administrator, not just the first user', function () {
+    $tenant = Tenant::factory()->create();
+    $receptionist = User::factory()->create(['tenant_id' => $tenant->id, 'name' => 'Recepção']);
+    $receptionist->assignRole(Role::findOrCreate('Recepcionista', 'web'));
+    $owner = User::factory()->create(['tenant_id' => $tenant->id, 'name' => 'Dona']);
+    $owner->assignRole(Role::findOrCreate('Administrador', 'web'));
+    $devAdmin = User::factory()->create(['is_dev_admin' => true, 'tenant_id' => null]);
+
+    $this->actingAs($devAdmin)->post(route('dev-admin.tenants.impersonate', $tenant->id));
+
+    expect(auth()->id())->toBe($owner->id);
+});
+
+test('the dev admin can pick which user of the clinic to impersonate', function () {
+    $tenant = Tenant::factory()->create();
+    User::factory()->create(['tenant_id' => $tenant->id])->assignRole(Role::findOrCreate('Administrador', 'web'));
+    $physio = User::factory()->create(['tenant_id' => $tenant->id, 'name' => 'Fisio']);
+    $devAdmin = User::factory()->create(['is_dev_admin' => true, 'tenant_id' => null]);
+
+    $this->actingAs($devAdmin)->post(route('dev-admin.tenants.impersonate', $tenant->id), ['user_id' => $physio->id]);
+
+    expect(auth()->id())->toBe($physio->id)
+        ->and(session('impersonated_by'))->toBe($devAdmin->id);
+});
+
+test('a user of another clinic cannot be picked for impersonation', function () {
+    $tenant = Tenant::factory()->create();
+    User::factory()->create(['tenant_id' => $tenant->id]);
+    $outsider = User::factory()->create();
+    $devAdmin = User::factory()->create(['is_dev_admin' => true, 'tenant_id' => null]);
+
+    $this->actingAs($devAdmin)
+        ->post(route('dev-admin.tenants.impersonate', $tenant->id), ['user_id' => $outsider->id])
+        ->assertSessionHas('error');
+
+    expect(auth()->id())->toBe($devAdmin->id);
+});
+
+test('a user without the dashboard lands on a page they can open', function () {
+    $tenant = Tenant::factory()->create();
+    $user = User::factory()->create(['tenant_id' => $tenant->id]);
+    $devAdmin = User::factory()->create(['is_dev_admin' => true, 'tenant_id' => null]);
+
+    $this->actingAs($devAdmin)
+        ->post(route('dev-admin.tenants.impersonate', $tenant->id), ['user_id' => $user->id])
+        ->assertRedirect(route('profile.edit'));
 });

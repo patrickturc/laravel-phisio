@@ -99,7 +99,9 @@ export default function Index({ tenants, filters, counts }: IndexProps) {
 
     const handleImpersonate = (tenant: any) => {
         if (
-            confirm(`Deseja acessar o sistema como a clínica "${tenant.name}"?`)
+            confirm(
+                `Deseja acessar o sistema como administrador da clínica "${tenant.name}"?`,
+            )
         ) {
             router.post(`/dev-admin/tenants/${tenant.id}/impersonate`);
         }
