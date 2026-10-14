@@ -3,13 +3,21 @@ import { useCurrentUrl } from '@/hooks/use-current-url';
 import { usePermissions } from '@/hooks/use-permissions';
 
 const TABS = [
-    { title: 'Informações', href: '/settings/organization', permission: null },
+    {
+        title: 'Informações',
+        href: '/settings/organization',
+        permission: 'settings.organization.manage',
+    },
     {
         title: 'Agenda',
         href: '/settings/schedule',
         permission: 'appointments.settings.manage',
     },
-    { title: 'Plano', href: '/settings/billing', permission: null },
+    {
+        title: 'Plano',
+        href: '/settings/billing',
+        permission: 'settings.organization.manage',
+    },
 ];
 
 /**

@@ -6,6 +6,7 @@ use App\Models\Appointment;
 use App\Models\GroupClass;
 use App\Models\Patient;
 use App\Models\User;
+use App\Rules\BelongsToClinic;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -201,7 +202,8 @@ class GroupClassController extends Controller
             'name' => 'required|string|max:255',
             'max_participants' => 'required|integer|min:1',
             'patient_ids' => 'nullable|array',
-            'patient_ids.*' => 'exists:patients,id',
+            'patient_ids.*' => [new BelongsToClinic(Patient::class)],
+            'user_id' => ['nullable', 'integer', new BelongsToClinic(User::class)],
             'schedules' => 'required|array',
             'schedules.*.day_of_week' => 'required|integer|min:0|max:6',
             'schedules.*.start_time' => 'required',
@@ -211,7 +213,7 @@ class GroupClassController extends Controller
         DB::beginTransaction();
         try {
             $groupClass = GroupClass::create([
-                'user_id' => $request->input('user_id', auth()->id()),
+                'user_id' => $validated['user_id'] ?? auth()->id(),
                 'name' => $validated['name'],
                 'color' => $request->input('color', '#8b5cf6'),
                 'max_participants' => $validated['max_participants'],
@@ -242,7 +244,8 @@ class GroupClassController extends Controller
             'max_participants' => 'sometimes|required|integer|min:1',
             'status' => 'sometimes|required|in:active,inactive',
             'patient_ids' => 'sometimes|nullable|array',
-            'patient_ids.*' => 'exists:patients,id',
+            'patient_ids.*' => [new BelongsToClinic(Patient::class)],
+            'user_id' => ['nullable', 'integer', new BelongsToClinic(User::class)],
             'schedules' => 'sometimes|nullable|array',
             'schedules.*.day_of_week' => 'required|integer|min:0|max:6',
             'schedules.*.start_time' => 'required',
@@ -254,7 +257,7 @@ class GroupClassController extends Controller
         // roster change doesn't send user_id and must keep the current one.
         // An empty choice still means "me", as when creating.
         $userId = $request->has('user_id')
-            ? ($request->input('user_id') ?: auth()->id())
+            ? ($validated['user_id'] ?? auth()->id())
             : $groupClass->user_id;
 
         DB::beginTransaction();

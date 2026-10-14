@@ -25,12 +25,14 @@ function billingAdmin(array $tenantAttributes = []): User
 
     $user = User::factory()->create(['tenant_id' => $tenant->id]);
 
-    foreach (['dashboard.view', 'settings.users.view', 'settings.users.create'] as $permission) {
+    $permissions = ['dashboard.view', 'settings.users.view', 'settings.users.create', 'settings.organization.manage'];
+
+    foreach ($permissions as $permission) {
         Permission::findOrCreate($permission, 'web');
     }
 
     $role = Role::findOrCreate('Administrador', 'web');
-    $role->givePermissionTo(['dashboard.view', 'settings.users.view', 'settings.users.create']);
+    $role->givePermissionTo($permissions);
     $user->assignRole($role);
 
     return $user;

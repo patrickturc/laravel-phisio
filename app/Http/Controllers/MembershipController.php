@@ -6,6 +6,7 @@ use App\Models\CommercialPlan;
 use App\Models\FinancialTransaction;
 use App\Models\Membership;
 use App\Models\Patient;
+use App\Rules\BelongsToClinic;
 use Carbon\Carbon;
 use Carbon\CarbonInterface;
 use Illuminate\Http\Request;
@@ -52,8 +53,8 @@ class MembershipController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'patient_id' => 'required|uuid|exists:patients,id',
-            'commercial_plan_id' => 'nullable|uuid|exists:commercial_plans,id',
+            'patient_id' => ['required', 'uuid', new BelongsToClinic(Patient::class)],
+            'commercial_plan_id' => ['nullable', 'uuid', new BelongsToClinic(CommercialPlan::class)],
             'plan_name' => 'nullable|string|max:255',
             'start_date' => 'required|date',
             // No end date: an open-ended ("contínua") membership.
@@ -132,7 +133,7 @@ class MembershipController extends Controller
         $statuses = ['active', 'expired', 'cancelled', ...($membership->status === 'paused' ? ['paused'] : [])];
 
         $validated = $request->validate([
-            'commercial_plan_id' => 'nullable|uuid|exists:commercial_plans,id',
+            'commercial_plan_id' => ['nullable', 'uuid', new BelongsToClinic(CommercialPlan::class)],
             'plan_name' => 'nullable|string|max:255',
             'start_date' => 'required|date',
             'end_date' => 'nullable|date|after_or_equal:start_date',

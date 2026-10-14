@@ -12,10 +12,15 @@ class CalendarFeedController extends Controller
     {
         $user = User::where('calendar_token', $token)->firstOrFail();
 
+        // The feed has no session, so the tenant scope is off: filter by the
+        // professional's clinic by hand, and stop serving a suspended one.
+        abort_unless($user->tenant?->isActive(), 404);
+
         $today = now()->startOfDay();
 
         // Get all appointments (regular and group classes)
         $appointments = Appointment::with(['patients', 'groupClass'])
+            ->where('tenant_id', $user->tenant_id)
             ->where('user_id', $user->id)
             ->where('appointment_date', '>=', $today->toDateString())
             ->where('status', '!=', 'cancelled')

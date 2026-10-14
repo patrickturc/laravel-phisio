@@ -10,6 +10,7 @@ use App\Models\Evolution;
 use App\Models\FinancialTransaction;
 use App\Models\GroupClass;
 use App\Models\Patient;
+use App\Models\Role;
 use App\Models\Tenant;
 use App\Models\User;
 use Carbon\Carbon;
@@ -19,8 +20,6 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
-use Spatie\Permission\Models\Permission;
-use Spatie\Permission\Models\Role;
 
 class TenantController extends Controller
 {
@@ -109,6 +108,8 @@ class TenantController extends Controller
         DB::transaction(function () use ($tenantData, $validated): void {
             $tenant = Tenant::create($tenantData);
 
+            Role::provisionDefaultsFor($tenant);
+
             if (! empty($validated['admin_email']) && ! empty($validated['admin_password'])) {
                 $adminUser = User::create([
                     'tenant_id' => $tenant->id,
@@ -119,7 +120,7 @@ class TenantController extends Controller
                     'email_verified_at' => now(),
                 ]);
 
-                $adminUser->assignRole($this->ownerRole());
+                $adminUser->assignRole(Role::ownerFor($tenant));
             }
         });
 
@@ -224,7 +225,7 @@ class TenantController extends Controller
             'tenant' => $tenant->makeHidden(['id'])->toArray(),
             'exported_at' => now()->toIso8601String(),
             'users' => User::withoutGlobalScopes()->where('tenant_id', $tenant->id)->get(['name', 'email', 'created_at'])->toArray(),
-            'patients' => Patient::withoutGlobalScopes()->where('tenant_id', $tenant->id)->get()->toArray(),
+            'patients' => Patient::withoutGlobalScopes()->where('tenant_id', $tenant->id)->get()->makeVisible(Patient::PRIVATE_FIELDS)->toArray(),
             'appointments' => Appointment::withoutGlobalScopes()->where('tenant_id', $tenant->id)->get()->toArray(),
             'evolutions' => Evolution::withoutGlobalScopes()->where('tenant_id', $tenant->id)->get()->toArray(),
             'financial_transactions' => FinancialTransaction::withoutGlobalScopes()->where('tenant_id', $tenant->id)->get()->toArray(),
@@ -316,23 +317,6 @@ class TenantController extends Controller
         return back()->with('success', "Trial estendido em {$validated['days']} dias.");
     }
 
-    /**
-     * The full-access role granted to a tenant's first admin, created with
-     * every permission on a fresh install so it is never left empty. Mirrors
-     * App\Actions\Fortify\CreateNewUser::ownerRole(), which does the same
-     * for self-service signups — both paths must land on one shared role.
-     */
-    private function ownerRole(): Role
-    {
-        $role = Role::findOrCreate('Administrador', 'web');
-
-        if ($role->permissions()->count() === 0) {
-            $role->syncPermissions(Permission::where('guard_name', 'web')->get());
-        }
-
-        return $role;
-    }
-
     public function toggleStatus(Tenant $tenant)
     {
         $newStatus = $tenant->status === 'active' ? 'suspended' : 'active';
@@ -344,6 +328,8 @@ class TenantController extends Controller
 
     public function storeUser(Request $request, Tenant $tenant)
     {
+        Role::provisionDefaultsFor($tenant);
+
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255', 'unique:users,email'],
@@ -351,7 +337,7 @@ class TenantController extends Controller
             // Only real, already-seeded roles: an unrecognized name used to
             // auto-create a brand-new Spatie role with zero permissions,
             // which silently locked the new user out of everything.
-            'role' => ['nullable', 'string', Rule::in(Role::pluck('name'))],
+            'role' => ['nullable', 'string', Rule::in(Role::forTenant($tenant->id)->pluck('name'))],
         ]);
 
         $user = User::create([
@@ -364,7 +350,7 @@ class TenantController extends Controller
         ]);
 
         if (! empty($validated['role'])) {
-            $user->assignRole($validated['role']);
+            $user->assignRole(Role::forTenant($tenant->id)->where('name', $validated['role'])->firstOrFail());
         }
 
         return back()->with('success', "Usuário {$user->name} cadastrado com sucesso para esta organização.");

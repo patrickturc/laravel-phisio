@@ -121,7 +121,7 @@ export function AppSidebar() {
             title: 'Perfil da Clínica',
             href: '/settings/organization',
             icon: Building2,
-            show: can('settings.users.view'),
+            show: can('settings.organization.manage'),
             // The plan page is a tab of the clinic profile.
             activeFor: [
                 '/settings/organization',

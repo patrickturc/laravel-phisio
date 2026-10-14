@@ -10,6 +10,7 @@ use App\Models\Membership;
 use App\Models\Patient;
 use App\Models\Tenant;
 use App\Models\User;
+use App\Rules\BelongsToClinic;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -76,9 +77,10 @@ class AppointmentController extends Controller
     {
         $validated = $request->validate([
             'patient_ids' => 'required|array',
-            'patient_ids.*' => 'uuid|exists:patients,id',
+            'patient_ids.*' => ['uuid', new BelongsToClinic(Patient::class)],
             'type' => 'required|in:individual,group',
-            'group_class_id' => 'nullable|required_if:type,group|uuid|exists:group_classes,id',
+            'group_class_id' => ['nullable', 'required_if:type,group', 'uuid', new BelongsToClinic(GroupClass::class)],
+            'user_id' => ['nullable', 'integer', new BelongsToClinic(User::class)],
             'title' => 'nullable|string|max:255',
             'max_participants' => 'required|integer|min:1',
             'appointment_date' => 'required|date',
@@ -121,7 +123,7 @@ class AppointmentController extends Controller
             return back()->withErrors(['patient_ids' => "Os seguintes pacientes não possuem um plano ativo de Pilates ou Aula Teste: $names."])->withInput();
         }
 
-        $userId = $request->user_id ?? auth()->id();
+        $userId = $validated['user_id'] ?? auth()->id();
         $isRecurring = $request->boolean('is_recurring');
         $endDate = $isRecurring ? Carbon::parse($validated['recurrence_end_date']) : Carbon::parse($validated['appointment_date']);
         $currentDate = Carbon::parse($validated['appointment_date']);
@@ -445,9 +447,10 @@ class AppointmentController extends Controller
     {
         $validated = $request->validate([
             'patient_ids' => 'required|array',
-            'patient_ids.*' => 'uuid|exists:patients,id',
+            'patient_ids.*' => ['uuid', new BelongsToClinic(Patient::class)],
             'type' => 'required|in:individual,group',
-            'group_class_id' => 'nullable|required_if:type,group|uuid|exists:group_classes,id',
+            'group_class_id' => ['nullable', 'required_if:type,group', 'uuid', new BelongsToClinic(GroupClass::class)],
+            'user_id' => ['nullable', 'integer', new BelongsToClinic(User::class)],
             'title' => 'nullable|string|max:255',
             'max_participants' => 'required|integer|min:1',
             'appointment_date' => 'required|date',
@@ -483,7 +486,7 @@ class AppointmentController extends Controller
             return back()->withErrors(['patient_ids' => "Os seguintes pacientes não possuem um plano ativo de Pilates ou Aula Teste: $names."])->withInput();
         }
 
-        $userId = $request->user_id ?? auth()->id();
+        $userId = $validated['user_id'] ?? auth()->id();
 
         $conflictMessage = $this->slotConflict(
             $request,

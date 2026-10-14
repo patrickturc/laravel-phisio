@@ -131,4 +131,23 @@ class User extends Authenticatable
 
         return in_array((int) substr($time, 0, 2), $hours, true);
     }
+
+    /**
+     * Whether this user may hand out (or manage someone holding) these
+     * permissions: administrators always, anyone else only permissions they
+     * hold themselves — so access to the users and roles screens never turns
+     * into a way to raise one's own access.
+     *
+     * @param  iterable<string>  $permissions
+     */
+    public function canGrant(iterable $permissions): bool
+    {
+        if ($this->hasRole(Role::ADMIN)) {
+            return true;
+        }
+
+        return collect($permissions)
+            ->diff($this->getAllPermissions()->pluck('name'))
+            ->isEmpty();
+    }
 }

@@ -160,9 +160,10 @@ Route::middleware(['auth', 'verified', 'tenant.active'])->group(function () use 
         ->middleware('permission:patients.manage.view')
         ->name('celebrations.index');
 
-    // WhatsApp message templates (birthday, enrollment anniversary, reminder)
+    // WhatsApp message templates (birthday, enrollment anniversary, reminder,
+    // billing); each one also checks its own permission in the controller.
     Route::patch('message-templates', [MessageTemplateController::class, 'update'])
-        ->middleware('permission:patients.manage.edit')
+        ->middleware('permission:patients.manage.edit|financial.transactions.edit')
         ->name('message-templates.update');
 
     // Appointments

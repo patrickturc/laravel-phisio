@@ -12,6 +12,31 @@ class Patient extends Model
 {
     use BelongsToTenant, HasUuids, Notifiable, SoftDeletes;
 
+    /**
+     * Personal and health data left out of every serialization (agenda,
+     * dashboard, financial…) unless a screen asks for it with makeVisible.
+     *
+     * @var list<string>
+     */
+    public const PRIVATE_FIELDS = [
+        'cpf',
+        'rg',
+        'profession',
+        'address',
+        'cep',
+        'street',
+        'number',
+        'complement',
+        'neighborhood',
+        'city',
+        'state',
+        'emergency_contact_name',
+        'emergency_contact_phone',
+        'health_notes',
+    ];
+
+    protected $hidden = self::PRIVATE_FIELDS;
+
     protected $fillable = [
         'tenant_id',
         'name',

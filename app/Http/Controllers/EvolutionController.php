@@ -7,6 +7,7 @@ use App\Models\ClinicalProtocol;
 use App\Models\Evolution;
 use App\Models\Membership;
 use App\Models\Patient;
+use App\Rules\BelongsToClinic;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
@@ -270,13 +271,13 @@ class EvolutionController extends Controller
 
         $rules = [
             'evolution_type' => ['nullable', Rule::in(Evolution::TYPES)],
-            'paciente_id' => 'required|uuid|exists:patients,id',
+            'paciente_id' => ['required', 'uuid', new BelongsToClinic(Patient::class)],
             'data_atendimento' => 'required|date',
             ...$this->rulesForType($type),
         ];
 
         if ($creating) {
-            $rules['agendamento_id'] = 'nullable|uuid|exists:appointments,id';
+            $rules['agendamento_id'] = ['nullable', 'uuid', new BelongsToClinic(Appointment::class)];
         }
 
         $validated = $request->validate($rules);
@@ -336,7 +337,7 @@ class EvolutionController extends Controller
         }
 
         return [
-            'clinical_protocol_id' => 'nullable|uuid|exists:clinical_protocols,id',
+            'clinical_protocol_id' => ['nullable', 'uuid', new BelongsToClinic(ClinicalProtocol::class)],
             'tipo_atendimento' => 'required|in:avaliacao,reavaliacao,sessao',
             'queixa_principal' => 'nullable|string',
             'relato_paciente' => 'nullable|string',

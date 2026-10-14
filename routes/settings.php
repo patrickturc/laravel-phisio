@@ -38,8 +38,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('settings/two-factor', [TwoFactorAuthenticationController::class, 'show'])
         ->name('two-factor.show');
 
-    // Organization profile — the "finish your registration" destination.
-    Route::middleware('permission:settings.users.view')->group(function () {
+    // Organization profile — the "finish your registration" destination. Its
+    // own permission: it holds the PIX key every charge is paid to.
+    Route::middleware(['tenant.active:allow-expired-trial', 'permission:settings.organization.manage'])->group(function () {
         Route::get('settings/organization', [OrganizationController::class, 'edit'])->name('organization.edit');
         Route::patch('settings/organization', [OrganizationController::class, 'update'])->name('organization.update');
         Route::post('settings/organization/images/{image}', [OrganizationImageController::class, 'store'])
@@ -55,7 +56,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     });
 
     // Users Management
-    Route::group(['middleware' => ['permission:settings.users.view']], function () {
+    Route::group(['middleware' => ['tenant.active', 'permission:settings.users.view']], function () {
         Route::get('settings/users', [UserController::class, 'index'])->name('users.index');
         Route::post('settings/users', [UserController::class, 'store'])->name('users.store')->middleware('permission:settings.users.create');
         Route::put('settings/users/{user}', [UserController::class, 'update'])->name('users.update')->middleware('permission:settings.users.edit');
@@ -63,7 +64,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     });
 
     // Roles & Permissions Management
-    Route::group(['middleware' => ['permission:settings.roles.view']], function () {
+    Route::group(['middleware' => ['tenant.active', 'permission:settings.roles.view']], function () {
         Route::get('settings/roles', [RoleController::class, 'index'])->name('roles.index');
         Route::post('settings/roles', [RoleController::class, 'store'])->name('roles.store')->middleware('permission:settings.roles.create');
         Route::put('settings/roles/{role}', [RoleController::class, 'update'])->name('roles.update')->middleware('permission:settings.roles.edit');

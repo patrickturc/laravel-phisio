@@ -8,10 +8,10 @@ use Spatie\Permission\Models\Permission;
 
 function clinicProfileAdmin(): User
 {
-    Permission::findOrCreate('settings.users.view', 'web');
+    Permission::findOrCreate('settings.organization.manage', 'web');
 
     $user = User::factory()->create();
-    $user->givePermissionTo('settings.users.view');
+    $user->givePermissionTo('settings.organization.manage');
     test()->actingAs($user);
 
     return $user;
@@ -199,4 +199,19 @@ test('a PIX key must match its type', function () {
         ->assertSessionHasErrors('pix_key');
     $this->patch('/settings/organization', clinicProfilePayload(['pix_key' => 'financeiro@sanare.com.br']))
         ->assertSessionHasErrors('pix_key_type');
+});
+
+test('viewing the user list is not enough to change the clinic profile or its PIX key', function () {
+    Permission::findOrCreate('settings.users.view', 'web');
+    Permission::findOrCreate('settings.organization.manage', 'web');
+
+    $user = User::factory()->create();
+    $user->givePermissionTo('settings.users.view');
+    $this->actingAs($user);
+
+    $this->get('/settings/organization')->assertForbidden();
+    $this->patch('/settings/organization', clinicProfilePayload(['pix_key_type' => 'email', 'pix_key' => 'golpe@example.com']))
+        ->assertForbidden();
+
+    expect($user->tenant->fresh()->pix_key)->toBeNull();
 });

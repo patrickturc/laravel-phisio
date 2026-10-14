@@ -2,11 +2,12 @@
 
 namespace Database\Seeders;
 
+use App\Models\Role;
 use App\Models\Tenant;
 // use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use App\Models\User;
 use Illuminate\Database\Seeder;
-use Spatie\Permission\Models\Role;
+use Illuminate\Support\Str;
 
 class DatabaseSeeder extends Seeder
 {
@@ -15,6 +16,10 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
+        // Never a fixed, well-known password: set SEED_ADMIN_PASSWORD or use
+        // the random one printed below. Only used when the accounts are new.
+        $password = env('SEED_ADMIN_PASSWORD') ?: Str::password(16);
+
         // 1. Create Default Tenant
         $tenant = Tenant::firstOrCreate(
             ['slug' => 'fisio-principal'],
@@ -31,7 +36,7 @@ class DatabaseSeeder extends Seeder
             ['email' => 'paturchette@gmail.com'],
             [
                 'name' => 'Patrick Turchetti',
-                'password' => bcrypt('password'),
+                'password' => bcrypt($password),
                 'is_dev_admin' => true,
                 'tenant_id' => null,
                 'email_verified_at' => now(),
@@ -43,18 +48,20 @@ class DatabaseSeeder extends Seeder
             ['email' => 'admin@phisio.com'],
             [
                 'name' => 'Admin Phisio',
-                'password' => bcrypt('password'),
+                'password' => bcrypt($password),
                 'is_dev_admin' => false,
                 'tenant_id' => $tenant->id,
                 'email_verified_at' => now(),
             ]
         );
 
-        // 4. Create basic roles and permissions for the tenant admin
-        $adminRole = Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
-        $tenantAdmin->assignRole($adminRole);
-
-        // Chama o seeder de permissões e perfis
+        // 4. Permissions and each clinic's default roles
         $this->call(AclSeeder::class);
+
+        $tenantAdmin->assignRole(Role::ownerFor($tenant));
+
+        if (($devAdmin->wasRecentlyCreated || $tenantAdmin->wasRecentlyCreated) && ! env('SEED_ADMIN_PASSWORD')) {
+            $this->command?->warn("Senha das contas criadas: {$password}");
+        }
     }
 }

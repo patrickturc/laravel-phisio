@@ -1,9 +1,9 @@
 <?php
 
+use App\Models\Role;
 use App\Models\Tenant;
 use App\Models\User;
 use Spatie\Permission\Models\Permission;
-use Spatie\Permission\Models\Role;
 
 /**
  * A CNPJ with correct check digits, unique per call so tests that build several
@@ -59,13 +59,11 @@ function trialAdmin(array $tenantAttributes = []): User
 
     $user = User::factory()->create(['tenant_id' => $tenant->id]);
 
-    foreach (['dashboard.view', 'settings.users.view', 'settings.users.create'] as $permission) {
+    foreach (['dashboard.view', 'settings.users.view', 'settings.users.create', 'settings.organization.manage'] as $permission) {
         Permission::findOrCreate($permission, 'web');
     }
 
-    $role = Role::findOrCreate('Administrador', 'web');
-    $role->givePermissionTo(['dashboard.view', 'settings.users.view', 'settings.users.create']);
-    $user->assignRole($role);
+    $user->assignRole(Role::ownerFor($tenant));
 
     return $user;
 }

@@ -2,17 +2,29 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Role;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules;
+use Illuminate\Validation\Rules\Exists;
 use Inertia\Inertia;
-use Spatie\Permission\Models\Role;
 
 class UserController extends Controller
 {
-    private const ADMIN_ROLE = 'Administrador';
+    private const ADMIN_ROLE = Role::ADMIN;
+
+    /**
+     * Only the clinic's own roles can be handed out.
+     */
+    private function roleRule(): Exists
+    {
+        return Rule::exists('roles', 'name')
+            ->where('guard_name', 'web')
+            ->where('tenant_id', Role::currentTenantId());
+    }
 
     /**
      * Only an Administrador may hand out the Administrador role. Prevents a
@@ -26,7 +38,28 @@ class UserController extends Controller
                 ->withInput();
         }
 
+        $permissions = Role::findByName($role, 'web')->permissions->pluck('name');
+
+        if (! auth()->user()->canGrant($permissions)) {
+            return back()
+                ->withErrors(['role' => 'Você não pode atribuir um perfil com permissões que você não tem.'])
+                ->withInput();
+        }
+
         return null;
+    }
+
+    /**
+     * Changing someone's e-mail or password lets you sign in as them, so only
+     * users with at least the same access may edit or remove them.
+     */
+    private function assertCanManage(User $user): ?RedirectResponse
+    {
+        if ($user->is(auth()->user()) || auth()->user()->canGrant($user->getAllPermissions()->pluck('name'))) {
+            return null;
+        }
+
+        return back()->with('error', 'Você não pode alterar um usuário com permissões que você não tem.');
     }
 
     /**
@@ -42,7 +75,7 @@ class UserController extends Controller
     public function index()
     {
         $users = User::with('roles')->orderBy('name')->paginate(10);
-        $roles = Role::orderBy('name')->get();
+        $roles = Role::forTenant(Role::currentTenantId())->orderBy('name')->get();
 
         return Inertia::render('settings/users/index', [
             'users' => $users,
@@ -79,7 +112,7 @@ class UserController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
             'password' => ['required', Rules\Password::defaults()],
-            'role' => 'required|exists:roles,name',
+            'role' => ['required', 'string', $this->roleRule()],
         ]);
 
         if ($response = $this->assertCanAssignRole($validated['role'])) {
@@ -87,6 +120,7 @@ class UserController extends Controller
         }
 
         $user = User::create([
+            'tenant_id' => auth()->user()->tenant_id,
             'name' => $validated['name'],
             'email' => $validated['email'],
             'password' => Hash::make($validated['password']),
@@ -99,15 +133,25 @@ class UserController extends Controller
 
     public function update(Request $request, User $user)
     {
+        if ($response = $this->assertCanManage($user)) {
+            return $response;
+        }
+
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users,email,'.$user->id,
             'password' => ['nullable', Rules\Password::defaults()],
-            'role' => 'required|exists:roles,name',
+            'role' => ['required', 'string', $this->roleRule()],
         ]);
 
         if ($response = $this->assertCanAssignRole($validated['role'])) {
             return $response;
+        }
+
+        if ($user->is($request->user()) && ! $user->hasRole($validated['role'])) {
+            return back()
+                ->withErrors(['role' => 'Você não pode alterar o seu próprio perfil.'])
+                ->withInput();
         }
 
         // Block demoting the last remaining administrator.
@@ -142,6 +186,10 @@ class UserController extends Controller
 
         if ($this->isLastAdmin($user)) {
             return redirect()->route('users.index')->with('error', 'Não é possível excluir o único administrador do sistema.');
+        }
+
+        if ($response = $this->assertCanManage($user)) {
+            return $response;
         }
 
         $user->delete();

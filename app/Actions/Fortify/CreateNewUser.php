@@ -4,6 +4,7 @@ namespace App\Actions\Fortify;
 
 use App\Concerns\PasswordValidationRules;
 use App\Concerns\ProfileValidationRules;
+use App\Models\Role;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Rules\CpfCnpj;
@@ -14,17 +15,10 @@ use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Laravel\Fortify\Contracts\CreatesNewUsers;
-use Spatie\Permission\Models\Permission;
-use Spatie\Permission\Models\Role;
 
 class CreateNewUser implements CreatesNewUsers
 {
     use PasswordValidationRules, ProfileValidationRules;
-
-    /**
-     * Role granted to the person who signs the organization up.
-     */
-    private const OWNER_ROLE = 'Administrador';
 
     /**
      * Validate and create a newly registered organization plus its first user.
@@ -90,7 +84,9 @@ class CreateNewUser implements CreatesNewUsers
                 'email_verified_at' => now(),
             ]);
 
-            $user->assignRole($this->ownerRole());
+            // The clinic gets its own copy of the default roles; the person
+            // signing it up is its Administrador.
+            $user->assignRole(Role::ownerFor($tenant));
 
             return $user;
         });
@@ -144,20 +140,5 @@ class CreateNewUser implements CreatesNewUsers
         }
 
         return $slug;
-    }
-
-    /**
-     * The full-access role, created with every permission on a fresh install so
-     * the first signup is never left without access.
-     */
-    private function ownerRole(): Role
-    {
-        $role = Role::findOrCreate(self::OWNER_ROLE, 'web');
-
-        if ($role->permissions()->count() === 0) {
-            $role->syncPermissions(Permission::where('guard_name', 'web')->get());
-        }
-
-        return $role;
     }
 }

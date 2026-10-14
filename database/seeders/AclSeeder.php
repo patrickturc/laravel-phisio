@@ -2,10 +2,11 @@
 
 namespace Database\Seeders;
 
+use App\Models\Role;
+use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Spatie\Permission\Models\Permission;
-use Spatie\Permission\Models\Role;
 use Spatie\Permission\PermissionRegistrar;
 
 class AclSeeder extends Seeder
@@ -91,6 +92,8 @@ class AclSeeder extends Seeder
             'professional.attend',
 
             // Settings
+            // Clinic profile, PIX key, logo and plan requests.
+            'settings.organization.manage',
             'settings.users.view',
             'settings.users.create',
             'settings.users.edit',
@@ -105,42 +108,14 @@ class AclSeeder extends Seeder
             Permission::findOrCreate($permission, 'web');
         }
 
-        // Create Roles and assign created permissions
-        $roleAdmin = Role::findOrCreate('Administrador', 'web');
-        $roleAdmin->givePermissionTo(Permission::all());
+        // Every clinic gets its own copy of the default roles (see Role::DEFAULTS).
+        Tenant::query()->each(fn (Tenant $tenant) => Role::provisionDefaultsFor($tenant));
 
-        $roleReceptionist = Role::findOrCreate('Recepcionista', 'web');
-        $roleReceptionist->givePermissionTo([
-            'dashboard.view',
-            'patients.manage.view',
-            'patients.manage.create',
-            'patients.manage.edit',
-            'appointments.manage.view',
-            'appointments.manage.create',
-            'appointments.manage.edit',
-            'group_classes.manage.view',
-            'memberships.manage.view',
-            'memberships.manage.create',
-            'commercial_plans.manage.view',
-            'financial.transactions.view',
-            'financial.transactions.create', // Can receive payments
-        ]);
+        // Platform role for dev admins, who belong to no clinic.
+        $roleAdmin = Role::findOrCreate(Role::ADMIN, 'web');
 
-        $rolePhysio = Role::findOrCreate('Fisioterapeuta', 'web');
-        $rolePhysio->givePermissionTo([
-            'dashboard.view',
-            'patients.manage.view',
-            'appointments.manage.view',
-            'group_classes.manage.view',
-            'evolutions.manage.view',
-            'evolutions.manage.create',
-            'evolutions.manage.edit',
-            'treatment_plans.manage.view',
-            'treatment_plans.manage.create',
-            'treatment_plans.manage.edit',
-            'calendar.sync.manage',
-            'professional.attend',
-        ]);
+        // Administrador always holds every permission, including new ones.
+        Role::where('name', Role::ADMIN)->each(fn (Role $role) => $role->givePermissionTo(Permission::all()));
 
         // Assign 'Administrador' role to the admin user
         $user = User::where('email', 'paturchette@gmail.com')->first();

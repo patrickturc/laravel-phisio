@@ -6,6 +6,7 @@ use App\Models\FinancialTransaction;
 use App\Models\Patient;
 use App\Models\Tenant;
 use App\Models\User;
+use App\Rules\BelongsToClinic;
 use BaconQrCode\Renderer\Image\SvgImageBackEnd;
 use BaconQrCode\Renderer\ImageRenderer;
 use BaconQrCode\Renderer\RendererStyle\RendererStyle;
@@ -347,7 +348,7 @@ class FinancialTransactionController extends Controller
             'category' => 'nullable|string|max:100',
             'status' => ['required', Rule::in(FinancialTransaction::STATUSES)],
             'payment_method' => ['nullable', Rule::in(array_keys(FinancialTransaction::PAYMENT_METHODS))],
-            'patient_id' => 'nullable|uuid|exists:patients,id',
+            'patient_id' => ['nullable', 'uuid', new BelongsToClinic(Patient::class)],
         ]);
 
         // Auto-set paid_at when marking as paid
@@ -378,7 +379,7 @@ class FinancialTransactionController extends Controller
             'category' => 'nullable|string|max:100',
             'status' => ['required', Rule::in(FinancialTransaction::STATUSES)],
             'payment_method' => ['nullable', Rule::in(array_keys(FinancialTransaction::PAYMENT_METHODS))],
-            'patient_id' => 'nullable|uuid|exists:patients,id',
+            'patient_id' => ['nullable', 'uuid', new BelongsToClinic(Patient::class)],
         ]);
 
         $oldStatus = $financial->status;

@@ -395,48 +395,66 @@ export default function PatientShow({
         .filter(Boolean)
         .join(', ');
 
-    const tabs: {
-        key: Tab;
-        label: string;
-        icon: React.ReactNode;
-        count?: number;
-    }[] = [
-        {
-            key: 'info',
-            label: 'Informações Pessoais',
-            icon: <User className="size-4" />,
-        },
-        {
-            key: 'memberships',
-            label: 'Matrículas',
-            icon: <Tag className="size-4" />,
-            count: patient.memberships?.length,
-        },
-        {
-            key: 'financial',
-            label: 'Financeiro',
-            icon: <DollarSign className="size-4" />,
-            count: financialList.length,
-        },
-        {
-            key: 'evolutions',
-            label: 'Prontuário',
-            icon: <Activity className="size-4" />,
-            count: evolutionsList.length,
-        },
-        {
-            key: 'appointments',
-            label: 'Agendamentos',
-            icon: <Calendar className="size-4" />,
-            count: appointmentsList.length,
-        },
-        {
-            key: 'documents',
-            label: 'Documentos',
-            icon: <FileText className="size-4" />,
-            count: patient.documents?.length,
-        },
-    ];
+    // Tabs whose data the server only sends to who may see it.
+    const tabPermissions: Partial<Record<Tab, string>> = {
+        memberships: 'memberships.manage.view',
+        financial: 'financial.transactions.view',
+        evolutions: 'evolutions.manage.view',
+    };
+
+    const tabs = (
+        [
+            {
+                key: 'info',
+                label: 'Informações Pessoais',
+                icon: <User className="size-4" />,
+            },
+            {
+                key: 'memberships',
+                label: 'Matrículas',
+                icon: <Tag className="size-4" />,
+                count: patient.memberships?.length,
+            },
+            {
+                key: 'financial',
+                label: 'Financeiro',
+                icon: <DollarSign className="size-4" />,
+                count: financialList.length,
+            },
+            {
+                key: 'evolutions',
+                label: 'Prontuário',
+                icon: <Activity className="size-4" />,
+                count: evolutionsList.length,
+            },
+            {
+                key: 'appointments',
+                label: 'Agendamentos',
+                icon: <Calendar className="size-4" />,
+                count: appointmentsList.length,
+            },
+            {
+                key: 'documents',
+                label: 'Documentos',
+                icon: <FileText className="size-4" />,
+                count: patient.documents?.length,
+            },
+        ] as {
+            key: Tab;
+            label: string;
+            icon: React.ReactNode;
+            count?: number;
+        }[]
+    ).filter((tab) => {
+        const permission = tabPermissions[tab.key];
+
+        return !permission || can(permission);
+    });
+
+    // A link straight to a hidden tab (?tab=financial) falls back to the first one.
+    const currentTab = tabs.some((tab) => tab.key === activeTab)
+        ? activeTab
+        : 'info';
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -618,7 +636,7 @@ export default function PatientShow({
                         <button
                             key={tab.key}
                             onClick={() => setActiveTab(tab.key)}
-                            className={`flex min-w-[140px] flex-grow items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-all sm:flex-1 ${activeTab === tab.key ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:bg-card/50 hover:text-foreground'}`}
+                            className={`flex min-w-[140px] flex-grow items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-all sm:flex-1 ${currentTab === tab.key ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:bg-card/50 hover:text-foreground'}`}
                         >
                             {tab.icon}
                             <span>{tab.label}</span>
@@ -632,7 +650,7 @@ export default function PatientShow({
                 </div>
 
                 {/* ── Tab: Informações Pessoais ── */}
-                {activeTab === 'info' && (
+                {currentTab === 'info' && (
                     <motion.div
                         initial={{ opacity: 0, y: 8 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -904,7 +922,7 @@ export default function PatientShow({
                 )}
 
                 {/* ── Tab: Matrículas ── */}
-                {activeTab === 'memberships' && (
+                {currentTab === 'memberships' && (
                     <motion.div
                         initial={{ opacity: 0, y: 8 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -1023,7 +1041,7 @@ export default function PatientShow({
                 )}
 
                 {/* ── Tab: Financeiro ── */}
-                {activeTab === 'financial' && (
+                {currentTab === 'financial' && (
                     <motion.div
                         initial={{ opacity: 0, y: 8 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -1252,7 +1270,7 @@ export default function PatientShow({
                 )}
 
                 {/* ── Tab: Prontuário (Evoluções) ── */}
-                {activeTab === 'evolutions' && (
+                {currentTab === 'evolutions' && (
                     <motion.div
                         initial={{ opacity: 0, y: 8 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -1374,7 +1392,7 @@ export default function PatientShow({
                 )}
 
                 {/* ── Tab: Agendamentos ── */}
-                {activeTab === 'appointments' && (
+                {currentTab === 'appointments' && (
                     <motion.div
                         initial={{ opacity: 0, y: 8 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -1624,7 +1642,7 @@ export default function PatientShow({
                 )}
 
                 {/* ── Tab: Documentos ── */}
-                {activeTab === 'documents' && (
+                {currentTab === 'documents' && (
                     <motion.div
                         initial={{ opacity: 0, y: 8 }}
                         animate={{ opacity: 1, y: 0 }}

@@ -31,6 +31,9 @@ class PatientController extends Controller
 
         $patients = $query->paginate(20)->withQueryString();
 
+        // The edit form on this page needs the full record.
+        $patients->getCollection()->each->makeVisible(Patient::PRIVATE_FIELDS);
+
         return Inertia::render('patients/index', [
             'patients' => $patients,
             'filters' => $request->only(['search', 'type']),
@@ -80,17 +83,34 @@ class PatientController extends Controller
             ->with('success', 'Paciente cadastrado com sucesso!');
     }
 
-    public function show(Patient $patient)
+    public function show(Request $request, Patient $patient)
     {
-        $patient->load([
+        $user = $request->user();
+
+        // Each tab only reaches the browser for whoever may see it: the front
+        // desk does not read the clinical record, nor professionals the
+        // patient's payments.
+        $canSeeEvolutions = $user->can('evolutions.manage.view');
+        $canSeeMemberships = $user->can('memberships.manage.view');
+        $canSeeFinancial = $user->can('financial.transactions.view');
+
+        $patient->load(array_filter([
             'appointments' => fn ($q) => $q->orderBy('appointment_date', 'desc'),
-            'evolutions' => fn ($q) => $q->orderBy('data_atendimento', 'desc'),
-            'memberships' => fn ($q) => $q->with('commercialPlan')->orderBy('end_date', 'desc'),
-            'financialTransactions' => fn ($q) => $q->orderBy('date', 'desc'),
+            'evolutions' => $canSeeEvolutions ? fn ($q) => $q->orderBy('data_atendimento', 'desc') : null,
+            'memberships' => $canSeeMemberships ? fn ($q) => $q->with('commercialPlan')->orderBy('end_date', 'desc') : null,
+            'financialTransactions' => $canSeeFinancial ? fn ($q) => $q->orderBy('date', 'desc') : null,
             'documents' => fn ($q) => $q->orderBy('created_at', 'desc'),
             'recurringBookings' => fn ($q) => $q->active()->with('professional:id,name')
                 ->orderBy('day_of_week')->orderBy('start_time'),
-        ]);
+        ]));
+
+        foreach (['evolutions' => $canSeeEvolutions, 'memberships' => $canSeeMemberships, 'financialTransactions' => $canSeeFinancial] as $relation => $allowed) {
+            if (! $allowed) {
+                $patient->setRelation($relation, $patient->newCollection());
+            }
+        }
+
+        $patient->makeVisible(Patient::PRIVATE_FIELDS);
 
         // Names of the professionals taking turns on each fixed slot.
         $rotationNames = User::whereIn('id', $patient->recurringBookings->pluck('rotation_user_ids')->flatten()->filter())
@@ -106,7 +126,7 @@ class PatientController extends Controller
         ]);
 
         $today = now()->toDateString();
-        $financialSummary = [
+        $financialSummary = $canSeeFinancial ? [
             'total_received' => (float) $patient->financialTransactions->where('type', 'income')->where('status', 'paid')->sum('amount'),
             'total_pending' => (float) $patient->financialTransactions->where('type', 'income')->whereIn('status', FinancialTransaction::OPEN_STATUSES)->sum('amount'),
             'overdue_amount' => (float) $patient->financialTransactions
@@ -114,7 +134,7 @@ class PatientController extends Controller
                 ->where('status', 'pending')
                 ->filter(fn ($t) => $t->due_date && $t->due_date->toDateString() < $today)
                 ->sum('amount'),
-        ];
+        ] : null;
 
         $protocols = ClinicalProtocol::orderBy('name')->get(['id', 'name', 'total_sessions']);
         $commercialPlans = CommercialPlan::orderBy('name')->get(['id', 'name', 'price', 'billing_cycle', 'duration_months']);

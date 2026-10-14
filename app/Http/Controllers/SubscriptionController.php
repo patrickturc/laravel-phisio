@@ -47,7 +47,7 @@ class SubscriptionController extends Controller
             'extraUserPrice' => (float) config('plans.extra_user_price'),
             'maxExtraUsers' => (int) config('plans.max_extra_users'),
             'contactEmail' => config('app.contact_email'),
-            'canManage' => $request->user()->can('settings.users.view'),
+            'canManage' => $request->user()->can('settings.organization.manage'),
         ]);
     }
 
@@ -63,7 +63,7 @@ class SubscriptionController extends Controller
             return redirect()->route('dashboard');
         }
 
-        if (! $request->user()->can('settings.users.view')) {
+        if (! $request->user()->can('settings.organization.manage')) {
             return back()->with('error', 'Apenas administradores da organização podem solicitar um plano.');
         }
 

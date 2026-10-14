@@ -80,6 +80,7 @@ const permissionLabels: Record<string, string> = {
 
     'calendar.sync.manage': 'Gerenciar Sincronização',
 
+    'settings.organization.manage': 'Gerenciar Perfil da Clínica, PIX e Plano',
     'settings.users.view': 'Visualizar Usuários',
     'settings.users.create': 'Cadastrar Usuários',
     'settings.users.edit': 'Editar Usuários',

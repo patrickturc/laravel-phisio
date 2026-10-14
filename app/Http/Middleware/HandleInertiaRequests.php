@@ -77,7 +77,7 @@ class HandleInertiaRequests extends Middleware
                     'missing' => $missing,
                     'missing_count' => count($missing),
                     'percent' => (int) round((($required - count($missing)) / $required) * 100),
-                    'can_edit' => $request->user()->can('settings.users.view'),
+                    'can_edit' => $request->user()->can('settings.organization.manage'),
                 ];
             },
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',

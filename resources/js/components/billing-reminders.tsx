@@ -128,7 +128,7 @@ export function BillingReminders({
                         </p>
                     )}
                 </div>
-                {can('patients.manage.edit') && !editing && (
+                {can('financial.transactions.edit') && !editing && (
                     <Button
                         variant="ghost"
                         size="sm"

@@ -72,7 +72,7 @@ class BillingController extends Controller
             return redirect()->route('dashboard');
         }
 
-        if (! $request->user()->can('settings.users.view')) {
+        if (! $request->user()->can('settings.organization.manage')) {
             return back()->with('error', 'Apenas administradores da organização podem solicitar um plano.');
         }
 
