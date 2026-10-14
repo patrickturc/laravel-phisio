@@ -1,5 +1,11 @@
 import { useForm } from '@inertiajs/react';
-import { Tag, Calendar as CalendarIcon, DollarSign, Save } from 'lucide-react';
+import {
+    Tag,
+    Calendar as CalendarIcon,
+    DollarSign,
+    Repeat,
+    Save,
+} from 'lucide-react';
 import type { FormEvent } from 'react';
 import { useEffect } from 'react';
 import {
@@ -8,6 +14,7 @@ import {
     SheetHeader,
     SheetTitle,
 } from '@/components/ui/sheet';
+import { BILLING_CYCLES, billingCycleLabel, formatDateBR } from '@/lib/billing';
 
 interface MembershipFormSheetProps {
     isOpen: boolean;
@@ -16,6 +23,21 @@ interface MembershipFormSheetProps {
     commercialPlans: any[];
     editingMembership?: any;
     initialPatientId?: string;
+}
+
+const inputClass =
+    'h-11 w-full rounded-xl border border-border bg-background px-3 text-sm shadow-sm focus:ring-2 focus:ring-primary/50 focus:outline-none';
+
+function today(): string {
+    const now = new Date();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+
+    return `${now.getFullYear()}-${month}-${day}`;
+}
+
+function dateOnly(value: string | null | undefined): string {
+    return value ? value.split('T')[0] : '';
 }
 
 export function MembershipFormSheet({
@@ -28,86 +50,110 @@ export function MembershipFormSheet({
 }: MembershipFormSheetProps) {
     const isEditMode = !!editingMembership;
 
-    const { data, setData, post, put, processing, errors, reset, clearErrors } =
-        useForm({
-            patient_id: initialPatientId || '',
-            commercial_plan_id: '',
-            plan_name: '',
-            start_date: new Date().toISOString().split('T')[0],
-            end_date: '',
-            price: '',
-            status: 'active',
-            billing_day: 10,
-        });
+    const blank = {
+        patient_id: initialPatientId || '',
+        commercial_plan_id: '',
+        plan_name: '',
+        start_date: today(),
+        end_date: '',
+        open_ended: true,
+        price: '',
+        status: 'active',
+        billing_cycle: 'monthly',
+        // First due date when creating, next one when editing.
+        due_date: today(),
+    };
+
+    const {
+        data,
+        setData,
+        transform,
+        post,
+        put,
+        processing,
+        errors,
+        clearErrors,
+    } = useForm(blank);
 
     useEffect(() => {
-        if (isOpen) {
-            clearErrors();
-            if (editingMembership) {
-                setData({
-                    patient_id: editingMembership.patient_id || '',
-                    commercial_plan_id:
-                        editingMembership.commercial_plan_id || '',
-                    plan_name: editingMembership.plan_name || '',
-                    start_date: editingMembership.start_date
-                        ? editingMembership.start_date.split('T')[0]
-                        : '',
-                    end_date: editingMembership.end_date
-                        ? editingMembership.end_date.split('T')[0]
-                        : '',
-                    price: editingMembership.price || '',
-                    status: editingMembership.status || 'active',
-                    billing_day: editingMembership.billing_day || 10,
-                });
-            } else {
-                setData({
-                    patient_id: initialPatientId || '',
-                    commercial_plan_id: '',
-                    plan_name: '',
-                    start_date: new Date().toISOString().split('T')[0],
-                    end_date: '',
-                    price: '',
-                    status: 'active',
-                    billing_day: 10,
-                });
-            }
-        }
+        if (!isOpen) return;
+
+        clearErrors();
+        setData(
+            editingMembership
+                ? {
+                      patient_id: editingMembership.patient_id || '',
+                      commercial_plan_id:
+                          editingMembership.commercial_plan_id || '',
+                      plan_name: editingMembership.plan_name || '',
+                      start_date: dateOnly(editingMembership.start_date),
+                      end_date: dateOnly(editingMembership.end_date),
+                      open_ended: !editingMembership.end_date,
+                      price: editingMembership.price || '',
+                      status: editingMembership.status || 'active',
+                      billing_cycle: editingMembership.billing_cycle ?? '',
+                      due_date: dateOnly(editingMembership.next_billing_date),
+                  }
+                : blank,
+        );
     }, [isOpen, editingMembership, initialPatientId]);
 
     const handlePlanChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
         const planId = e.target.value;
         const selectedPlan = commercialPlans.find((p) => p.id === planId);
 
-        if (selectedPlan) {
-            let newEndDate = data.end_date;
-            if (selectedPlan.duration_months && data.start_date) {
-                const start = new Date(data.start_date);
-                start.setMonth(start.getMonth() + selectedPlan.duration_months);
-                newEndDate = start.toISOString().split('T')[0];
+        if (!selectedPlan) {
+            setData('commercial_plan_id', '');
+
+            return;
+        }
+
+        setData((current) => {
+            let endDate = current.end_date;
+            if (selectedPlan.duration_months && current.start_date) {
+                const end = new Date(`${current.start_date}T12:00:00`);
+                end.setMonth(end.getMonth() + selectedPlan.duration_months);
+                end.setDate(end.getDate() - 1);
+                endDate = end.toISOString().split('T')[0];
             }
 
-            setData((data) => ({
-                ...data,
+            return {
+                ...current,
                 commercial_plan_id: planId,
-                price: selectedPlan.price,
-                end_date: newEndDate,
                 plan_name: selectedPlan.name,
-            }));
-        } else {
-            setData('commercial_plan_id', '');
-        }
+                price: selectedPlan.price,
+                end_date: endDate,
+                open_ended: selectedPlan.duration_months
+                    ? false
+                    : current.open_ended,
+                // A plan only suggests a cycle when it has one set.
+                billing_cycle:
+                    selectedPlan.billing_cycle || current.billing_cycle,
+            };
+        });
     };
 
     function submitForm(e: FormEvent) {
         e.preventDefault();
 
+        transform((form) => ({
+            patient_id: form.patient_id,
+            commercial_plan_id: form.commercial_plan_id || null,
+            plan_name: form.plan_name,
+            start_date: form.start_date,
+            end_date: form.open_ended ? null : form.end_date,
+            price: form.price,
+            status: form.status,
+            billing_cycle: form.billing_cycle || null,
+            ...(isEditMode
+                ? { next_billing_date: form.due_date || null }
+                : { first_due_date: form.due_date || form.start_date }),
+        }));
+
         const options = {
             preserveScroll: true,
             preserveState: true,
-            onSuccess: () => {
-                setIsOpen(false);
-                reset();
-            },
+            onSuccess: () => setIsOpen(false),
         };
 
         if (isEditMode) {
@@ -116,6 +162,9 @@ export function MembershipFormSheet({
             post('/memberships', options);
         }
     }
+
+    const recurring = data.billing_cycle !== '';
+    const dueLabel = isEditMode ? 'Próximo vencimento' : 'Primeiro vencimento';
 
     return (
         <Sheet open={isOpen} onOpenChange={setIsOpen}>
@@ -134,7 +183,7 @@ export function MembershipFormSheet({
                     </p>
                 </SheetHeader>
 
-                <form onSubmit={submitForm} className="space-y-5">
+                <form onSubmit={submitForm} className="space-y-5 px-4 pb-8">
                     <div className="space-y-2">
                         <label className="text-sm font-medium text-foreground">
                             Aluno
@@ -144,9 +193,9 @@ export function MembershipFormSheet({
                             onChange={(e) =>
                                 setData('patient_id', e.target.value)
                             }
-                            className="h-11 w-full rounded-xl border border-border bg-background px-3 text-sm shadow-sm focus:ring-2 focus:ring-primary/50 focus:outline-none"
+                            className={inputClass}
                             required
-                            disabled={!!initialPatientId} // se vier do perfil do paciente, bloqueia o select
+                            disabled={!!initialPatientId || isEditMode}
                         >
                             <option value="">Selecione o aluno...</option>
                             {patients.map((p: any) => (
@@ -171,7 +220,7 @@ export function MembershipFormSheet({
                             <select
                                 value={data.commercial_plan_id || ''}
                                 onChange={handlePlanChange}
-                                className="h-11 w-full rounded-xl border border-border bg-background pr-3 pl-10 text-sm shadow-sm focus:ring-2 focus:ring-primary/50 focus:outline-none"
+                                className={`${inputClass} pl-10`}
                                 required
                             >
                                 <option value="">Selecione um pacote...</option>
@@ -187,11 +236,6 @@ export function MembershipFormSheet({
                                 {errors.commercial_plan_id}
                             </p>
                         )}
-                        {errors.plan_name && (
-                            <p className="mt-1 text-sm text-red-500">
-                                {errors.plan_name}
-                            </p>
-                        )}
                     </div>
 
                     <div className="space-y-2">
@@ -201,16 +245,20 @@ export function MembershipFormSheet({
                         <select
                             value={data.status}
                             onChange={(e) => setData('status', e.target.value)}
-                            className="h-11 w-full rounded-xl border border-border bg-background px-3 text-sm shadow-sm focus:ring-2 focus:ring-primary/50 focus:outline-none"
+                            className={inputClass}
+                            disabled={data.status === 'paused'}
                             required
                         >
                             <option value="active">Ativa</option>
+                            {data.status === 'paused' && (
+                                <option value="paused">Pausada</option>
+                            )}
                             <option value="expired">Vencida</option>
                             <option value="cancelled">Cancelada</option>
                         </select>
-                        {errors.status && (
-                            <p className="mt-1 text-sm text-red-500">
-                                {errors.status}
+                        {data.status === 'paused' && (
+                            <p className="text-xs text-muted-foreground">
+                                Use "Retomar" na matrícula para tirar da pausa.
                             </p>
                         )}
                     </div>
@@ -228,7 +276,7 @@ export function MembershipFormSheet({
                                     onChange={(e) =>
                                         setData('start_date', e.target.value)
                                     }
-                                    className="h-11 w-full rounded-xl border border-border bg-background pr-3 pl-10 text-sm shadow-sm focus:ring-2 focus:ring-primary/50 focus:outline-none"
+                                    className={`${inputClass} pl-10`}
                                     required
                                 />
                             </div>
@@ -241,18 +289,19 @@ export function MembershipFormSheet({
 
                         <div className="space-y-2">
                             <label className="text-sm font-medium text-foreground">
-                                Vencimento do Plano
+                                Fim do Plano
                             </label>
                             <div className="relative">
                                 <CalendarIcon className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
                                 <input
                                     type="date"
-                                    value={data.end_date}
+                                    value={data.open_ended ? '' : data.end_date}
                                     onChange={(e) =>
                                         setData('end_date', e.target.value)
                                     }
-                                    className="h-11 w-full rounded-xl border border-border bg-background pr-3 pl-10 text-sm shadow-sm focus:ring-2 focus:ring-primary/50 focus:outline-none"
-                                    required
+                                    className={`${inputClass} pl-10 disabled:opacity-50`}
+                                    disabled={data.open_ended}
+                                    required={!data.open_ended}
                                 />
                             </div>
                             {errors.end_date && (
@@ -263,10 +312,22 @@ export function MembershipFormSheet({
                         </div>
                     </div>
 
+                    <label className="flex cursor-pointer items-center gap-2 text-sm">
+                        <input
+                            type="checkbox"
+                            checked={data.open_ended}
+                            onChange={(e) =>
+                                setData('open_ended', e.target.checked)
+                            }
+                            className="size-4 accent-primary"
+                        />
+                        Sem data de fim (matrícula contínua)
+                    </label>
+
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                         <div className="space-y-2">
                             <label className="text-sm font-medium text-foreground">
-                                Valor (R$)
+                                {recurring ? 'Valor por cobrança' : 'Valor'}
                             </label>
                             <div className="relative">
                                 <DollarSign className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -278,7 +339,7 @@ export function MembershipFormSheet({
                                     onChange={(e) =>
                                         setData('price', e.target.value)
                                     }
-                                    className="h-11 w-full rounded-xl border border-border bg-background pr-3 pl-10 text-sm shadow-sm focus:ring-2 focus:ring-primary/50 focus:outline-none"
+                                    className={`${inputClass} pl-10`}
                                     required
                                 />
                             </div>
@@ -291,31 +352,59 @@ export function MembershipFormSheet({
 
                         <div className="space-y-2">
                             <label className="text-sm font-medium text-foreground">
-                                Dia de Vencimento
+                                Cobrança
                             </label>
-                            <input
-                                type="number"
-                                min={1}
-                                max={31}
-                                value={data.billing_day}
-                                onChange={(e) =>
-                                    setData(
-                                        'billing_day',
-                                        parseInt(e.target.value) || 1,
-                                    )
-                                }
-                                className="h-11 w-full rounded-xl border border-border bg-background px-4 text-sm shadow-sm focus:ring-2 focus:ring-primary/50 focus:outline-none"
-                            />
-                            {errors.billing_day && (
+                            <div className="relative">
+                                <Repeat className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+                                <select
+                                    value={data.billing_cycle}
+                                    onChange={(e) =>
+                                        setData('billing_cycle', e.target.value)
+                                    }
+                                    className={`${inputClass} pl-10`}
+                                >
+                                    <option value="">Única</option>
+                                    {BILLING_CYCLES.map((cycle) => (
+                                        <option
+                                            key={cycle.value}
+                                            value={cycle.value}
+                                        >
+                                            {cycle.label}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                            {errors.billing_cycle && (
                                 <p className="mt-1 text-sm text-red-500">
-                                    {errors.billing_day}
+                                    {errors.billing_cycle}
                                 </p>
                             )}
                         </div>
                     </div>
+
+                    {(!isEditMode || recurring) && (
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium text-foreground">
+                                {dueLabel}
+                            </label>
+                            <div className="relative">
+                                <CalendarIcon className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+                                <input
+                                    type="date"
+                                    value={data.due_date}
+                                    onChange={(e) =>
+                                        setData('due_date', e.target.value)
+                                    }
+                                    className={`${inputClass} pl-10`}
+                                />
+                            </div>
+                        </div>
+                    )}
+
                     <p className="text-xs text-muted-foreground">
-                        Todo dia {data.billing_day}, uma cobrança pendente será
-                        gerada automaticamente.
+                        {recurring
+                            ? `${billingCycleLabel(data.billing_cycle)}: ${isEditMode ? 'a próxima cobrança vence' : 'a primeira cobrança é gerada agora, com vencimento'} em ${formatDateBR(data.due_date) || '—'}, e as seguintes são geradas automaticamente${data.open_ended ? '' : ' até o fim do plano'}.`
+                            : 'Uma única cobrança, gerada ao salvar.'}
                     </p>
 
                     <div className="flex justify-end gap-3 border-t border-border/50 pt-6">

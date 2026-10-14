@@ -3,7 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\CommercialPlan;
+use App\Models\Membership;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 
 class CommercialPlanController extends Controller
@@ -27,6 +29,7 @@ class CommercialPlanController extends Controller
             'name' => 'required|string|max:255',
             'category' => 'required|in:fisioterapia,pilates,teste',
             'price' => 'required|numeric|min:0',
+            'billing_cycle' => ['nullable', Rule::in(array_keys(Membership::BILLING_CYCLES))],
             'duration_months' => 'nullable|integer|min:1',
             'sessions_total' => 'nullable|integer|min:1',
             'sessions_per_week' => 'nullable|integer|min:1|max:7',
@@ -50,6 +53,7 @@ class CommercialPlanController extends Controller
             'name' => 'required|string|max:255',
             'category' => 'required|in:fisioterapia,pilates,teste',
             'price' => 'required|numeric|min:0',
+            'billing_cycle' => ['nullable', Rule::in(array_keys(Membership::BILLING_CYCLES))],
             'duration_months' => 'nullable|integer|min:1',
             'sessions_total' => 'nullable|integer|min:1',
             'sessions_per_week' => 'nullable|integer|min:1|max:7',

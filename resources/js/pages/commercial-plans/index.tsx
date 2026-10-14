@@ -22,12 +22,14 @@ import {
 } from '@/components/ui/sheet';
 import { usePermissions } from '@/hooks/use-permissions';
 import AppLayout from '@/layouts/app-layout';
+import { BILLING_CYCLES, billingCycleLabel, formatBRL } from '@/lib/billing';
 import type { BreadcrumbItem } from '@/types';
 
 interface CommercialPlan {
     id: string;
     name: string;
     price: string;
+    billing_cycle: string | null;
     duration_months: number | null;
     sessions_total: number | null;
     sessions_per_week: number | null;
@@ -64,6 +66,7 @@ export default function CommercialPlansIndex({
         useForm({
             name: '',
             price: '',
+            billing_cycle: 'monthly',
             duration_months: '',
             sessions_total: '',
             sessions_per_week: '',
@@ -77,6 +80,7 @@ export default function CommercialPlansIndex({
         setData({
             name: '',
             price: '',
+            billing_cycle: 'monthly',
             duration_months: '',
             sessions_total: '',
             sessions_per_week: '',
@@ -93,6 +97,7 @@ export default function CommercialPlansIndex({
         setData({
             name: plan.name,
             price: plan.price,
+            billing_cycle: plan.billing_cycle || '',
             duration_months: plan.duration_months?.toString() || '',
             sessions_total: plan.sessions_total?.toString() || '',
             sessions_per_week: plan.sessions_per_week?.toString() || '',
@@ -221,10 +226,14 @@ export default function CommercialPlansIndex({
                                             </div>
                                         </td>
                                         <td className="px-6 py-4 font-medium text-emerald-600 dark:text-emerald-400">
-                                            R${' '}
-                                            {parseFloat(plan.price)
-                                                .toFixed(2)
-                                                .replace('.', ',')}
+                                            {formatBRL(plan.price)}
+                                            {plan.billing_cycle && (
+                                                <span className="block text-xs font-normal text-muted-foreground">
+                                                    {billingCycleLabel(
+                                                        plan.billing_cycle,
+                                                    )}
+                                                </span>
+                                            )}
                                         </td>
                                         <td className="hidden px-6 py-4 text-muted-foreground sm:table-cell">
                                             {plan.duration_months
@@ -361,6 +370,35 @@ export default function CommercialPlansIndex({
                                 required
                             />
                             <InputError message={errors.price} />
+                        </div>
+
+                        <div className="grid gap-2">
+                            <Label htmlFor="billing_cycle">
+                                Cobrança padrão
+                            </Label>
+                            <select
+                                id="billing_cycle"
+                                value={data.billing_cycle}
+                                onChange={(e) =>
+                                    setData('billing_cycle', e.target.value)
+                                }
+                                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none"
+                            >
+                                <option value="">Definir na matrícula</option>
+                                {BILLING_CYCLES.map((cycle) => (
+                                    <option
+                                        key={cycle.value}
+                                        value={cycle.value}
+                                    >
+                                        {cycle.label}
+                                    </option>
+                                ))}
+                            </select>
+                            <p className="text-xs text-muted-foreground">
+                                Sugerida ao matricular um aluno neste plano. O
+                                valor acima é cobrado a cada ciclo.
+                            </p>
+                            <InputError message={errors.billing_cycle} />
                         </div>
 
                         <div className="grid gap-2">

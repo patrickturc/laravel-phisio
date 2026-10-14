@@ -8,6 +8,7 @@ use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Collection;
 use Laravel\Fortify\TwoFactorAuthenticatable;
 use Spatie\Permission\Traits\HasRoles;
 
@@ -95,6 +96,25 @@ class User extends Authenticatable
     public function agendaColor(): string
     {
         return $this->agenda_color ?: self::AGENDA_PALETTE[$this->id % count(self::AGENDA_PALETTE)];
+    }
+
+    /**
+     * The clinic's professionals as the agenda screens need them.
+     *
+     * @return Collection<int, array{id: int, name: string, color: string, availability: array<int, list<int>>|null}>
+     */
+    public static function agendaProfessionals(): Collection
+    {
+        return static::professionals()
+            ->orderBy('name')
+            ->get(['id', 'name', 'agenda_color', 'agenda_availability'])
+            ->map(fn (User $user): array => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'color' => $user->agendaColor(),
+                'availability' => $user->agenda_availability,
+            ])
+            ->toBase();
     }
 
     /**

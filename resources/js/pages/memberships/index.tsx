@@ -10,6 +10,12 @@ import { useState } from 'react';
 import { Pagination } from '@/components/pagination';
 import { usePermissions } from '@/hooks/use-permissions';
 import AppLayout from '@/layouts/app-layout';
+import {
+    billingCycleLabel,
+    formatBRL,
+    formatDateBR,
+    MEMBERSHIP_STATUS,
+} from '@/lib/billing';
 import type { BreadcrumbItem } from '@/types';
 import { MembershipFormSheet } from './membership-form-sheet';
 
@@ -61,28 +67,15 @@ export default function MembershipsIndex({
     };
 
     const getStatusBadge = (status: string) => {
-        switch (status) {
-            case 'active':
-                return (
-                    <span className="rounded-md bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-700">
-                        Ativa
-                    </span>
-                );
-            case 'expired':
-                return (
-                    <span className="rounded-md bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-700">
-                        Vencida
-                    </span>
-                );
-            case 'cancelled':
-                return (
-                    <span className="rounded-md bg-red-100 px-2.5 py-1 text-xs font-semibold text-red-700">
-                        Cancelada
-                    </span>
-                );
-            default:
-                return null;
-        }
+        const badge = MEMBERSHIP_STATUS[status];
+
+        return badge ? (
+            <span
+                className={`rounded-md px-2.5 py-1 text-xs font-semibold ${badge.className}`}
+            >
+                {badge.label}
+            </span>
+        ) : null;
     };
 
     return (
@@ -121,6 +114,7 @@ export default function MembershipsIndex({
                         >
                             <option value="">Todos Status</option>
                             <option value="active">Ativas</option>
+                            <option value="paused">Pausadas</option>
                             <option value="expired">Vencidas</option>
                             <option value="cancelled">Canceladas</option>
                         </select>
@@ -192,20 +186,21 @@ export default function MembershipsIndex({
                                             <td className="hidden px-6 py-4 whitespace-nowrap text-muted-foreground md:table-cell">
                                                 <div className="flex items-center gap-1.5">
                                                     <CalendarIcon className="size-3.5" />
-                                                    {new Date(
+                                                    {formatDateBR(
                                                         membership.start_date,
-                                                    ).toLocaleDateString()}{' '}
-                                                    a{' '}
-                                                    {new Date(
-                                                        membership.end_date,
-                                                    ).toLocaleDateString()}
+                                                    )}{' '}
+                                                    {membership.end_date
+                                                        ? `a ${formatDateBR(membership.end_date)}`
+                                                        : '· contínua'}
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4 font-medium text-emerald-600 dark:text-emerald-400">
-                                                R${' '}
-                                                {parseFloat(membership.price)
-                                                    .toFixed(2)
-                                                    .replace('.', ',')}
+                                                {formatBRL(membership.price)}
+                                                <span className="block text-xs font-normal text-muted-foreground">
+                                                    {billingCycleLabel(
+                                                        membership.billing_cycle,
+                                                    )}
+                                                </span>
                                             </td>
                                             <td className="px-6 py-4">
                                                 {getStatusBadge(

@@ -21,11 +21,37 @@ class FinancialTransaction extends Model
         'description',
         'category',
         'status',
+        'payment_method',
+        'whatsapp_reminder_at',
         'patient_id',
         'membership_id',
         'recurring_expense_id',
         'created_by',
         'paid_by',
+    ];
+
+    /**
+     * pending: not paid yet · in_review: the patient says they paid, the
+     * clinic still has to check · paid · written_off: given up on (perda).
+     */
+    public const STATUSES = ['pending', 'in_review', 'paid', 'written_off'];
+
+    /**
+     * Still waiting for the money: what "a receber" adds up.
+     */
+    public const OPEN_STATUSES = ['pending', 'in_review'];
+
+    /**
+     * @var array<string, string>
+     */
+    public const PAYMENT_METHODS = [
+        'pix' => 'PIX',
+        'cash' => 'Dinheiro',
+        'credit_card' => 'Cartão de crédito',
+        'debit_card' => 'Cartão de débito',
+        'transfer' => 'Transferência',
+        'boleto' => 'Boleto',
+        'other' => 'Outro',
     ];
 
     protected function casts(): array
@@ -34,8 +60,14 @@ class FinancialTransaction extends Model
             'date' => 'date',
             'due_date' => 'date',
             'paid_at' => 'date',
+            'whatsapp_reminder_at' => 'datetime',
             'amount' => 'decimal:2',
         ];
+    }
+
+    public function scopeOpen($query)
+    {
+        return $query->whereIn('status', self::OPEN_STATUSES);
     }
 
     public function patient()

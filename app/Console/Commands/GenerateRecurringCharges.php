@@ -14,7 +14,7 @@ class GenerateRecurringCharges extends Command
 {
     protected $signature = 'charges:generate';
 
-    protected $description = 'Generate recurring expense transactions and membership monthly charges';
+    protected $description = 'Generate recurring expense transactions and membership charges on each billing cycle';
 
     public function handle(): int
     {
@@ -39,7 +39,9 @@ class GenerateRecurringCharges extends Command
             $dueDate = $today->copy()->day($billingDay);
 
             DB::transaction(function () use ($expense, $today, $monthStart, $dueDate) {
+                // tenant_id is explicit: nobody is logged in when this runs.
                 FinancialTransaction::create([
+                    'tenant_id' => $expense->tenant_id,
                     'type' => 'expense',
                     'amount' => $expense->amount,
                     'date' => $monthStart->toDateString(),
@@ -58,52 +60,33 @@ class GenerateRecurringCharges extends Command
 
         $this->info("Generated {$generated} recurring expense transactions.");
 
-        // 2. Membership Monthly Charges — create the month's mensalidade up front
-        //    as pending, dated to the month and due on the membership's billing
-        //    day (clamped to short months). It only shows as "overdue" after the
-        //    due date. One charge per month (alreadyBilledThisMonth dedups).
+        // 2. Membership charges — each membership bills on its own cycle
+        //    (weekly … annual), up to a short horizon ahead, never past its
+        //    end date. A pause whose return date arrived is lifted first.
         $membershipGenerated = 0;
+        $resumed = 0;
 
-        $memberships = Membership::where('status', 'active')
-            ->whereNotNull('billing_day')
-            ->where('start_date', '<=', $today->toDateString())
-            ->with(['patient', 'commercialPlan'])
-            ->get();
+        Membership::with(['patient', 'commercialPlan'])
+            ->whereIn('status', ['active', 'paused'])
+            ->get()
+            ->each(function (Membership $membership) use ($today, &$membershipGenerated, &$resumed) {
+                if ($membership->status === 'paused') {
+                    if (! $membership->paused_until || $membership->paused_until->gt($today)) {
+                        return;
+                    }
 
-        foreach ($memberships as $membership) {
-            if ($this->alreadyBilledThisMonth($membership->last_billed_at, $today)) {
-                continue;
-            }
+                    $membership->resume($today);
+                    $resumed++;
+                }
 
-            $billingDay = min((int) $membership->billing_day, $daysInMonth);
-            $dueDate = $today->copy()->day($billingDay);
-
-            $planName = $membership->commercialPlan?->name ?? $membership->plan_name ?? 'Plano';
-            $patientName = $membership->patient?->name ?? 'Aluno';
-
-            DB::transaction(function () use ($membership, $today, $monthStart, $dueDate, $planName, $patientName) {
-                FinancialTransaction::create([
-                    'type' => 'income',
-                    'amount' => $membership->price,
-                    'date' => $monthStart->toDateString(),
-                    'due_date' => $dueDate->toDateString(),
-                    'description' => "Mensalidade: {$planName} — {$patientName}",
-                    'category' => 'Mensalidade',
-                    'status' => 'pending',
-                    'patient_id' => $membership->patient_id,
-                    'membership_id' => $membership->id,
-                ]);
-
-                $membership->update(['last_billed_at' => $today]);
+                $membershipGenerated += $membership->generateDueCharges($today);
             });
 
-            $membershipGenerated++;
-        }
+        $this->info("Generated {$membershipGenerated} membership billing transactions ({$resumed} paused memberships resumed).");
 
-        $this->info("Generated {$membershipGenerated} membership billing transactions.");
-
-        // 3. Auto-expire memberships past end_date
-        $expired = Membership::where('status', 'active')
+        // 3. Auto-expire memberships past end_date (open-ended ones never expire)
+        $expired = Membership::whereIn('status', ['active', 'paused'])
+            ->whereNotNull('end_date')
             ->where('end_date', '<', $today->toDateString())
             ->update(['status' => 'expired']);
 
@@ -128,13 +111,5 @@ class GenerateRecurringCharges extends Command
             'yearly' => $lastGenerated->copy()->addYearNoOverflow()->startOfMonth()->lte($monthStart),
             default => $lastGenerated->format('Y-m') !== $today->format('Y-m'),
         };
-    }
-
-    /**
-     * Whether a membership has already been billed within the current month.
-     */
-    private function alreadyBilledThisMonth(?CarbonInterface $lastBilled, CarbonInterface $today): bool
-    {
-        return $lastBilled !== null && $lastBilled->format('Y-m') === $today->format('Y-m');
     }
 }

@@ -49,13 +49,7 @@ class AppointmentController extends Controller
         $groupClasses = GroupClass::orderBy('name')->get(['id', 'name', 'color', 'max_participants']);
         // Only users flagged as treating professionals (permission-based, so it
         // survives renaming the role) can be the "Profissional Responsável".
-        $users = User::professionals()->orderBy('name')->get(['id', 'name', 'agenda_color', 'agenda_availability'])
-            ->map(fn (User $user): array => [
-                'id' => $user->id,
-                'name' => $user->name,
-                'color' => $user->agendaColor(),
-                'availability' => $user->agenda_availability,
-            ]);
+        $users = User::agendaProfessionals();
         $tenant = $request->user()->tenant;
 
         return Inertia::render('appointments/index', [
@@ -107,7 +101,7 @@ class AppointmentController extends Controller
             $patient = Patient::find($patientId);
             $activeMembership = Membership::where('patient_id', $patientId)
                 ->where('status', 'active')
-                ->where('end_date', '>=', now()->startOfDay())
+                ->where(fn ($query) => $query->whereNull('end_date')->orWhere('end_date', '>=', now()->startOfDay()))
                 ->whereHas('commercialPlan', function ($q) {
                     $q->whereIn('category', ['pilates', 'teste']);
                 })
@@ -473,7 +467,7 @@ class AppointmentController extends Controller
             $patient = Patient::find($patientId);
             $hasActivePlan = Membership::where('patient_id', $patientId)
                 ->where('status', 'active')
-                ->where('end_date', '>=', now()->startOfDay())
+                ->where(fn ($query) => $query->whereNull('end_date')->orWhere('end_date', '>=', now()->startOfDay()))
                 ->whereHas('commercialPlan', function ($q) {
                     $q->whereIn('category', ['pilates', 'teste']);
                 })->exists();

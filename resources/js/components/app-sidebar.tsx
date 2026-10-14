@@ -123,7 +123,11 @@ export function AppSidebar() {
             icon: Building2,
             show: can('settings.users.view'),
             // The plan page is a tab of the clinic profile.
-            activeFor: ['/settings/organization', '/settings/billing'],
+            activeFor: [
+                '/settings/organization',
+                '/settings/schedule',
+                '/settings/billing',
+            ],
         },
         {
             title: 'Protocolos Clínicos',

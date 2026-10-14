@@ -177,3 +177,26 @@ test('only the logo and the owner photo can be uploaded', function () {
     $this->post('/settings/organization/images/banner', ['image' => UploadedFile::fake()->image('x.png')])
         ->assertNotFound();
 });
+
+test('the PIX key is stored the way PIX expects it', function (string $type, string $typed, string $stored) {
+    $user = clinicProfileAdmin();
+
+    $this->patch('/settings/organization', clinicProfilePayload(['pix_key_type' => $type, 'pix_key' => $typed]))
+        ->assertSessionHasNoErrors();
+
+    expect($user->tenant->fresh()->pix_key)->toBe($stored);
+})->with([
+    'phone' => ['phone', '(11) 98281-9159', '+5511982819159'],
+    'CPF' => ['cpf_cnpj', '529.982.247-25', '52998224725'],
+    'e-mail' => ['email', 'Financeiro@Sanare.com.br', 'financeiro@sanare.com.br'],
+    'random key' => ['random', '123E4567-E12B-12D1-A456-426655440000', '123e4567-e12b-12d1-a456-426655440000'],
+]);
+
+test('a PIX key must match its type', function () {
+    clinicProfileAdmin();
+
+    $this->patch('/settings/organization', clinicProfilePayload(['pix_key_type' => 'email', 'pix_key' => 'não é email']))
+        ->assertSessionHasErrors('pix_key');
+    $this->patch('/settings/organization', clinicProfilePayload(['pix_key' => 'financeiro@sanare.com.br']))
+        ->assertSessionHasErrors('pix_key_type');
+});

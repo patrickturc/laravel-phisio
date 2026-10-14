@@ -29,6 +29,8 @@ import {
     Maximize2,
 } from 'lucide-react';
 import { useState } from 'react';
+import { MarkPaidDialog } from '@/components/charge-dialogs';
+import type { ChargeLike } from '@/components/charge-dialogs';
 import { useConfirmModal } from '@/components/confirm-modal';
 import EvolutionFormSheet from '@/components/EvolutionFormSheet';
 import { InlineEdit } from '@/components/inline-edit';
@@ -38,6 +40,15 @@ import { Label } from '@/components/ui/label';
 import { usePermissions } from '@/hooks/use-permissions';
 import AppLayout from '@/layouts/app-layout';
 import { shortDate, WEEKDAY_LONG } from '@/lib/agenda';
+import {
+    billingCycleLabel,
+    CHARGE_STATUS,
+    formatBRL,
+    formatDateBR,
+    MEMBERSHIP_STATUS,
+    paymentMethodLabel,
+} from '@/lib/billing';
+import type { ChargeStatus } from '@/lib/billing';
 import { pilatesSummary } from '@/lib/pilates-scales';
 import type { BreadcrumbItem } from '@/types';
 import { AppointmentFormSheet } from '../appointments/appointment-form-sheet';
@@ -96,9 +107,10 @@ interface Patient {
         id: string;
         plan_name: string;
         start_date: string;
-        end_date: string;
+        end_date: string | null;
         price: string;
         status: string;
+        billing_cycle?: string | null;
         monthly_allowance?: number | null;
         sessions_used_this_month?: number;
         sessions_remaining_this_month?: number | null;
@@ -112,7 +124,8 @@ interface Patient {
         paid_at: string | null;
         description: string;
         category: string | null;
-        status: 'paid' | 'pending';
+        status: ChargeStatus;
+        payment_method?: string | null;
     }>;
     documents?: Array<{
         id: string;
@@ -186,6 +199,7 @@ export default function PatientShow({
     } | null>(null);
     const { confirm, modal } = useConfirmModal();
     const { can } = usePermissions();
+    const [markPaid, setMarkPaid] = useState<ChargeLike | null>(null);
 
     async function endRecurringBooking(bookingId: string) {
         const confirmed = await confirm({
@@ -287,52 +301,32 @@ export default function PatientShow({
         a.remove();
     }
 
-    async function handleMarkPaid(t: {
-        id: string;
-        description: string;
-        amount: string;
-        type: string;
-    }) {
-        const verb = t.type === 'income' ? 'recebido' : 'pago';
-        const confirmed = await confirm({
-            title:
-                t.type === 'income'
-                    ? 'Confirmar recebimento'
-                    : 'Confirmar pagamento',
-            message: `Confirma que "${t.description}" (${formatCurrency(t.amount)}) foi ${verb}?`,
-            confirmLabel: 'Confirmar',
-            variant: 'warning',
-        });
-        if (!confirmed) return;
+    function handleMarkPaid(t: ChargeLike) {
+        setMarkPaid(t);
+    }
 
-        router.post(
-            `/financial/${t.id}/mark-paid`,
-            {},
-            {
-                preserveScroll: true,
-                onSuccess: async () => {
-                    if (t.type !== 'income') return;
-                    const wantsReceipt = await confirm({
-                        title: 'Gerar recibo?',
-                        message:
-                            'Deseja gerar o recibo deste pagamento para o paciente?',
-                        confirmLabel: 'Gerar recibo',
-                    });
-                    if (wantsReceipt) openReceipt(t.id);
-                },
-            },
-        );
+    async function offerReceipt(t: ChargeLike) {
+        if (t.type !== 'income') return;
+
+        const wantsReceipt = await confirm({
+            title: 'Gerar recibo?',
+            message: 'Deseja gerar o recibo deste pagamento para o paciente?',
+            confirmLabel: 'Gerar recibo',
+        });
+        if (wantsReceipt) openReceipt(t.id);
     }
 
     async function handleRevert(t: {
         id: string;
         description: string;
         amount: string;
+        status: string;
     }) {
         const confirmed = await confirm({
-            title: 'Estornar pagamento',
-            message: `Desfazer a baixa de "${t.description}" (${formatCurrency(t.amount)})? Ela voltará para pendente.`,
-            confirmLabel: 'Estornar',
+            title:
+                t.status === 'paid' ? 'Estornar pagamento' : 'Reabrir cobrança',
+            message: `"${t.description}" (${formatCurrency(t.amount)}) voltará para pendente.`,
+            confirmLabel: t.status === 'paid' ? 'Estornar' : 'Reabrir',
             variant: 'warning',
         });
         if (confirmed)
@@ -943,45 +937,35 @@ export default function PatientShow({
                                         className="group relative overflow-hidden rounded-2xl border border-border/50 bg-gradient-to-br from-card to-card/50 p-5 shadow-sm transition-shadow hover:shadow-md"
                                     >
                                         <div
-                                            className={`absolute top-0 left-0 h-full w-1.5 ${membership.status === 'active' ? 'bg-emerald-500' : membership.status === 'expired' ? 'bg-amber-500' : 'bg-red-500'}`}
+                                            className={`absolute top-0 left-0 h-full w-1.5 ${membership.status === 'active' ? 'bg-emerald-500' : membership.status === 'paused' ? 'bg-sky-500' : membership.status === 'expired' ? 'bg-amber-500' : 'bg-red-500'}`}
                                         ></div>
                                         <div className="mb-2 flex items-start justify-between">
                                             <h3 className="font-bold text-foreground transition-colors group-hover:text-primary">
                                                 {membership.plan_name}
                                             </h3>
                                             <span
-                                                className={`rounded-md px-2 py-0.5 text-xs font-bold ${
-                                                    membership.status ===
-                                                    'active'
-                                                        ? 'bg-emerald-100 text-emerald-700'
-                                                        : membership.status ===
-                                                            'expired'
-                                                          ? 'bg-amber-100 text-amber-700'
-                                                          : 'bg-red-100 text-red-700'
-                                                }`}
+                                                className={`rounded-md px-2 py-0.5 text-xs font-bold ${MEMBERSHIP_STATUS[membership.status]?.className ?? ''}`}
                                             >
-                                                {membership.status === 'active'
-                                                    ? 'Ativo'
-                                                    : membership.status ===
-                                                        'expired'
-                                                      ? 'Vencido'
-                                                      : 'Cancelado'}
+                                                {MEMBERSHIP_STATUS[
+                                                    membership.status
+                                                ]?.label ?? membership.status}
                                             </span>
                                         </div>
                                         <p className="mb-1 text-sm text-muted-foreground">
-                                            {new Date(
+                                            {formatDateBR(
                                                 membership.start_date,
-                                            ).toLocaleDateString('pt-BR')}{' '}
-                                            a{' '}
-                                            {new Date(
-                                                membership.end_date,
-                                            ).toLocaleDateString('pt-BR')}
+                                            )}{' '}
+                                            {membership.end_date
+                                                ? `a ${formatDateBR(membership.end_date)}`
+                                                : '· contínua'}
                                         </p>
                                         <p className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">
-                                            R${' '}
-                                            {parseFloat(membership.price)
-                                                .toFixed(2)
-                                                .replace('.', ',')}
+                                            {formatBRL(membership.price)}
+                                            <span className="ml-1.5 text-xs font-normal text-muted-foreground">
+                                                {billingCycleLabel(
+                                                    membership.billing_cycle,
+                                                )}
+                                            </span>
                                         </p>
                                         {membership.monthly_allowance !=
                                             null && (
@@ -1167,10 +1151,11 @@ export default function PatientShow({
                                                                                 'UTC',
                                                                         },
                                                                     )}
+                                                                    {t.payment_method &&
+                                                                        ` · ${paymentMethodLabel(t.payment_method)}`}
                                                                 </span>
                                                             )}
-                                                        {t.status ===
-                                                            'pending' &&
+                                                        {t.status !== 'paid' &&
                                                             t.due_date && (
                                                                 <span
                                                                     className={
@@ -1206,13 +1191,14 @@ export default function PatientShow({
                                                         <span className="rounded-md bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-700 dark:bg-red-900/30 dark:text-red-400">
                                                             Vencido
                                                         </span>
-                                                    ) : t.status === 'paid' ? (
-                                                        <span className="rounded-md bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
-                                                            Pago
-                                                        </span>
                                                     ) : (
-                                                        <span className="rounded-md bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
-                                                            Pendente
+                                                        <span
+                                                            className={`rounded-md px-2 py-0.5 text-xs font-semibold whitespace-nowrap ${CHARGE_STATUS[t.status]?.className ?? ''}`}
+                                                        >
+                                                            {CHARGE_STATUS[
+                                                                t.status
+                                                            ]?.label ??
+                                                                t.status}
                                                         </span>
                                                     )}
                                                 </div>
@@ -1231,7 +1217,8 @@ export default function PatientShow({
                                                                 <FileText className="size-4" />
                                                             </button>
                                                         )}
-                                                    {t.status === 'pending' ? (
+                                                    {t.status === 'pending' ||
+                                                    t.status === 'in_review' ? (
                                                         <button
                                                             onClick={() =>
                                                                 handleMarkPaid(
@@ -1249,7 +1236,7 @@ export default function PatientShow({
                                                                 handleRevert(t)
                                                             }
                                                             className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-amber-500/10 hover:text-amber-600"
-                                                            title="Estornar (voltar para pendente)"
+                                                            title="Voltar para pendente"
                                                         >
                                                             <RotateCcw className="size-4" />
                                                         </button>
@@ -1929,6 +1916,14 @@ export default function PatientShow({
                 commercialPlans={commercialPlans}
                 initialPatientId={patient.id}
             />
+            {markPaid && (
+                <MarkPaidDialog
+                    key={markPaid.id}
+                    charge={markPaid}
+                    onClose={() => setMarkPaid(null)}
+                    onPaid={offerReceipt}
+                />
+            )}
         </AppLayout>
     );
 }

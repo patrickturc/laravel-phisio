@@ -8,6 +8,7 @@ import {
     Instagram,
     Loader2,
     MapPin,
+    QrCode,
     ShieldCheck,
     Smartphone,
     UserRound,
@@ -37,6 +38,8 @@ type TenantForm = {
     whatsapp: string;
     website: string;
     instagram: string;
+    pix_key_type: string;
+    pix_key: string;
     bio: string;
     cep: string;
     street: string;
@@ -57,6 +60,25 @@ type Props = {
 };
 
 const BIO_LIMIT = 2000;
+
+const PIX_PLACEHOLDERS: Record<string, string> = {
+    cpf_cnpj: '00.000.000/0000-00',
+    phone: '(00) 00000-0000',
+    email: 'financeiro@suaclinica.com.br',
+    random: '123e4567-e89b-12d3-a456-426614174000',
+};
+
+/** The stored key (digits, +55…) back in the format people type it. */
+function displayPixKey(
+    type: string | null | undefined,
+    key: string | null | undefined,
+): string {
+    if (!key) return '';
+    if (type === 'cpf_cnpj') return maskDocument(key);
+    if (type === 'phone') return maskPhone(key.replace(/^\+55/, ''));
+
+    return key;
+}
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Configurações', href: '/settings/organization' },
@@ -110,6 +132,8 @@ export default function Organization({ tenant, images, missingFields }: Props) {
             whatsapp: maskPhone(tenant.whatsapp ?? ''),
             website: tenant.website ?? '',
             instagram: tenant.instagram ?? '',
+            pix_key_type: tenant.pix_key_type ?? '',
+            pix_key: displayPixKey(tenant.pix_key_type, tenant.pix_key),
             bio: tenant.bio ?? '',
             cep: maskCEP(tenant.cep ?? ''),
             street: tenant.street ?? '',
@@ -504,6 +528,80 @@ export default function Organization({ tenant, images, missingFields }: Props) {
                                     />
                                     <InputError message={errors.website} />
                                 </div>
+                            </div>
+
+                            <Separator />
+
+                            <div className="grid gap-4">
+                                <SubsectionTitle
+                                    icon={QrCode}
+                                    title="Recebimento por PIX"
+                                />
+                                <p className="-mt-2 text-xs text-muted-foreground">
+                                    Usada para gerar o PIX copia e cola e o QR
+                                    Code das cobranças.
+                                </p>
+                                <div className="grid gap-2">
+                                    <Label htmlFor="pix_key_type">
+                                        Tipo da chave
+                                    </Label>
+                                    <select
+                                        id="pix_key_type"
+                                        value={data.pix_key_type}
+                                        onChange={(e) =>
+                                            setData((current) => ({
+                                                ...current,
+                                                pix_key_type: e.target.value,
+                                                pix_key: '',
+                                            }))
+                                        }
+                                        className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
+                                    >
+                                        <option value="">Sem chave PIX</option>
+                                        <option value="cpf_cnpj">
+                                            CPF ou CNPJ
+                                        </option>
+                                        <option value="phone">Celular</option>
+                                        <option value="email">E-mail</option>
+                                        <option value="random">
+                                            Chave aleatória
+                                        </option>
+                                    </select>
+                                    <InputError message={errors.pix_key_type} />
+                                </div>
+                                {data.pix_key_type && (
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="pix_key">
+                                            Chave PIX
+                                        </Label>
+                                        <Input
+                                            id="pix_key"
+                                            value={data.pix_key}
+                                            onChange={(e) =>
+                                                setData(
+                                                    'pix_key',
+                                                    data.pix_key_type ===
+                                                        'cpf_cnpj'
+                                                        ? maskDocument(
+                                                              e.target.value,
+                                                          )
+                                                        : data.pix_key_type ===
+                                                            'phone'
+                                                          ? maskPhone(
+                                                                e.target.value,
+                                                            )
+                                                          : e.target.value,
+                                                )
+                                            }
+                                            placeholder={
+                                                PIX_PLACEHOLDERS[
+                                                    data.pix_key_type
+                                                ]
+                                            }
+                                        />
+                                        <InputError message={errors.pix_key} />
+                                    </div>
+                                )}
                             </div>
 
                             <Separator />

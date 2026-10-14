@@ -155,3 +155,28 @@ test('rooms need distinct names', function () {
     $this->patch('/settings/schedule', scheduleSettingsPayload(['rooms' => ['Sala 1', 'Sala 1']]))
         ->assertSessionHasErrors('rooms.1');
 });
+
+test('the clinic profile has an agenda tab with the same settings', function () {
+    $manager = agendaManager();
+    $manager->tenant->update(['schedule_settings' => ['slot_capacity' => 4, 'rooms' => ['Sala 1']]]);
+    $amanda = teamMember($manager, 'Amanda');
+    $amanda->update(['agenda_availability' => [1 => [8, 9]]]);
+
+    $this->get('/settings/schedule')
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('settings/schedule')
+            ->where('settings.slot_capacity', 4)
+            ->where('settings.rooms', ['Sala 1'])
+            ->has('settings.business_hours', 7)
+            ->where('professionals.0.name', 'Amanda')
+            ->where('professionals.0.color', $amanda->agendaColor())
+            ->where('professionals.0.availability.1', [8, 9])
+        );
+});
+
+test('the agenda tab of the clinic profile requires permission', function () {
+    agendaManager(canManageSettings: false);
+
+    $this->get('/settings/schedule')->assertForbidden();
+});

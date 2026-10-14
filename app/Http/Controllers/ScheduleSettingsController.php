@@ -6,6 +6,8 @@ use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
+use Inertia\Inertia;
+use Inertia\Response;
 
 /**
  * "Configurar agenda": business hours, breaks, students per slot, default
@@ -13,6 +15,22 @@ use Illuminate\Validation\ValidationException;
  */
 class ScheduleSettingsController extends Controller
 {
+    /**
+     * The "Agenda" tab of the clinic profile. The agenda page edits the same
+     * settings in its "Configurações" dialog.
+     */
+    public function edit(Request $request): Response
+    {
+        $tenant = $request->user()->tenant;
+
+        abort_if(! $tenant, 404);
+
+        return Inertia::render('settings/schedule', [
+            'settings' => $tenant->scheduleSettings(),
+            'professionals' => User::agendaProfessionals(),
+        ]);
+    }
+
     public function update(Request $request): RedirectResponse
     {
         $tenant = $request->user()->tenant;

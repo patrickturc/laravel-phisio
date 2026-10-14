@@ -407,3 +407,14 @@ test('a professional is only booked within their availability', function () {
 
     bookFixed(bookingPatient($desk, 'Certo'), $amanda, ['start_time' => '09:00'])->assertSessionHasNoErrors();
 });
+
+test('a fixed slot starting in a later week books from that week on', function () {
+    $desk = bookingDesk();
+
+    bookFixed(bookingPatient($desk, 'Anizia'), bookingProfessional($desk, 'Amanda'), ['starts_on' => '2026-10-28'])
+        ->assertSessionHasNoErrors();
+
+    expect(bookedDates(RecurringBooking::sole()))->toBe([
+        '2026-11-02', '2026-11-09', '2026-11-16', '2026-11-23', '2026-11-30', '2026-12-07',
+    ]);
+});

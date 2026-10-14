@@ -1,4 +1,4 @@
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, Link } from '@inertiajs/react';
 import {
     ArrowLeft,
     AlertTriangle,
@@ -7,11 +7,24 @@ import {
     CheckCircle,
     User,
     ChevronDown,
+    QrCode,
 } from 'lucide-react';
 import { useState } from 'react';
+import { BillingReminders } from '@/components/billing-reminders';
+import type {
+    BillingReminder,
+    BillingTemplates,
+} from '@/components/billing-reminders';
+import {
+    MarkPaidDialog,
+    PixDialog,
+    WriteOffDialog,
+} from '@/components/charge-dialogs';
+import type { ChargeLike } from '@/components/charge-dialogs';
 import { useConfirmModal } from '@/components/confirm-modal';
 import { usePermissions } from '@/hooks/use-permissions';
 import AppLayout from '@/layouts/app-layout';
+import { CHARGE_STATUS, paymentMethodLabel } from '@/lib/billing';
 import type { BreadcrumbItem } from '@/types';
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -26,6 +39,8 @@ interface TxItem {
     due_date: string | null;
     date: string | null;
     category: string | null;
+    status: 'pending' | 'in_review';
+    payment_method: string | null;
     is_overdue: boolean;
 }
 
@@ -47,10 +62,28 @@ interface Props {
         overdue_amount: number;
         patient_count: number;
     };
+    reminders: BillingReminder[];
+    billingTemplates: BillingTemplates;
+    clinicName: string;
+    hasPix: boolean;
 }
 
-export default function Receivables({ groups, totals }: Props) {
+export default function Receivables({
+    groups,
+    totals,
+    reminders,
+    billingTemplates,
+    clinicName,
+    hasPix,
+}: Props) {
     const [expanded, setExpanded] = useState<string | null>(null);
+    const [markPaid, setMarkPaid] = useState<ChargeLike | null>(null);
+    const [writeOff, setWriteOff] = useState<ChargeLike | null>(null);
+    const [pixCharge, setPixCharge] = useState<{
+        id: string;
+        description?: string;
+        amount: number;
+    } | null>(null);
     const { confirm, modal } = useConfirmModal();
     const { can } = usePermissions();
 
@@ -82,31 +115,13 @@ export default function Receivables({ groups, totals }: Props) {
         a.remove();
     }
 
-    async function handleMarkPaid(t: TxItem) {
-        const confirmed = await confirm({
-            title: 'Confirmar recebimento',
-            message: `Confirma que "${t.description}" (${formatCurrency(t.amount)}) foi recebido?`,
-            confirmLabel: 'Confirmar',
-            variant: 'warning',
+    async function offerReceipt(t: ChargeLike) {
+        const wantsReceipt = await confirm({
+            title: 'Gerar recibo?',
+            message: 'Deseja gerar o recibo deste pagamento para o paciente?',
+            confirmLabel: 'Gerar recibo',
         });
-        if (!confirmed) return;
-
-        router.post(
-            `/financial/${t.id}/mark-paid`,
-            {},
-            {
-                preserveScroll: true,
-                onSuccess: async () => {
-                    const wantsReceipt = await confirm({
-                        title: 'Gerar recibo?',
-                        message:
-                            'Deseja gerar o recibo deste pagamento para o paciente?',
-                        confirmLabel: 'Gerar recibo',
-                    });
-                    if (wantsReceipt) openReceipt(t.id);
-                },
-            },
-        );
+        if (wantsReceipt) openReceipt(t.id);
     }
 
     return (
@@ -172,6 +187,20 @@ export default function Receivables({ groups, totals }: Props) {
                         </p>
                     </div>
                 </div>
+
+                <BillingReminders
+                    reminders={reminders}
+                    templates={billingTemplates}
+                    clinicName={clinicName}
+                    hasPix={hasPix}
+                    onShowPix={(reminder) =>
+                        setPixCharge({
+                            id: reminder.id,
+                            description: reminder.reference,
+                            amount: reminder.amount,
+                        })
+                    }
+                />
 
                 {/* Groups */}
                 <div className="overflow-hidden rounded-2xl border border-border/50 bg-card/60 shadow-sm backdrop-blur-xl">
@@ -264,8 +293,19 @@ export default function Receivables({ groups, totals }: Props) {
                                                         className="flex items-center gap-3 py-2.5"
                                                     >
                                                         <div className="min-w-0 flex-1">
-                                                            <p className="truncate text-sm font-medium text-foreground">
+                                                            <p className="flex items-center gap-2 truncate text-sm font-medium text-foreground">
                                                                 {t.description}
+                                                                {t.status ===
+                                                                    'in_review' && (
+                                                                    <span
+                                                                        className={`rounded-md px-1.5 py-0.5 text-[11px] font-semibold ${CHARGE_STATUS.in_review.className}`}
+                                                                    >
+                                                                        Em
+                                                                        análise
+                                                                        {t.payment_method &&
+                                                                            ` · ${paymentMethodLabel(t.payment_method)}`}
+                                                                    </span>
+                                                                )}
                                                             </p>
                                                             <p className="text-xs text-muted-foreground">
                                                                 {t.due_date ? (
@@ -293,20 +333,46 @@ export default function Receivables({ groups, totals }: Props) {
                                                                 t.amount,
                                                             )}
                                                         </span>
-                                                        {can(
-                                                            'financial.transactions.edit',
-                                                        ) && (
+                                                        {hasPix && (
                                                             <button
                                                                 onClick={() =>
-                                                                    handleMarkPaid(
+                                                                    setPixCharge(
                                                                         t,
                                                                     )
                                                                 }
-                                                                className="flex items-center gap-1.5 rounded-lg bg-emerald-500/10 px-3 py-1.5 text-xs font-semibold text-emerald-600 transition-colors hover:bg-emerald-500/20"
+                                                                className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                                                                title="PIX copia e cola e QR Code"
                                                             >
-                                                                <CheckCircle className="size-3.5" />{' '}
-                                                                Receber
+                                                                <QrCode className="size-4" />
                                                             </button>
+                                                        )}
+                                                        {can(
+                                                            'financial.transactions.edit',
+                                                        ) && (
+                                                            <>
+                                                                <button
+                                                                    onClick={() =>
+                                                                        setMarkPaid(
+                                                                            t,
+                                                                        )
+                                                                    }
+                                                                    className="flex items-center gap-1.5 rounded-lg bg-emerald-500/10 px-3 py-1.5 text-xs font-semibold text-emerald-600 transition-colors hover:bg-emerald-500/20"
+                                                                >
+                                                                    <CheckCircle className="size-3.5" />{' '}
+                                                                    Receber
+                                                                </button>
+                                                                <button
+                                                                    onClick={() =>
+                                                                        setWriteOff(
+                                                                            t,
+                                                                        )
+                                                                    }
+                                                                    className="rounded-lg px-2 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted"
+                                                                    title="Marcar como perda / inadimplente"
+                                                                >
+                                                                    Perda
+                                                                </button>
+                                                            </>
                                                         )}
                                                     </div>
                                                 ))}
@@ -320,6 +386,28 @@ export default function Receivables({ groups, totals }: Props) {
                 </div>
             </div>
             {modal}
+            {markPaid && (
+                <MarkPaidDialog
+                    key={markPaid.id}
+                    charge={markPaid}
+                    onClose={() => setMarkPaid(null)}
+                    onPaid={offerReceipt}
+                />
+            )}
+            {writeOff && (
+                <WriteOffDialog
+                    key={writeOff.id}
+                    charge={writeOff}
+                    onClose={() => setWriteOff(null)}
+                />
+            )}
+            {pixCharge && (
+                <PixDialog
+                    key={pixCharge.id}
+                    charge={pixCharge}
+                    onClose={() => setPixCharge(null)}
+                />
+            )}
         </AppLayout>
     );
 }

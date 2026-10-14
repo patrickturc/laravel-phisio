@@ -7,7 +7,8 @@ use Illuminate\Http\Request;
 
 /**
  * The clinic's own wording for its WhatsApp messages: birthday, enrollment
- * anniversary and class reminder. An empty text restores the default.
+ * anniversary, class reminder and billing reminders. An empty text restores
+ * the default.
  */
 class MessageTemplateController extends Controller
 {
@@ -21,6 +22,9 @@ class MessageTemplateController extends Controller
             'birthday' => ['nullable', 'string', 'max:1000'],
             'enrollment' => ['nullable', 'string', 'max:1000'],
             'reminder' => ['nullable', 'string', 'max:1000'],
+            'billing_before' => ['nullable', 'string', 'max:1000'],
+            'billing_due' => ['nullable', 'string', 'max:1000'],
+            'billing_overdue' => ['nullable', 'string', 'max:1000'],
         ]);
 
         $tenant->update([

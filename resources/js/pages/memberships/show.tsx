@@ -9,11 +9,33 @@ import {
     Calendar as CalendarIcon,
     DollarSign,
     Clock,
+    Pause,
+    Play,
+    Repeat,
 } from 'lucide-react';
 import { useState } from 'react';
 import { useConfirmModal } from '@/components/confirm-modal';
+import { Button } from '@/components/ui/button';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { usePermissions } from '@/hooks/use-permissions';
 import AppLayout from '@/layouts/app-layout';
+import {
+    billingCycleLabel,
+    CHARGE_STATUS,
+    formatBRL,
+    formatDateBR,
+    MEMBERSHIP_STATUS,
+} from '@/lib/billing';
+import type { ChargeStatus } from '@/lib/billing';
 import type { BreadcrumbItem } from '@/types';
 import { MembershipFormSheet } from './membership-form-sheet';
 
@@ -39,6 +61,46 @@ export default function MembershipShow({
     const { can } = usePermissions();
     const { confirm, modal } = useConfirmModal();
     const [editOpen, setEditOpen] = useState(false);
+    const [pauseOpen, setPauseOpen] = useState(false);
+    const [pausedUntil, setPausedUntil] = useState('');
+    const [pausesClasses, setPausesClasses] = useState(true);
+    const [pauseError, setPauseError] = useState<string | null>(null);
+
+    function pause() {
+        router.post(
+            `/memberships/${membership.id}/pause`,
+            {
+                paused_until: pausedUntil || null,
+                pauses_classes: pausesClasses,
+            },
+            {
+                preserveScroll: true,
+                onSuccess: () => setPauseOpen(false),
+                onError: (errors) =>
+                    setPauseError(
+                        errors.paused_until ?? 'Não foi possível pausar.',
+                    ),
+            },
+        );
+    }
+
+    async function resume() {
+        const confirmed = await confirm({
+            title: 'Retomar matrícula',
+            message:
+                'As cobranças voltam a partir do próximo vencimento e as aulas do horário fixo voltam para a agenda.',
+            confirmLabel: 'Retomar',
+            variant: 'warning',
+        });
+
+        if (confirmed) {
+            router.post(
+                `/memberships/${membership.id}/resume`,
+                {},
+                { preserveScroll: true },
+            );
+        }
+    }
 
     async function handleRenew() {
         const confirmed = await confirm({
@@ -62,31 +124,20 @@ export default function MembershipShow({
     }
 
     const getStatusBadge = (status: string) => {
-        switch (status) {
-            case 'active':
-                return (
-                    <span className="rounded-lg bg-emerald-100 px-3 py-1.5 text-sm font-semibold text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
-                        Ativa
-                    </span>
-                );
-            case 'expired':
-                return (
-                    <span className="rounded-lg bg-amber-100 px-3 py-1.5 text-sm font-semibold text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
-                        Vencida
-                    </span>
-                );
-            case 'cancelled':
-                return (
-                    <span className="rounded-lg bg-red-100 px-3 py-1.5 text-sm font-semibold text-red-700 dark:bg-red-900/30 dark:text-red-400">
-                        Cancelada
-                    </span>
-                );
-            default:
-                return null;
-        }
+        const badge = MEMBERSHIP_STATUS[status];
+
+        return badge ? (
+            <span
+                className={`rounded-lg px-3 py-1.5 text-sm font-semibold ${badge.className}`}
+            >
+                {badge.label}
+            </span>
+        ) : null;
     };
 
     const daysRemaining = () => {
+        if (!membership.end_date) return null;
+
         const end = new Date(membership.end_date);
         const now = new Date();
         const diff = Math.ceil(
@@ -120,16 +171,40 @@ export default function MembershipShow({
                             </p>
                         </div>
                     </div>
-                    <div className="flex items-center gap-3">
-                        {can('memberships.manage.create') && (
-                            <button
-                                onClick={handleRenew}
-                                className="flex h-10 items-center gap-2 rounded-xl bg-emerald-600 px-4 font-medium text-white shadow-sm transition-colors hover:bg-emerald-700"
-                            >
-                                <CalendarIcon className="size-4" />
-                                Renovar
-                            </button>
-                        )}
+                    <div className="flex flex-wrap items-center gap-3">
+                        {can('memberships.manage.edit') &&
+                            membership.status === 'active' && (
+                                <button
+                                    onClick={() => {
+                                        setPauseError(null);
+                                        setPauseOpen(true);
+                                    }}
+                                    className="flex h-10 items-center gap-2 rounded-xl border border-border bg-card px-4 font-medium text-foreground shadow-sm transition-colors hover:bg-muted"
+                                >
+                                    <Pause className="size-4" />
+                                    Pausar
+                                </button>
+                            )}
+                        {can('memberships.manage.edit') &&
+                            membership.status === 'paused' && (
+                                <button
+                                    onClick={resume}
+                                    className="flex h-10 items-center gap-2 rounded-xl bg-sky-600 px-4 font-medium text-white shadow-sm transition-colors hover:bg-sky-700"
+                                >
+                                    <Play className="size-4" />
+                                    Retomar
+                                </button>
+                            )}
+                        {can('memberships.manage.create') &&
+                            membership.end_date && (
+                                <button
+                                    onClick={handleRenew}
+                                    className="flex h-10 items-center gap-2 rounded-xl bg-emerald-600 px-4 font-medium text-white shadow-sm transition-colors hover:bg-emerald-700"
+                                >
+                                    <CalendarIcon className="size-4" />
+                                    Renovar
+                                </button>
+                            )}
                         {can('memberships.manage.edit') && (
                             <button
                                 onClick={() => setEditOpen(true)}
@@ -185,18 +260,24 @@ export default function MembershipShow({
                                 <Clock className="size-5 text-blue-500" />
                             </div>
                             <span className="text-sm text-muted-foreground">
-                                Dias Restantes
+                                {days === null ? 'Vigência' : 'Dias Restantes'}
                             </span>
                         </div>
-                        <p
-                            className={`text-2xl font-bold ${days > 7 ? 'text-foreground' : days > 0 ? 'text-amber-500' : 'text-red-500'}`}
-                        >
-                            {days > 0
-                                ? `${days} dias`
-                                : days === 0
-                                  ? 'Vence hoje'
-                                  : 'Vencida'}
-                        </p>
+                        {days === null ? (
+                            <p className="text-2xl font-bold text-foreground">
+                                Contínua
+                            </p>
+                        ) : (
+                            <p
+                                className={`text-2xl font-bold ${days > 7 ? 'text-foreground' : days > 0 ? 'text-amber-500' : 'text-red-500'}`}
+                            >
+                                {days > 0
+                                    ? `${days} dias`
+                                    : days === 0
+                                      ? 'Vence hoje'
+                                      : 'Vencida'}
+                            </p>
+                        )}
                     </motion.div>
 
                     <motion.div
@@ -216,6 +297,15 @@ export default function MembershipShow({
                         <div className="mt-1">
                             {getStatusBadge(membership.status)}
                         </div>
+                        {membership.status === 'paused' && (
+                            <p className="mt-2 text-xs text-muted-foreground">
+                                {membership.paused_until
+                                    ? `Retorna em ${formatDateBR(membership.paused_until)}`
+                                    : 'Sem data de retorno'}
+                                {membership.pauses_classes &&
+                                    ' · aulas pausadas'}
+                            </p>
+                        )}
                     </motion.div>
                 </div>
 
@@ -355,17 +445,21 @@ export default function MembershipShow({
 
                         <div className="space-y-1">
                             <label className="text-sm text-muted-foreground">
-                                Vencimento
+                                Fim do plano
                             </label>
                             <div className="flex items-center gap-2">
                                 <CalendarIcon className="size-4 text-muted-foreground" />
-                                <span
-                                    className={`font-medium ${days <= 7 && days >= 0 ? 'text-amber-500' : days < 0 ? 'text-red-500' : 'text-foreground'}`}
-                                >
-                                    {new Date(
-                                        membership.end_date,
-                                    ).toLocaleDateString('pt-BR')}
-                                </span>
+                                {days === null ? (
+                                    <span className="font-medium text-foreground">
+                                        Contínua (sem data de fim)
+                                    </span>
+                                ) : (
+                                    <span
+                                        className={`font-medium ${days <= 7 && days >= 0 ? 'text-amber-500' : days < 0 ? 'text-red-500' : 'text-foreground'}`}
+                                    >
+                                        {formatDateBR(membership.end_date)}
+                                    </span>
+                                )}
                             </div>
                         </div>
 
@@ -376,10 +470,25 @@ export default function MembershipShow({
                             <div className="flex items-center gap-2">
                                 <DollarSign className="size-4 text-muted-foreground" />
                                 <span className="font-medium text-emerald-600 dark:text-emerald-400">
-                                    R${' '}
-                                    {parseFloat(membership.price)
-                                        .toFixed(2)
-                                        .replace('.', ',')}
+                                    {formatBRL(membership.price)}
+                                </span>
+                            </div>
+                        </div>
+
+                        <div className="space-y-1">
+                            <label className="text-sm text-muted-foreground">
+                                Cobrança
+                            </label>
+                            <div className="flex items-center gap-2">
+                                <Repeat className="size-4 text-muted-foreground" />
+                                <span className="font-medium text-foreground">
+                                    {billingCycleLabel(
+                                        membership.billing_cycle,
+                                    )}
+                                    {membership.billing_cycle &&
+                                        membership.next_billing_date &&
+                                        membership.status === 'active' &&
+                                        ` · próxima em ${formatDateBR(membership.next_billing_date)}`}
                                 </span>
                             </div>
                         </div>
@@ -392,7 +501,109 @@ export default function MembershipShow({
                         </div>
                     </div>
                 </motion.div>
+
+                {membership.financial_transactions?.length > 0 && (
+                    <div className="rounded-2xl border border-border/50 bg-card/60 p-6 shadow-sm backdrop-blur-xl">
+                        <h2 className="mb-4 text-lg font-semibold text-foreground">
+                            Cobranças
+                        </h2>
+                        <ul className="divide-y divide-border/50">
+                            {membership.financial_transactions.map(
+                                (charge: any) => {
+                                    const status =
+                                        CHARGE_STATUS[
+                                            charge.status as ChargeStatus
+                                        ];
+
+                                    return (
+                                        <li
+                                            key={charge.id}
+                                            className="flex items-center justify-between gap-3 py-2.5 text-sm"
+                                        >
+                                            <span className="text-muted-foreground">
+                                                Vence{' '}
+                                                {formatDateBR(
+                                                    charge.due_date ??
+                                                        charge.date,
+                                                )}
+                                            </span>
+                                            <span className="font-medium">
+                                                {formatBRL(charge.amount)}
+                                            </span>
+                                            {status && (
+                                                <span
+                                                    className={`rounded-md px-2 py-0.5 text-xs font-semibold ${status.className}`}
+                                                >
+                                                    {status.label}
+                                                </span>
+                                            )}
+                                        </li>
+                                    );
+                                },
+                            )}
+                        </ul>
+                    </div>
+                )}
             </div>
+
+            <Dialog open={pauseOpen} onOpenChange={setPauseOpen}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>Pausar matrícula</DialogTitle>
+                        <DialogDescription>
+                            Enquanto pausada, nenhuma cobrança é gerada. Na
+                            volta, os ciclos da pausa são pulados e o fim do
+                            plano é adiado pelos dias parados.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                        <div className="grid gap-2">
+                            <Label htmlFor="paused-until">
+                                Retorna em (opcional)
+                            </Label>
+                            <Input
+                                id="paused-until"
+                                type="date"
+                                value={pausedUntil}
+                                onChange={(e) => setPausedUntil(e.target.value)}
+                            />
+                            <p className="text-xs text-muted-foreground">
+                                Sem data, a matrícula fica pausada até você
+                                retomar.
+                            </p>
+                            {pauseError && (
+                                <p className="text-sm text-red-500">
+                                    {pauseError}
+                                </p>
+                            )}
+                        </div>
+                        <label className="flex cursor-pointer items-start gap-2 text-sm">
+                            <input
+                                type="checkbox"
+                                checked={pausesClasses}
+                                onChange={(e) =>
+                                    setPausesClasses(e.target.checked)
+                                }
+                                className="mt-0.5 size-4 accent-primary"
+                            />
+                            Pausar também as aulas do horário fixo (liberam a
+                            vaga na agenda durante a pausa)
+                        </label>
+                    </div>
+                    <DialogFooter className="gap-2 sm:gap-2">
+                        <Button
+                            variant="outline"
+                            onClick={() => setPauseOpen(false)}
+                        >
+                            Cancelar
+                        </Button>
+                        <Button onClick={pause}>
+                            <Pause className="size-4" />
+                            Pausar
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
 
             {can('memberships.manage.edit') && (
                 <MembershipFormSheet

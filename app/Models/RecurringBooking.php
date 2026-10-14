@@ -141,7 +141,8 @@ class RecurringBooking extends Model
     {
         $result = ['created' => 0, 'full' => [], 'busy' => []];
 
-        $from = Carbon::today()->max($this->starts_on);
+        // starts_on is an immutable date; the loop below needs a mutable one.
+        $from = Carbon::parse(Carbon::today()->max($this->starts_on));
         $until = Carbon::parse($until ?? Carbon::today()->addWeeks(self::HORIZON_WEEKS));
         if ($this->ends_on) {
             $until = $until->min($this->ends_on);
@@ -163,10 +164,22 @@ class RecurringBooking extends Model
 
         $capacity = $this->tenant->slotCapacity();
 
+        // Weeks inside a paused membership (with classes paused) are skipped.
+        $pauses = Membership::query()
+            ->where('tenant_id', $this->tenant_id)
+            ->where('patient_id', $this->patient_id)
+            ->where('status', 'paused')
+            ->where('pauses_classes', true)
+            ->get();
+
         for (; $date->lte($until); $date->addWeek()) {
             $day = $date->toDateString();
 
             if (in_array($day, $generated, true) || ! $this->hasClassOn($date)) {
+                continue;
+            }
+
+            if ($pauses->contains(fn (Membership $pause): bool => $pause->pausesClassesOn($date))) {
                 continue;
             }
 

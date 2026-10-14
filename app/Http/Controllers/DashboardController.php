@@ -88,8 +88,8 @@ class DashboardController extends Controller
         $financialSummary = [
             'income' => FinancialTransaction::where('type', 'income')->where('status', 'paid')->whereMonth('date', $currentMonth)->whereYear('date', $currentYear)->sum('amount'),
             'expense' => FinancialTransaction::where('type', 'expense')->where('status', 'paid')->whereMonth('date', $currentMonth)->whereYear('date', $currentYear)->sum('amount'),
-            'pending_income' => FinancialTransaction::where('type', 'income')->where('status', 'pending')->whereMonth('date', $currentMonth)->whereYear('date', $currentYear)->sum('amount'),
-            'pending_expense' => FinancialTransaction::where('type', 'expense')->where('status', 'pending')->whereMonth('date', $currentMonth)->whereYear('date', $currentYear)->sum('amount'),
+            'pending_income' => FinancialTransaction::where('type', 'income')->open()->whereMonth('date', $currentMonth)->whereYear('date', $currentYear)->sum('amount'),
+            'pending_expense' => FinancialTransaction::where('type', 'expense')->open()->whereMonth('date', $currentMonth)->whereYear('date', $currentYear)->sum('amount'),
         ];
 
         // Growth Indicators

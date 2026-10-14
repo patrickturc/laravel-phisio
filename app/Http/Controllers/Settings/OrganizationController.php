@@ -30,7 +30,7 @@ class OrganizationController extends Controller
                 ...$tenant->only([
                     'id', 'name', 'legal_name', 'document', 'state_registration',
                     'owner_name', 'owner_document',
-                    'email', 'phone', 'whatsapp', 'website', 'instagram', 'bio',
+                    'email', 'phone', 'whatsapp', 'website', 'instagram', 'bio', 'pix_key_type', 'pix_key',
                     'cep', 'street', 'number', 'complement', 'neighborhood', 'city', 'state',
                     'technical_manager_name', 'technical_manager_document',
                 ]),
@@ -69,6 +69,10 @@ class OrganizationController extends Controller
             $input['instagram'] = $this->instagramHandle($input['instagram']);
         }
 
+        if (isset($input['pix_key']) && is_string($input['pix_key'])) {
+            $input['pix_key'] = $this->normalizePixKey($input['pix_key_type'] ?? null, $input['pix_key']);
+        }
+
         $validated = validator($input, [
             'name' => ['required', 'string', 'max:255'],
             'legal_name' => ['nullable', 'string', 'max:255'],
@@ -83,6 +87,20 @@ class OrganizationController extends Controller
             'website' => ['nullable', 'string', 'max:255'],
             'instagram' => ['nullable', 'string', 'regex:/^[A-Za-z0-9._]{1,30}$/'],
             'bio' => ['nullable', 'string', 'max:2000'],
+            'pix_key_type' => ['nullable', 'required_with:pix_key', Rule::in(['cpf_cnpj', 'phone', 'email', 'random'])],
+            'pix_key' => ['nullable', 'string', 'max:77', function (string $attribute, mixed $value, \Closure $fail) use ($input) {
+                $valid = match ($input['pix_key_type'] ?? null) {
+                    'cpf_cnpj' => in_array(strlen($value), [11, 14], true) && validator([$attribute => $value], [$attribute => new CpfCnpj])->passes(),
+                    'phone' => (bool) preg_match('/^\+55\d{10,11}$/', $value),
+                    'email' => filter_var($value, FILTER_VALIDATE_EMAIL) !== false,
+                    'random' => (bool) preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/', $value),
+                    default => true,
+                };
+
+                if (! $valid) {
+                    $fail('Essa chave PIX não parece válida para o tipo escolhido.');
+                }
+            }],
             'cep' => ['required', 'string', 'size:8'],
             'street' => ['required', 'string', 'max:255'],
             'number' => ['required', 'string', 'max:50'],
@@ -98,6 +116,7 @@ class OrganizationController extends Controller
             'owner_document.size' => 'Informe um CPF válido.',
             'owner_birthdate.before' => 'A data de nascimento precisa ser anterior a hoje.',
             'instagram.regex' => 'Informe só o usuário do Instagram, por exemplo @suaclinica.',
+            'pix_key_type.required_with' => 'Escolha o tipo da chave PIX.',
             'state.size' => 'Use a sigla do estado, com 2 letras.',
             'technical_manager_name.required' => 'Informe o responsável técnico da clínica.',
             'technical_manager_document.required' => 'Informe o registro profissional do responsável técnico (CREFITO).',
@@ -112,6 +131,32 @@ class OrganizationController extends Controller
                 ? 'Cadastro concluído. Obrigado!'
                 : 'Dados da organização atualizados.',
         );
+    }
+
+    /**
+     * Store the PIX key the way PIX expects it: CPF/CNPJ as digits, phone as
+     * +55 with area code, e-mail and random keys in lowercase.
+     */
+    private function normalizePixKey(?string $type, string $key): ?string
+    {
+        $key = trim($key);
+
+        if ($key === '') {
+            return null;
+        }
+
+        $digits = preg_replace('/\D/', '', $key);
+
+        return match ($type) {
+            'cpf_cnpj' => $digits,
+            'phone' => match (true) {
+                strlen($digits) === 10 || strlen($digits) === 11 => '+55'.$digits,
+                str_starts_with($digits, '55') => '+'.$digits,
+                default => $key,
+            },
+            'email', 'random' => strtolower($key),
+            default => $key,
+        };
     }
 
     /**

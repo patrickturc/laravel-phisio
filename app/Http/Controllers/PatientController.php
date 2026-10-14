@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\ClinicalProtocol;
 use App\Models\CommercialPlan;
+use App\Models\FinancialTransaction;
 use App\Models\Patient;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -107,7 +108,7 @@ class PatientController extends Controller
         $today = now()->toDateString();
         $financialSummary = [
             'total_received' => (float) $patient->financialTransactions->where('type', 'income')->where('status', 'paid')->sum('amount'),
-            'total_pending' => (float) $patient->financialTransactions->where('type', 'income')->where('status', 'pending')->sum('amount'),
+            'total_pending' => (float) $patient->financialTransactions->where('type', 'income')->whereIn('status', FinancialTransaction::OPEN_STATUSES)->sum('amount'),
             'overdue_amount' => (float) $patient->financialTransactions
                 ->where('type', 'income')
                 ->where('status', 'pending')
@@ -116,7 +117,7 @@ class PatientController extends Controller
         ];
 
         $protocols = ClinicalProtocol::orderBy('name')->get(['id', 'name', 'total_sessions']);
-        $commercialPlans = CommercialPlan::orderBy('name')->get(['id', 'name', 'price', 'duration_months']);
+        $commercialPlans = CommercialPlan::orderBy('name')->get(['id', 'name', 'price', 'billing_cycle', 'duration_months']);
 
         return Inertia::render('patients/show', [
             'patient' => $patient,

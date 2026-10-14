@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Str;
 
 class Tenant extends Model
 {
@@ -28,6 +29,8 @@ class Tenant extends Model
         'website',
         'bio',
         'instagram',
+        'pix_key_type',
+        'pix_key',
         'address',
         'cep',
         'street',
@@ -131,10 +134,11 @@ class Tenant extends Model
      */
     /**
      * Built-in WhatsApp messages, used until the clinic saves its own:
-     * birthday and enrollment anniversary (celebrations page) and the class
-     * reminder (agenda). Placeholders: {nome}, {primeiro_nome}, {idade},
-     * {anos}, {clinica}, and for the reminder {data}, {horario},
-     * {profissional} and {sala}.
+     * birthday and enrollment anniversary (celebrations page), the class
+     * reminder (agenda) and the billing reminders before, on and after the
+     * due date. Placeholders: {nome}, {primeiro_nome}, {idade}, {anos},
+     * {clinica}; class reminder {data}, {horario}, {profissional}, {sala};
+     * billing {valor}, {vencimento}, {dias}, {referente}, {pix}.
      *
      * @var array<string, string>
      */
@@ -142,12 +146,15 @@ class Tenant extends Model
         'birthday' => "Olá, {primeiro_nome}! 🎉\n\nToda a equipe da {clinica} deseja um feliz aniversário! Que seu novo ciclo venha com muita saúde, disposição e movimento.\n\nUm grande abraço!",
         'enrollment' => "Olá, {primeiro_nome}! 💚\n\nHoje completamos {anos} de parceria aqui na {clinica}. Obrigado pela confiança e por fazer parte da nossa história.\n\nVamos juntos para o próximo ano!",
         'reminder' => "Olá, {primeiro_nome}! 😊\n\nPassando para lembrar da sua aula na {clinica}: {data}, às {horario}, com {profissional}.\n\nPode confirmar sua presença respondendo esta mensagem?",
+        'billing_before' => "Olá, {primeiro_nome}! 😊\n\nPassando para lembrar que o pagamento de {valor} referente a {referente} vence em {dias}, no dia {vencimento}.{pix}\n\nQualquer dúvida, é só chamar!",
+        'billing_due' => "Olá, {primeiro_nome}! 😊\n\nHoje vence o pagamento de {valor} referente a {referente}.{pix}\n\nObrigado!",
+        'billing_overdue' => "Olá, {primeiro_nome}, tudo bem?\n\nO pagamento de {valor} referente a {referente}, com vencimento em {vencimento}, ainda está em aberto.{pix}\n\nSe já pagou, é só nos enviar o comprovante e desconsiderar esta mensagem. 🙏",
     ];
 
     /**
      * The clinic's message templates, falling back to the defaults.
      *
-     * @return array{birthday: string, enrollment: string, reminder: string}
+     * @return array{birthday: string, enrollment: string, reminder: string, billing_before: string, billing_due: string, billing_overdue: string}
      */
     public function messageTemplates(): array
     {
@@ -206,6 +213,54 @@ class Tenant extends Model
     public function slotCapacity(): int
     {
         return (int) $this->scheduleSettings()['slot_capacity'];
+    }
+
+    /**
+     * PIX "copia e cola" for the clinic's key: a static BR Code (EMV format of
+     * the Banco Central), optionally with the amount filled in. Null when the
+     * clinic has no PIX key.
+     */
+    public function pixPayload(?float $amount = null): ?string
+    {
+        if (! $this->pix_key) {
+            return null;
+        }
+
+        $field = fn (string $id, string $value): string => $id.str_pad((string) strlen($value), 2, '0', STR_PAD_LEFT).$value;
+        // Name and city must be plain ASCII and short.
+        $plain = fn (string $value, int $max): string => substr(trim(preg_replace('/[^A-Za-z0-9 ]/', '', Str::ascii($value))), 0, $max) ?: 'X';
+
+        $payload = $field('00', '01')
+            .$field('26', $field('00', 'br.gov.bcb.pix').$field('01', $this->pix_key))
+            .$field('52', '0000')
+            .$field('53', '986')
+            .($amount !== null && $amount > 0 ? $field('54', number_format($amount, 2, '.', '')) : '')
+            .$field('58', 'BR')
+            .$field('59', $plain($this->legal_name ?: $this->name, 25))
+            .$field('60', $plain($this->city ?: 'Brasil', 15))
+            .$field('62', $field('05', '***'))
+            .'6304';
+
+        return $payload.self::pixChecksum($payload);
+    }
+
+    /**
+     * CRC16-CCITT (polynomial 0x1021, initial 0xFFFF) that closes a BR Code.
+     */
+    private static function pixChecksum(string $payload): string
+    {
+        $crc = 0xFFFF;
+
+        for ($i = 0; $i < strlen($payload); $i++) {
+            $crc ^= ord($payload[$i]) << 8;
+
+            for ($bit = 0; $bit < 8; $bit++) {
+                $crc = ($crc & 0x8000) ? (($crc << 1) ^ 0x1021) : ($crc << 1);
+                $crc &= 0xFFFF;
+            }
+        }
+
+        return strtoupper(str_pad(dechex($crc), 4, '0', STR_PAD_LEFT));
     }
 
     public const REQUIRED_PROFILE_FIELDS = [

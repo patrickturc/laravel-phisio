@@ -15,6 +15,7 @@ class CommercialPlan extends Model
         'name',
         'category',
         'price',
+        'billing_cycle',
         'duration_months',
         'sessions_total',
         'sessions_per_week',

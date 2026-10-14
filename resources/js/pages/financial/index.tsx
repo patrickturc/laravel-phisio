@@ -20,6 +20,8 @@ import {
 } from 'lucide-react';
 import type { FormEvent } from 'react';
 import { useState, useMemo } from 'react';
+import { MarkPaidDialog, WriteOffDialog } from '@/components/charge-dialogs';
+import type { ChargeLike } from '@/components/charge-dialogs';
 import { useConfirmModal } from '@/components/confirm-modal';
 import { Pagination } from '@/components/pagination';
 import {
@@ -30,6 +32,12 @@ import {
 } from '@/components/ui/sheet';
 import { usePermissions } from '@/hooks/use-permissions';
 import AppLayout from '@/layouts/app-layout';
+import {
+    CHARGE_STATUS,
+    PAYMENT_METHODS,
+    paymentMethodLabel,
+} from '@/lib/billing';
+import type { ChargeStatus } from '@/lib/billing';
 import type { BreadcrumbItem } from '@/types';
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -125,6 +133,8 @@ export default function FinancialIndex({
 
     const [sheetOpen, setSheetOpen] = useState(false);
     const [editingTransaction, setEditingTransaction] = useState<any>(null);
+    const [markPaid, setMarkPaid] = useState<ChargeLike | null>(null);
+    const [writeOff, setWriteOff] = useState<ChargeLike | null>(null);
 
     const { data, setData, post, put, processing, errors, reset, clearErrors } =
         useForm({
@@ -134,6 +144,7 @@ export default function FinancialIndex({
             description: '',
             category: '',
             status: 'paid',
+            payment_method: '',
             patient_id: '',
             due_date: '',
         });
@@ -151,6 +162,7 @@ export default function FinancialIndex({
             description: '',
             category: '',
             status: 'paid',
+            payment_method: '',
             patient_id: '',
             due_date: '',
         });
@@ -168,6 +180,7 @@ export default function FinancialIndex({
             description: t.description || '',
             category: t.category || '',
             status: t.status || 'paid',
+            payment_method: t.payment_method || '',
             patient_id: t.patient_id || '',
             due_date: t.due_date ? t.due_date.split('T')[0] : '',
         });
@@ -255,45 +268,36 @@ export default function FinancialIndex({
         a.remove();
     }
 
-    async function handleMarkPaid(t: any) {
-        const verb = t.type === 'income' ? 'recebido' : 'pago';
-        const confirmed = await confirm({
-            title:
-                t.type === 'income'
-                    ? 'Confirmar recebimento'
-                    : 'Confirmar pagamento',
-            message: `Confirma que "${t.description}" (${formatCurrency(t.amount)}) foi ${verb}?`,
-            confirmLabel: 'Confirmar',
-            variant: 'warning',
-        });
-        if (!confirmed) return;
+    function handleMarkPaid(t: any) {
+        setMarkPaid(t);
+    }
 
+    async function offerReceipt(t: ChargeLike) {
+        // Recibo only for received payments (income), and only if asked.
+        if (t.type !== 'income') return;
+
+        const wantsReceipt = await confirm({
+            title: 'Gerar recibo?',
+            message: 'Deseja gerar o recibo deste pagamento para o paciente?',
+            confirmLabel: 'Gerar recibo',
+        });
+        if (wantsReceipt) openReceipt(t.id);
+    }
+
+    function handleInReview(t: any) {
         router.post(
-            `/financial/${t.id}/mark-paid`,
+            `/financial/${t.id}/mark-in-review`,
             {},
-            {
-                preserveState: true,
-                preserveScroll: true,
-                onSuccess: async () => {
-                    // Recibo only for received payments (income), and only if asked.
-                    if (t.type !== 'income') return;
-                    const wantsReceipt = await confirm({
-                        title: 'Gerar recibo?',
-                        message:
-                            'Deseja gerar o recibo deste pagamento para o paciente?',
-                        confirmLabel: 'Gerar recibo',
-                    });
-                    if (wantsReceipt) openReceipt(t.id);
-                },
-            },
+            { preserveState: true, preserveScroll: true },
         );
     }
 
     async function handleRevert(t: any) {
         const confirmed = await confirm({
-            title: 'Estornar pagamento',
-            message: `Desfazer a baixa de "${t.description}" (${formatCurrency(t.amount)})? Ela voltará para pendente.`,
-            confirmLabel: 'Estornar',
+            title:
+                t.status === 'paid' ? 'Estornar pagamento' : 'Reabrir cobrança',
+            message: `"${t.description}" (${formatCurrency(t.amount)}) voltará para pendente.`,
+            confirmLabel: t.status === 'paid' ? 'Estornar' : 'Reabrir',
             variant: 'warning',
         });
         if (confirmed)
@@ -710,7 +714,9 @@ export default function FinancialIndex({
                         <option value="">Todos Status</option>
                         <option value="paid">Pago</option>
                         <option value="pending">Pendente</option>
+                        <option value="in_review">Em análise</option>
                         <option value="overdue">Vencidas</option>
+                        <option value="written_off">Perda</option>
                     </select>
                 </div>
 
@@ -786,6 +792,8 @@ export default function FinancialIndex({
                                                                                 'UTC',
                                                                         },
                                                                     )}
+                                                                    {t.payment_method &&
+                                                                        ` · ${paymentMethodLabel(t.payment_method)}`}
                                                                 </div>
                                                             )}
                                                     </div>
@@ -839,13 +847,13 @@ export default function FinancialIndex({
                                                     <span className="rounded-md bg-red-100 px-2.5 py-1 text-xs font-semibold text-red-700 dark:bg-red-900/30 dark:text-red-400">
                                                         Vencido
                                                     </span>
-                                                ) : t.status === 'paid' ? (
-                                                    <span className="rounded-md bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
-                                                        Pago
-                                                    </span>
                                                 ) : (
-                                                    <span className="rounded-md bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
-                                                        Pendente
+                                                    <span
+                                                        className={`rounded-md px-2.5 py-1 text-xs font-semibold ${CHARGE_STATUS[t.status as ChargeStatus]?.className ?? ''}`}
+                                                    >
+                                                        {CHARGE_STATUS[
+                                                            t.status as ChargeStatus
+                                                        ]?.label ?? t.status}
                                                     </span>
                                                 )}
                                             </td>
@@ -855,7 +863,9 @@ export default function FinancialIndex({
                                                         'financial.transactions.edit',
                                                     ) &&
                                                         (t.status ===
-                                                        'pending' ? (
+                                                            'pending' ||
+                                                            t.status ===
+                                                                'in_review') && (
                                                             <button
                                                                 onClick={() =>
                                                                     handleMarkPaid(
@@ -866,7 +876,49 @@ export default function FinancialIndex({
                                                             >
                                                                 Pago
                                                             </button>
-                                                        ) : (
+                                                        )}
+                                                    {can(
+                                                        'financial.transactions.edit',
+                                                    ) &&
+                                                        t.type === 'income' &&
+                                                        t.status ===
+                                                            'pending' && (
+                                                            <button
+                                                                onClick={() =>
+                                                                    handleInReview(
+                                                                        t,
+                                                                    )
+                                                                }
+                                                                className="rounded-lg bg-sky-100 px-3 py-1.5 text-xs font-semibold text-sky-700 transition-colors hover:bg-sky-200 dark:bg-sky-900/30 dark:text-sky-400 dark:hover:bg-sky-900/50"
+                                                                title="O paciente informou que pagou; falta conferir"
+                                                            >
+                                                                Em análise
+                                                            </button>
+                                                        )}
+                                                    {can(
+                                                        'financial.transactions.edit',
+                                                    ) &&
+                                                        t.type === 'income' &&
+                                                        (t.status ===
+                                                            'pending' ||
+                                                            t.status ===
+                                                                'in_review') && (
+                                                            <button
+                                                                onClick={() =>
+                                                                    setWriteOff(
+                                                                        t,
+                                                                    )
+                                                                }
+                                                                className="rounded-lg bg-muted px-3 py-1.5 text-xs font-semibold text-muted-foreground transition-colors hover:bg-muted/70"
+                                                            >
+                                                                Perda
+                                                            </button>
+                                                        )}
+                                                    {can(
+                                                        'financial.transactions.edit',
+                                                    ) &&
+                                                        t.status !==
+                                                            'pending' && (
                                                             <button
                                                                 onClick={() =>
                                                                     handleRevert(
@@ -875,9 +927,12 @@ export default function FinancialIndex({
                                                                 }
                                                                 className="rounded-lg bg-amber-100 px-3 py-1.5 text-xs font-semibold text-amber-700 transition-colors hover:bg-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:hover:bg-amber-900/50"
                                                             >
-                                                                Cancelar Pgmto
+                                                                {t.status ===
+                                                                'paid'
+                                                                    ? 'Estornar'
+                                                                    : 'Reabrir'}
                                                             </button>
-                                                        ))}
+                                                        )}
                                                     {t.status === 'paid' &&
                                                         t.type === 'income' && (
                                                             <button
@@ -1128,6 +1183,17 @@ export default function FinancialIndex({
                                     <option value="pending">
                                         Pendente (A receber / A pagar)
                                     </option>
+                                    {data.type === 'income' && (
+                                        <>
+                                            <option value="in_review">
+                                                Em análise (paciente informou
+                                                que pagou)
+                                            </option>
+                                            <option value="written_off">
+                                                Perda / inadimplente
+                                            </option>
+                                        </>
+                                    )}
                                 </select>
                                 {errors.status && (
                                     <p className="mt-1 text-sm text-red-500">
@@ -1136,7 +1202,36 @@ export default function FinancialIndex({
                                 )}
                             </div>
 
-                            {data.status === 'pending' && (
+                            {(data.status === 'paid' ||
+                                data.status === 'in_review') && (
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium text-foreground">
+                                        Forma de pagamento
+                                    </label>
+                                    <select
+                                        value={data.payment_method}
+                                        onChange={(e) =>
+                                            setData(
+                                                'payment_method',
+                                                e.target.value,
+                                            )
+                                        }
+                                        className="h-11 w-full rounded-xl border border-border bg-background px-3 text-sm shadow-sm focus:ring-2 focus:ring-primary/50 focus:outline-none"
+                                    >
+                                        <option value="">Não informar</option>
+                                        {PAYMENT_METHODS.map((method) => (
+                                            <option
+                                                key={method.value}
+                                                value={method.value}
+                                            >
+                                                {method.label}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                            )}
+
+                            {data.status !== 'paid' && (
                                 <div className="space-y-2">
                                     <label className="text-sm font-medium text-foreground">
                                         Data de Vencimento
@@ -1224,6 +1319,21 @@ export default function FinancialIndex({
                 </SheetContent>
             </Sheet>
             {modal}
+            {markPaid && (
+                <MarkPaidDialog
+                    key={markPaid.id}
+                    charge={markPaid}
+                    onClose={() => setMarkPaid(null)}
+                    onPaid={offerReceipt}
+                />
+            )}
+            {writeOff && (
+                <WriteOffDialog
+                    key={writeOff.id}
+                    charge={writeOff}
+                    onClose={() => setWriteOff(null)}
+                />
+            )}
         </AppLayout>
     );
 }

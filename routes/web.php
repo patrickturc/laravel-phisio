@@ -204,6 +204,9 @@ Route::middleware(['auth', 'verified', 'tenant.active'])->group(function () use 
         ->name('recurring-bookings.destroy');
 
     // Agenda settings: business hours, slot capacity, professional colours
+    Route::get('settings/schedule', [ScheduleSettingsController::class, 'edit'])
+        ->middleware('permission:appointments.settings.manage')
+        ->name('schedule-settings.edit');
     Route::patch('settings/schedule', [ScheduleSettingsController::class, 'update'])
         ->middleware('permission:appointments.settings.manage')
         ->name('schedule-settings.update');
@@ -224,6 +227,12 @@ Route::middleware(['auth', 'verified', 'tenant.active'])->group(function () use 
     Route::post('memberships/{membership}/renew', [MembershipController::class, 'renew'])
         ->middleware('permission:memberships.manage.create')
         ->name('memberships.renew');
+    Route::post('memberships/{membership}/pause', [MembershipController::class, 'pause'])
+        ->middleware('permission:memberships.manage.edit')
+        ->name('memberships.pause');
+    Route::post('memberships/{membership}/resume', [MembershipController::class, 'resume'])
+        ->middleware('permission:memberships.manage.edit')
+        ->name('memberships.resume');
     $resourceWithPermissions('memberships', MembershipController::class, 'memberships.manage');
 
     // Financial
@@ -236,6 +245,18 @@ Route::middleware(['auth', 'verified', 'tenant.active'])->group(function () use 
     Route::post('financial/{financial}/mark-pending', [FinancialTransactionController::class, 'markAsPending'])
         ->middleware('permission:financial.transactions.edit')
         ->name('financial.mark-pending');
+    Route::post('financial/{financial}/mark-in-review', [FinancialTransactionController::class, 'markInReview'])
+        ->middleware('permission:financial.transactions.edit')
+        ->name('financial.mark-in-review');
+    Route::post('financial/{financial}/write-off', [FinancialTransactionController::class, 'writeOff'])
+        ->middleware('permission:financial.transactions.edit')
+        ->name('financial.write-off');
+    Route::post('financial/{financial}/whatsapp-reminder', [FinancialTransactionController::class, 'whatsappReminder'])
+        ->middleware('permission:financial.transactions.edit')
+        ->name('financial.whatsapp-reminder');
+    Route::get('financial/{financial}/pix', [FinancialTransactionController::class, 'pix'])
+        ->middleware('permission:financial.transactions.view')
+        ->name('financial.pix');
     Route::get('financial/{financial}/receipt', [FinancialTransactionController::class, 'receipt'])
         ->middleware('permission:financial.transactions.view')
         ->name('financial.receipt');

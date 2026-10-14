@@ -1,17 +1,25 @@
 import { Link } from '@inertiajs/react';
 import { useCurrentUrl } from '@/hooks/use-current-url';
+import { usePermissions } from '@/hooks/use-permissions';
 
 const TABS = [
-    { title: 'Informações', href: '/settings/organization' },
-    { title: 'Plano', href: '/settings/billing' },
+    { title: 'Informações', href: '/settings/organization', permission: null },
+    {
+        title: 'Agenda',
+        href: '/settings/schedule',
+        permission: 'appointments.settings.manage',
+    },
+    { title: 'Plano', href: '/settings/billing', permission: null },
 ];
 
 /**
- * Shared header of the clinic profile pages: the profile form and the plan /
- * billing page are two tabs of the same "Perfil da Clínica".
+ * Shared header of the clinic profile pages: the profile form, the agenda
+ * settings and the plan / billing page are tabs of the same "Perfil da
+ * Clínica".
  */
 export function OrganizationHeader() {
     const { isCurrentUrl } = useCurrentUrl();
+    const { can } = usePermissions();
 
     return (
         <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
@@ -24,7 +32,9 @@ export function OrganizationHeader() {
                 </p>
             </div>
             <nav className="flex w-fit rounded-xl border border-border/50 bg-muted/50 p-1">
-                {TABS.map((tab) => (
+                {TABS.filter(
+                    (tab) => tab.permission === null || can(tab.permission),
+                ).map((tab) => (
                     <Link
                         key={tab.href}
                         href={tab.href}
