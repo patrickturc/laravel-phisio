@@ -8,7 +8,7 @@ import {
     Calendar as CalendarIcon,
     ArrowUpRight,
 } from 'lucide-react';
-import { AlertCircle, CheckCircle2, UserMinus } from 'lucide-react';
+import { AlertCircle, UserMinus } from 'lucide-react';
 import { useState } from 'react';
 import EvolutionFormSheet from '@/components/EvolutionFormSheet';
 import { MissedAttendanceModal } from '@/components/missed-attendance-modal';
@@ -39,6 +39,7 @@ interface PendingEvolution {
     appointment_date: string;
     start_time: string;
     title: string;
+    professional_name: string | null;
 }
 
 export default function EvolutionsIndex({
@@ -88,9 +89,6 @@ export default function EvolutionsIndex({
 
     const hasFilters = filters.search || filters.tipo || filters.tab;
 
-    const [observations, setObservations] = useState<Record<string, string>>(
-        {},
-    );
     const [isSubmitting, setIsSubmitting] = useState<string | null>(null);
     const [isSheetOpen, setIsSheetOpen] = useState(false);
 
@@ -101,33 +99,10 @@ export default function EvolutionsIndex({
         return true;
     });
 
-    function handleSaveSimple(pending: PendingEvolution) {
-        if (!observations[pending.id]?.trim()) return;
-        setIsSubmitting(pending.id);
-
-        router.post(
-            '/evolutions',
-            {
-                evolution_type: 'simple',
-                paciente_id: pending.patient_id,
-                agendamento_id: pending.appointment_id,
-                data_atendimento: pending.appointment_date,
-                observacoes: observations[pending.id],
-            },
-            {
-                preserveScroll: true,
-                onSuccess: () => {
-                    setIsSubmitting(null);
-                    setObservations((prev) => {
-                        const next = { ...prev };
-                        delete next[pending.id];
-                        return next;
-                    });
-                },
-                onError: () => setIsSubmitting(null),
-            },
-        );
-    }
+    // The pending class whose evolution is being written in the side sheet.
+    const [pendingTarget, setPendingTarget] = useState<PendingEvolution | null>(
+        null,
+    );
 
     const [missedFor, setMissedFor] = useState<PendingEvolution | null>(null);
 
@@ -288,108 +263,129 @@ export default function EvolutionsIndex({
                                     </span>
                                 </div>
 
-                                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-                                    {filteredPendingEvolutions.map(
-                                        (pending) => (
-                                            <div
-                                                key={pending.id}
-                                                className="relative flex flex-col overflow-hidden rounded-2xl border border-amber-200/50 bg-amber-50/50 p-5 shadow-sm dark:border-amber-900/50 dark:bg-amber-950/10"
-                                            >
-                                                <div className="absolute top-0 right-0 -z-10 h-24 w-24 rounded-bl-[100px] bg-amber-500/5" />
-
-                                                <div className="mb-3 flex items-start justify-between">
-                                                    <div>
-                                                        <h3
-                                                            className="truncate pr-2 text-base font-bold text-foreground"
-                                                            title={
-                                                                pending.patient_name
+                                <div className="overflow-hidden rounded-2xl border border-amber-200/60 bg-card/60 shadow-sm dark:border-amber-900/50">
+                                    <div className="max-h-[420px] overflow-y-auto">
+                                        <table className="w-full text-left text-sm">
+                                            <thead className="sticky top-0 z-10 border-b border-amber-200/60 bg-amber-50 text-xs text-amber-800 uppercase dark:border-amber-900/50 dark:bg-amber-950/60 dark:text-amber-300">
+                                                <tr>
+                                                    <th className="px-4 py-3 font-semibold">
+                                                        Paciente
+                                                    </th>
+                                                    <th className="hidden px-4 py-3 font-semibold md:table-cell">
+                                                        Aula
+                                                    </th>
+                                                    <th className="px-4 py-3 font-semibold">
+                                                        Data
+                                                    </th>
+                                                    <th className="hidden px-4 py-3 font-semibold lg:table-cell">
+                                                        Profissional
+                                                    </th>
+                                                    <th className="w-40 px-4 py-3" />
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-border/50">
+                                                {filteredPendingEvolutions.map(
+                                                    (pending) => (
+                                                        <tr
+                                                            key={pending.id}
+                                                            onClick={() =>
+                                                                can(
+                                                                    'evolutions.manage.create',
+                                                                ) &&
+                                                                setPendingTarget(
+                                                                    pending,
+                                                                )
                                                             }
+                                                            className={`transition-colors hover:bg-amber-50/60 dark:hover:bg-amber-950/20 ${can('evolutions.manage.create') ? 'cursor-pointer' : ''}`}
                                                         >
-                                                            {
-                                                                pending.patient_name
-                                                            }
-                                                        </h3>
-                                                        <p className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
-                                                            <span className="font-medium text-amber-700/80 dark:text-amber-400/80">
+                                                            <td className="px-4 py-3">
+                                                                <p className="font-semibold text-foreground">
+                                                                    {
+                                                                        pending.patient_name
+                                                                    }
+                                                                </p>
+                                                                <p className="text-xs text-muted-foreground">
+                                                                    {pending.patient_type ===
+                                                                    'pilates'
+                                                                        ? 'Pilates'
+                                                                        : 'Fisioterapia'}
+                                                                </p>
+                                                            </td>
+                                                            <td className="hidden px-4 py-3 text-muted-foreground md:table-cell">
                                                                 {pending.title}
-                                                            </span>
-                                                            <span>&bull;</span>
-                                                            <span>
+                                                            </td>
+                                                            <td className="px-4 py-3 whitespace-nowrap">
                                                                 {new Date(
                                                                     pending.appointment_date +
                                                                         'T00:00:00',
                                                                 ).toLocaleDateString(
                                                                     'pt-BR',
+                                                                    {
+                                                                        weekday:
+                                                                            'short',
+                                                                        day: '2-digit',
+                                                                        month: '2-digit',
+                                                                    },
                                                                 )}{' '}
-                                                                às{' '}
-                                                                {
-                                                                    pending.start_time
-                                                                }
-                                                            </span>
-                                                        </p>
-                                                    </div>
-                                                </div>
-
-                                                <textarea
-                                                    placeholder="Observações da aula..."
-                                                    value={
-                                                        observations[
-                                                            pending.id
-                                                        ] || ''
-                                                    }
-                                                    onChange={(e) =>
-                                                        setObservations({
-                                                            ...observations,
-                                                            [pending.id]:
-                                                                e.target.value,
-                                                        })
-                                                    }
-                                                    className="mb-3 h-24 w-full resize-none rounded-xl border border-amber-200/50 bg-background/50 p-3 text-sm transition-all focus:ring-2 focus:ring-amber-500/50 focus:outline-none dark:border-amber-800/50"
-                                                />
-
-                                                <div className="mt-auto flex items-center gap-2">
-                                                    {can(
-                                                        'evolutions.manage.create',
-                                                    ) && (
-                                                        <button
-                                                            onClick={() =>
-                                                                handleSaveSimple(
-                                                                    pending,
-                                                                )
-                                                            }
-                                                            disabled={
-                                                                isSubmitting ===
-                                                                    pending.id ||
-                                                                !observations[
-                                                                    pending.id
-                                                                ]?.trim()
-                                                            }
-                                                            className="flex h-9 flex-1 items-center justify-center gap-1.5 rounded-lg bg-amber-600 text-sm font-medium text-white transition-colors hover:bg-amber-700 disabled:cursor-not-allowed disabled:opacity-50"
-                                                        >
-                                                            <CheckCircle2 className="size-4" />
-                                                            Salvar
-                                                        </button>
-                                                    )}
-                                                    <button
-                                                        onClick={() =>
-                                                            handleMarkMissed(
-                                                                pending,
-                                                            )
-                                                        }
-                                                        disabled={
-                                                            isSubmitting ===
-                                                            pending.id +
-                                                                '_missed'
-                                                        }
-                                                        className="flex h-9 items-center justify-center gap-1.5 rounded-lg border border-border bg-background px-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted disabled:opacity-50"
-                                                        title="Marcar como Falta"
-                                                    >
-                                                        <UserMinus className="size-4" />
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        ),
-                                    )}
+                                                                <span className="text-muted-foreground">
+                                                                    {
+                                                                        pending.start_time
+                                                                    }
+                                                                </span>
+                                                            </td>
+                                                            <td className="hidden px-4 py-3 text-muted-foreground lg:table-cell">
+                                                                {pending.professional_name ??
+                                                                    '—'}
+                                                            </td>
+                                                            <td className="px-4 py-3">
+                                                                <div className="flex items-center justify-end gap-2">
+                                                                    {can(
+                                                                        'evolutions.manage.create',
+                                                                    ) && (
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={(
+                                                                                e,
+                                                                            ) => {
+                                                                                e.stopPropagation();
+                                                                                setPendingTarget(
+                                                                                    pending,
+                                                                                );
+                                                                            }}
+                                                                            className="flex h-8 items-center gap-1.5 rounded-lg bg-amber-600 px-3 text-xs font-medium text-white transition-colors hover:bg-amber-700"
+                                                                        >
+                                                                            <FileText className="size-3.5" />
+                                                                            Registrar
+                                                                        </button>
+                                                                    )}
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={(
+                                                                            e,
+                                                                        ) => {
+                                                                            e.stopPropagation();
+                                                                            handleMarkMissed(
+                                                                                pending,
+                                                                            );
+                                                                        }}
+                                                                        disabled={
+                                                                            isSubmitting ===
+                                                                            pending.id +
+                                                                                '_missed'
+                                                                        }
+                                                                        className="flex h-8 items-center justify-center rounded-lg border border-border bg-background px-2.5 text-muted-foreground transition-colors hover:bg-muted disabled:opacity-50"
+                                                                        title="Marcar como falta"
+                                                                    >
+                                                                        <UserMinus className="size-4" />
+                                                                    </button>
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                    ),
+                                                )}
+                                            </tbody>
+                                        </table>
+                                    </div>
                                 </div>
                             </motion.div>
                         )}
@@ -558,6 +554,17 @@ export default function EvolutionsIndex({
                 isOpen={isSheetOpen}
                 onOpenChange={setIsSheetOpen}
                 patients={patients}
+                protocols={protocols}
+            />
+
+            {/* Evolution of a pending class, already linked to it. */}
+            <EvolutionFormSheet
+                isOpen={!!pendingTarget}
+                onOpenChange={(open) => !open && setPendingTarget(null)}
+                patientId={pendingTarget?.patient_id}
+                patientType={pendingTarget?.patient_type}
+                appointmentId={pendingTarget?.appointment_id}
+                appointmentDate={pendingTarget?.appointment_date}
                 protocols={protocols}
             />
 

@@ -57,6 +57,8 @@ interface Props {
     protocols?: Array<{ id: string; name: string }>;
     evolution?: Evolution | null; // If provided, we're editing
     appointmentId?: string; // If provided, we're linking to an appointment
+    /** Date of that appointment (Y-m-d); defaults to today. */
+    appointmentDate?: string;
 }
 
 /** Pilates patients default to the structured Pilates model. */
@@ -79,6 +81,7 @@ export default function EvolutionFormSheet({
     protocols = [],
     evolution,
     appointmentId,
+    appointmentDate,
 }: Props) {
     const isEdit = !!evolution;
 
@@ -168,13 +171,24 @@ export default function EvolutionFormSheet({
                 setData((prev) => ({
                     ...prev,
                     paciente_id: patientId,
-                    data_atendimento: new Date().toISOString().split('T')[0],
+                    agendamento_id: appointmentId || '',
+                    data_atendimento:
+                        appointmentDate ||
+                        new Date().toISOString().split('T')[0],
                     tipo_atendimento: 'sessao',
                     evolution_type: defaultTypeFor(patientType),
                 }));
             }
         }
-    }, [isOpen, isEdit, evolution, patientId, patientType]);
+    }, [
+        isOpen,
+        isEdit,
+        evolution,
+        patientId,
+        patientType,
+        appointmentId,
+        appointmentDate,
+    ]);
 
     function setPilatesField<K extends keyof PilatesEvolutionData>(
         key: K,

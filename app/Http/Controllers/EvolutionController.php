@@ -52,7 +52,7 @@ class EvolutionController extends Controller
 
         $recentAppointments = Appointment::with(['patients' => function ($q) {
             $q->wherePivotIn('status', ['scheduled', 'attended']);
-        }, 'groupClass'])
+        }, 'groupClass', 'user:id,name'])
             ->where('appointment_date', '>=', $now->copy()->subDays(14)->toDateString())
             ->where('appointment_date', '<=', $today)
             ->get();
@@ -87,6 +87,7 @@ class EvolutionController extends Controller
                         'appointment_date' => $appointment->appointment_date->format('Y-m-d'),
                         'start_time' => Carbon::parse($appointment->start_time)->format('H:i'),
                         'title' => $appointment->type === 'group' ? ($appointment->groupClass->name ?? $appointment->title ?? 'Turma de Pilates') : 'Pilates/Individual',
+                        'professional_name' => $appointment->user?->name,
                     ];
                 }
             }
