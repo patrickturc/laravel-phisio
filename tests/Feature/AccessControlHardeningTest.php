@@ -101,14 +101,14 @@ test('the front desk sees the patient but not the clinical record or finances', 
     $patient = patientWithRecords($reception->tenant, $reception);
 
     $this->actingAs($reception)
-        ->get(route('patients.show', $patient))
+        ->get(route('patients.index', ['patient' => $patient->id]))
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page
-            ->has('patient.evolutions', 0)
-            ->has('patient.financial_transactions', 0)
-            ->has('patient.memberships', 0)
-            ->where('financialSummary', null)
-            ->where('patient.cpf', '52998224725'));
+            ->has('patientDetails.patient.evolutions', 0)
+            ->has('patientDetails.patient.financial_transactions', 0)
+            ->has('patientDetails.patient.memberships', 0)
+            ->where('patientDetails.financialSummary', null)
+            ->where('patientDetails.patient.cpf', '52998224725'));
 });
 
 test('a professional sees the clinical record but not the finances', function () {
@@ -116,10 +116,10 @@ test('a professional sees the clinical record but not the finances', function ()
     $patient = patientWithRecords($physio->tenant, $physio);
 
     $this->actingAs($physio)
-        ->get(route('patients.show', $patient))
+        ->get(route('patients.index', ['patient' => $patient->id]))
         ->assertInertia(fn (AssertableInertia $page) => $page
-            ->has('patient.evolutions', 1)
-            ->has('patient.financial_transactions', 0));
+            ->has('patientDetails.patient.evolutions', 1)
+            ->has('patientDetails.patient.financial_transactions', 0));
 });
 
 test('personal and health data stay out of every other screen', function () {
@@ -297,4 +297,18 @@ test('a suspended clinic cannot manage its users', function () {
     $admin->tenant->update(['status' => 'suspended']);
 
     $this->actingAs($admin)->get(route('users.index'))->assertRedirect(route('login'));
+});
+
+// ── Calendar sync ────────────────────────────────────────────────────────
+
+test('only users allowed to sync their agenda can create a calendar link', function () {
+    Permission::findOrCreate('calendar.sync.manage', 'web');
+    $reception = User::factory()->create();
+    $physio = userWith(['calendar.sync.manage']);
+
+    $this->actingAs($reception)->post(route('profile.calendar-token.generate'))->assertForbidden();
+    expect($reception->fresh()->calendar_token)->toBeNull();
+
+    $this->actingAs($physio)->post(route('profile.calendar-token.generate'))->assertRedirect();
+    expect($physio->fresh()->calendar_token)->not->toBeNull();
 });

@@ -18,6 +18,7 @@ import {
     AlertTriangle,
 } from 'lucide-react';
 import { useState } from 'react';
+import { PatientLink } from '@/components/patient-link';
 import { usePermissions } from '@/hooks/use-permissions';
 import AppLayout from '@/layouts/app-layout';
 import type { BreadcrumbItem } from '@/types';
@@ -668,9 +669,9 @@ export default function Dashboard({
                     ) : (
                         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
                             {upcomingBirthdays.map((patient) => (
-                                <Link
+                                <PatientLink
                                     key={patient.id}
-                                    href={`/patients/${patient.id}`}
+                                    patientId={patient.id}
                                     className={`flex items-center gap-4 rounded-xl border p-4 transition-all hover:shadow-md ${patient.isToday ? 'border-primary/30 bg-primary/5 ring-1 ring-primary/20' : 'border-border/40 bg-transparent hover:bg-muted/30'}`}
                                 >
                                     <div
@@ -691,7 +692,7 @@ export default function Dashboard({
                                         </p>
                                     </div>
                                     <ChevronRight className="size-4 text-muted-foreground/40" />
-                                </Link>
+                                </PatientLink>
                             ))}
                         </div>
                     )}

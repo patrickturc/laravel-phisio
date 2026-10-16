@@ -1,4 +1,4 @@
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, router } from '@inertiajs/react';
 import {
     Cake,
     CalendarDays,
@@ -12,6 +12,7 @@ import {
     Search,
 } from 'lucide-react';
 import { useState } from 'react';
+import { PatientLink } from '@/components/patient-link';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -347,12 +348,12 @@ export default function CelebrationsIndex({
                                                     {row.day}
                                                 </span>
                                                 <div className="min-w-0">
-                                                    <Link
-                                                        href={`/patients/${row.id}`}
+                                                    <PatientLink
+                                                        patientId={row.id}
                                                         className="block truncate font-semibold hover:text-primary"
                                                     >
                                                         {row.name}
-                                                    </Link>
+                                                    </PatientLink>
                                                     <p className="text-xs text-muted-foreground">
                                                         {tab === 'birthdays'
                                                             ? `Faz ${yearsLabel(row.years)}`

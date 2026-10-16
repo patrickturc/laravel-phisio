@@ -2,6 +2,7 @@ import { Link, router } from '@inertiajs/react';
 import axios from 'axios';
 import { Check, MessageCircle, PencilLine, QrCode } from 'lucide-react';
 import { useState } from 'react';
+import { PatientLink } from '@/components/patient-link';
 import { Button } from '@/components/ui/button';
 import { usePermissions } from '@/hooks/use-permissions';
 import { formatBRL, formatDateBR, renderBillingMessage } from '@/lib/billing';
@@ -252,12 +253,13 @@ export function BillingReminders({
                                 className="flex flex-wrap items-center gap-3 px-5 py-3"
                             >
                                 <div className="min-w-0 flex-1">
-                                    <Link
-                                        href={`/patients/${reminder.patient_id}?tab=financial`}
+                                    <PatientLink
+                                        patientId={reminder.patient_id}
+                                        tab="financial"
                                         className="block truncate text-sm font-semibold hover:text-primary"
                                     >
                                         {reminder.patient_name}
-                                    </Link>
+                                    </PatientLink>
                                     <p className="truncate text-xs text-muted-foreground">
                                         {reminder.reference} · vence{' '}
                                         {formatDateBR(reminder.due_date)}
