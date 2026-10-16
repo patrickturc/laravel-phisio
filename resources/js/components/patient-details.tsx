@@ -1,7 +1,6 @@
-import { Head, Link, router, usePage, useForm } from '@inertiajs/react';
+import { Link, router, useForm } from '@inertiajs/react';
 import { motion } from 'framer-motion';
 import {
-    ArrowLeft,
     Phone,
     MapPin,
     Edit,
@@ -38,7 +37,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { usePermissions } from '@/hooks/use-permissions';
-import AppLayout from '@/layouts/app-layout';
 import { shortDate, WEEKDAY_LONG } from '@/lib/agenda';
 import {
     billingCycleLabel,
@@ -50,12 +48,11 @@ import {
 } from '@/lib/billing';
 import type { ChargeStatus } from '@/lib/billing';
 import { pilatesSummary } from '@/lib/pilates-scales';
-import type { BreadcrumbItem } from '@/types';
-import { AppointmentFormSheet } from '../appointments/appointment-form-sheet';
-import { MembershipFormSheet } from '../memberships/membership-form-sheet';
-import { PatientFormSheet } from './PatientFormSheet';
+import { AppointmentFormSheet } from '@/pages/appointments/appointment-form-sheet';
+import { MembershipFormSheet } from '@/pages/memberships/membership-form-sheet';
+import { PatientFormSheet } from '@/pages/patients/PatientFormSheet';
 
-interface Patient {
+export interface PatientDetailsPatient {
     id: string;
     name: string;
     nickname: string | null;
@@ -147,13 +144,13 @@ interface Patient {
     }>;
 }
 
-interface FinancialSummary {
+export interface FinancialSummary {
     total_received: number;
     total_pending: number;
     overdue_amount: number;
 }
 
-type Tab =
+export type PatientTab =
     | 'info'
     | 'memberships'
     | 'financial'
@@ -161,30 +158,24 @@ type Tab =
     | 'appointments'
     | 'documents';
 
-export default function PatientShow({
+/**
+ * The patient's full record — personal data, memberships, finances, clinical
+ * record, appointments and documents — shown in the patient details modal.
+ */
+export function PatientDetails({
     patient,
     protocols = [],
     commercialPlans = [],
     financialSummary,
+    initialTab = 'info',
 }: {
-    patient: Patient;
+    patient: PatientDetailsPatient;
     protocols?: Array<{ id: string; name: string }>;
     commercialPlans?: any[];
-    financialSummary?: FinancialSummary;
+    financialSummary?: FinancialSummary | null;
+    initialTab?: PatientTab;
 }) {
-    const breadcrumbs: BreadcrumbItem[] = [
-        { title: 'Pacientes', href: '/patients' },
-        {
-            title: patient.nickname || patient.name,
-            href: `/patients/${patient.id}`,
-        },
-    ];
-
-    const { url } = usePage();
-    const queryParams = new URLSearchParams(url.split('?')[1]);
-    const initialTab = (queryParams.get('tab') as Tab) || 'info';
-
-    const [activeTab, setActiveTab] = useState<Tab>(initialTab);
+    const [activeTab, setActiveTab] = useState<PatientTab>(initialTab);
     const [isEvolutionSheetOpen, setIsEvolutionSheetOpen] = useState(false);
     const [editingEvolution, setEditingEvolution] = useState<any>(null);
     const [isAppointmentSheetOpen, setIsAppointmentSheetOpen] = useState(false);
@@ -396,7 +387,7 @@ export default function PatientShow({
         .join(', ');
 
     // Tabs whose data the server only sends to who may see it.
-    const tabPermissions: Partial<Record<Tab, string>> = {
+    const tabPermissions: Partial<Record<PatientTab, string>> = {
         memberships: 'memberships.manage.view',
         financial: 'financial.transactions.view',
         evolutions: 'evolutions.manage.view',
@@ -440,7 +431,7 @@ export default function PatientShow({
                 count: patient.documents?.length,
             },
         ] as {
-            key: Tab;
+            key: PatientTab;
             label: string;
             icon: React.ReactNode;
             count?: number;
@@ -457,18 +448,11 @@ export default function PatientShow({
         : 'info';
 
     return (
-        <AppLayout breadcrumbs={breadcrumbs}>
-            <Head title={patient.name} />
-            <div className="mx-auto flex h-full w-full max-w-5xl flex-1 flex-col gap-6 p-6 md:p-10">
+        <>
+            <div className="flex w-full flex-col gap-6 p-5 md:p-8">
                 {/* Header */}
-                <div className="flex items-start justify-between gap-4">
+                <div className="flex items-start justify-between gap-4 pr-10">
                     <div className="flex items-center gap-4">
-                        <Link
-                            href="/patients"
-                            className="rounded-xl p-2 text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
-                        >
-                            <ArrowLeft className="size-5" />
-                        </Link>
                         <div className="flex items-center gap-4">
                             <div className="flex size-16 items-center justify-center rounded-2xl bg-gradient-to-br from-primary/20 to-emerald-500/20 text-2xl font-bold text-primary shadow-inner">
                                 {(patient.nickname || patient.name)
@@ -1942,6 +1926,6 @@ export default function PatientShow({
                     onPaid={offerReceipt}
                 />
             )}
-        </AppLayout>
+        </>
     );
 }

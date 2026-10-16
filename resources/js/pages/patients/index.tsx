@@ -1,10 +1,12 @@
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, router } from '@inertiajs/react';
 import { motion } from 'framer-motion';
 import { UserPlus, Search, Edit, FileText } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { Pagination } from '@/components/pagination';
+import { PatientLink } from '@/components/patient-link';
 import { usePermissions } from '@/hooks/use-permissions';
 import AppLayout from '@/layouts/app-layout';
+import { openPatientDetails } from '@/lib/patient-details';
 import type { BreadcrumbItem } from '@/types';
 import { PatientFormSheet } from './PatientFormSheet';
 import type { Patient } from './PatientFormSheet';
@@ -185,8 +187,8 @@ export default function PatientsIndex({
                                                 }}
                                                 key={patient.id}
                                                 onClick={() =>
-                                                    router.visit(
-                                                        `/patients/${patient.id}`,
+                                                    openPatientDetails(
+                                                        patient.id,
                                                     )
                                                 }
                                                 className="group cursor-pointer border-b border-border/30 transition-colors hover:bg-muted/30"
@@ -203,15 +205,14 @@ export default function PatientsIndex({
                                                                 .toUpperCase()}
                                                         </div>
                                                         <div className="min-w-0">
-                                                            <Link
-                                                                href={`/patients/${patient.id}`}
-                                                                onClick={(e) =>
-                                                                    e.stopPropagation()
+                                                            <PatientLink
+                                                                patientId={
+                                                                    patient.id
                                                                 }
                                                                 className="block truncate font-medium text-foreground transition-colors hover:text-primary"
                                                             >
                                                                 {patient.name}
-                                                            </Link>
+                                                            </PatientLink>
                                                             {patient.nickname && (
                                                                 <p className="truncate text-xs text-muted-foreground">
                                                                     "
@@ -263,13 +264,15 @@ export default function PatientsIndex({
                                                 </td>
                                                 <td className="px-6 py-4 text-right">
                                                     <div className="flex items-center justify-end gap-1">
-                                                        <Link
-                                                            href={`/patients/${patient.id}`}
+                                                        <PatientLink
+                                                            patientId={
+                                                                patient.id
+                                                            }
                                                             className="rounded-lg p-2.5 text-muted-foreground transition-colors hover:bg-emerald-500/10 hover:text-emerald-500"
-                                                            title="Ver Paciente e Evoluções"
+                                                            title="Ver ficha do paciente"
                                                         >
                                                             <FileText className="size-4" />
-                                                        </Link>
+                                                        </PatientLink>
                                                         {can(
                                                             'patients.manage.edit',
                                                         ) && (

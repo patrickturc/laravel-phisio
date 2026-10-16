@@ -6,6 +6,7 @@ import { AppShell } from '@/components/app-shell';
 import { AppSidebar } from '@/components/app-sidebar';
 import { AppSidebarHeader } from '@/components/app-sidebar-header';
 import { ImpersonationBanner } from '@/components/impersonation-banner';
+import { PatientDetailsModal } from '@/components/patient-details-modal';
 import { ProfileCompletionBanner } from '@/components/profile-completion-banner';
 import { SystemAnnouncementBanner } from '@/components/system-announcement-banner';
 import { TrialBanner } from '@/components/trial-banner';
@@ -38,6 +39,7 @@ export default function AppSidebarLayout({
                 </div>
                 {children}
             </AppContent>
+            <PatientDetailsModal />
             <Toaster
                 position="top-right"
                 richColors

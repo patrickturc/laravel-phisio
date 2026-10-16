@@ -17,6 +17,7 @@ import {
 import { useState } from 'react';
 import { useConfirmModal } from '@/components/confirm-modal';
 import { InlineEdit } from '@/components/inline-edit';
+import { PatientLink } from '@/components/patient-link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -333,9 +334,9 @@ export default function GroupClassShow({
                             <div className="space-y-2">
                                 {groupClass.patients?.length > 0 ? (
                                     groupClass.patients.map((patient: any) => (
-                                        <Link
+                                        <PatientLink
                                             key={patient.id}
-                                            href={`/patients/${patient.id}`}
+                                            patientId={patient.id}
                                             className="group flex items-center gap-3 rounded-xl p-2 transition-colors hover:bg-muted/50"
                                         >
                                             <div className="flex size-10 items-center justify-center rounded-full bg-primary/10 text-sm font-bold text-primary">
@@ -348,7 +349,7 @@ export default function GroupClassShow({
                                                     {patient.name}
                                                 </p>
                                             </div>
-                                        </Link>
+                                        </PatientLink>
                                     ))
                                 ) : (
                                     <div className="rounded-xl border border-dashed border-border bg-muted/30 py-6 text-center">
@@ -508,14 +509,16 @@ export default function GroupClassShow({
                                                                             )
                                                                             .toUpperCase()}
                                                                     </div>
-                                                                    <Link
-                                                                        href={`/patients/${absence.patient_id}`}
+                                                                    <PatientLink
+                                                                        patientId={
+                                                                            absence.patient_id
+                                                                        }
                                                                         className="max-w-[120px] truncate font-medium text-foreground transition-colors hover:text-primary hover:underline"
                                                                     >
                                                                         {
                                                                             absence.patient_name
                                                                         }
-                                                                    </Link>
+                                                                    </PatientLink>
                                                                 </div>
                                                                 <span className="text-muted-foreground">
                                                                     {

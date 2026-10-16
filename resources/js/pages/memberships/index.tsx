@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 import { Pagination } from '@/components/pagination';
+import { PatientLink } from '@/components/patient-link';
 import { usePermissions } from '@/hooks/use-permissions';
 import AppLayout from '@/layouts/app-layout';
 import {
@@ -168,12 +169,14 @@ export default function MembershipsIndex({
                                                 <div className="rounded-md bg-primary/10 p-1.5">
                                                     <User className="size-4 text-primary" />
                                                 </div>
-                                                <Link
-                                                    href={`/patients/${membership.patient_id}`}
+                                                <PatientLink
+                                                    patientId={
+                                                        membership.patient_id
+                                                    }
                                                     className="transition-colors hover:text-primary"
                                                 >
                                                     {membership.patient?.name}
-                                                </Link>
+                                                </PatientLink>
                                             </td>
                                             <td className="hidden px-6 py-4 sm:table-cell">
                                                 <div className="flex items-center gap-1.5 font-medium text-foreground/80">

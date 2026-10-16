@@ -15,7 +15,9 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('settings/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('settings/profile', [ProfileController::class, 'update'])->name('profile.update');
-    Route::post('settings/profile/calendar-token', [ProfileController::class, 'generateCalendarToken'])->name('profile.calendar-token.generate');
+    Route::post('settings/profile/calendar-token', [ProfileController::class, 'generateCalendarToken'])
+        ->middleware('permission:calendar.sync.manage')
+        ->name('profile.calendar-token.generate');
     Route::delete('settings/profile/calendar-token', [ProfileController::class, 'revokeCalendarToken'])->name('profile.calendar-token.revoke');
 });
 

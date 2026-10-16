@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 import { useConfirmModal } from '@/components/confirm-modal';
+import { PatientLink } from '@/components/patient-link';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -403,12 +404,12 @@ export default function MembershipShow({
                                     <User className="size-4 text-primary" />
                                 </div>
                                 {membership.patient ? (
-                                    <Link
-                                        href={`/patients/${membership.patient.id}`}
+                                    <PatientLink
+                                        patientId={membership.patient.id}
                                         className="font-medium text-foreground transition-colors hover:text-primary"
                                     >
                                         {membership.patient.name}
-                                    </Link>
+                                    </PatientLink>
                                 ) : (
                                     <span className="font-medium text-muted-foreground">
                                         —

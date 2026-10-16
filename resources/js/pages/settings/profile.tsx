@@ -8,6 +8,7 @@ import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { usePermissions } from '@/hooks/use-permissions';
 import AppLayout from '@/layouts/app-layout';
 import SettingsLayout from '@/layouts/settings/layout';
 import { edit } from '@/routes/profile';
@@ -29,6 +30,7 @@ export default function Profile({
     status?: string;
 }) {
     const { auth } = usePage().props;
+    const { can } = usePermissions();
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -144,7 +146,12 @@ export default function Profile({
                     </Form>
                 </div>
 
-                <CalendarSync />
+                {/* Without the permission, only an existing link is shown, so it
+                    can still be revoked. */}
+                {(can('calendar.sync.manage') ||
+                    Boolean((auth.user as any).calendar_token)) && (
+                    <CalendarSync />
+                )}
 
                 <DeleteUser />
             </SettingsLayout>

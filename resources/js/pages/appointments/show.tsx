@@ -17,6 +17,7 @@ import { useState } from 'react';
 import { useConfirmModal } from '@/components/confirm-modal';
 import EvolutionFormSheet from '@/components/EvolutionFormSheet';
 import { MissedAttendanceModal } from '@/components/missed-attendance-modal';
+import { PatientLink } from '@/components/patient-link';
 import { Button } from '@/components/ui/button';
 import {
     DropdownMenu,
@@ -276,12 +277,12 @@ export default function AppointmentShow({
                                             {patient.name.charAt(0)}
                                         </div>
                                         <div>
-                                            <Link
-                                                href={`/patients/${patient.id}`}
+                                            <PatientLink
+                                                patientId={patient.id}
                                                 className="text-sm font-semibold hover:underline"
                                             >
                                                 {patient.name}
-                                            </Link>
+                                            </PatientLink>
                                             <div className="mt-0.5 flex flex-wrap items-center gap-1">
                                                 <span
                                                     className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold ${pivotStatusInfo[pStatus].color}`}

@@ -2,9 +2,12 @@
 
 namespace App\Http\Middleware;
 
+use App\Actions\BuildPatientDetails;
+use App\Models\Patient;
 use App\Models\SystemAnnouncement;
 use App\Models\Tenant;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Inertia\Middleware;
 
 class HandleInertiaRequests extends Middleware
@@ -49,6 +52,20 @@ class HandleInertiaRequests extends Middleware
                     'is_dev_admin' => $request->user()->is_dev_admin,
                 ]) : null,
             ],
+            // The patient details modal, open on any screen while the URL
+            // carries ?patient={id}. Only computed when asked for.
+            'patientDetails' => function () use ($request) {
+                $patientId = $request->query('patient');
+                $user = $request->user();
+
+                if (! is_string($patientId) || ! Str::isUuid($patientId) || ! $user?->tenant_id || ! $user->can('patients.manage.view')) {
+                    return null;
+                }
+
+                $patient = Patient::where('tenant_id', $user->tenant_id)->find($patientId);
+
+                return $patient ? app(BuildPatientDetails::class)($patient, $user) : null;
+            },
             'trial' => function () use ($request) {
                 $tenant = $request->user()?->tenant;
 

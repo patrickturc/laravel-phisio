@@ -1,5 +1,5 @@
 import { Head, useForm, router } from '@inertiajs/react';
-import { Plus, Edit, Trash2, ShieldCheck } from 'lucide-react';
+import { AlertTriangle, Plus, Edit, Trash2, ShieldCheck } from 'lucide-react';
 import { useState } from 'react';
 import { useConfirmModal } from '@/components/confirm-modal';
 import AppLayout from '@/layouts/app-layout';
@@ -10,93 +10,378 @@ const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Perfis de Acesso', href: '/settings/roles' },
 ];
 
-// Translations for module group names
-const moduleLabels: Record<string, string> = {
-    dashboard: 'Painel Inicial',
-    patients: 'Pacientes',
-    appointments: 'Agenda',
-    group_classes: 'Turmas',
-    evolutions: 'Evoluções',
-    treatment_plans: 'Protocolos Clínicos',
-    memberships: 'Matrículas',
-    commercial_plans: 'Planos Comerciais',
-    financial: 'Financeiro',
-    recurring_expenses: 'Gastos Recorrentes',
-    reports: 'Relatórios',
-    calendar: 'Sincronização de Agenda',
-    settings: 'Configurações',
+interface PermissionText {
+    label: string;
+    description: string;
+    /** Shown in amber: sensitive data or an action that is hard to undo. */
+    warning?: string;
+}
+
+// Module group names, with what the module covers and who usually needs it.
+const moduleLabels: Record<string, { label: string; description: string }> = {
+    dashboard: {
+        label: 'Painel Inicial',
+        description: 'Primeira tela depois do login, com o resumo do dia.',
+    },
+    patients: {
+        label: 'Pacientes',
+        description:
+            'Cadastro e ficha de cada paciente. Quase toda a equipe precisa ver.',
+    },
+    appointments: {
+        label: 'Agenda',
+        description:
+            'Aulas, sessões e horários fixos de todos os profissionais.',
+    },
+    group_classes: {
+        label: 'Turmas',
+        description: 'Turmas com dia, horário e alunos fixos.',
+    },
+    evolutions: {
+        label: 'Prontuário',
+        description:
+            'Evoluções clínicas de cada atendimento. Normalmente só para fisioterapeutas e instrutores.',
+    },
+    treatment_plans: {
+        label: 'Protocolos Clínicos',
+        description: 'Modelos de tratamento usados ao registrar evoluções.',
+    },
+    memberships: {
+        label: 'Matrículas',
+        description:
+            'O plano que cada paciente contratou, com valor, vigência e sessões.',
+    },
+    commercial_plans: {
+        label: 'Planos e Pacotes',
+        description: 'A tabela de planos e preços que a clínica vende.',
+    },
+    financial: {
+        label: 'Financeiro',
+        description:
+            'Dinheiro que entra e sai: mensalidades, cobranças e despesas.',
+    },
+    recurring_expenses: {
+        label: 'Gastos Recorrentes',
+        description:
+            'Despesas fixas, como aluguel e internet, lançadas automaticamente.',
+    },
+    reports: {
+        label: 'Relatórios',
+        description: 'Números de pacientes e atendimentos por período.',
+    },
+    calendar: {
+        label: 'Agenda no Celular',
+        description:
+            'Levar os próprios atendimentos para o Google Agenda, Apple ou Outlook.',
+    },
+    professional: {
+        label: 'Atendimento',
+        description: 'Define quem atende pacientes na clínica.',
+    },
+    settings: {
+        label: 'Configurações',
+        description:
+            'Dados da clínica e controle de quem acessa o sistema. Normalmente só para o dono ou gestor.',
+    },
 };
 
-// Translations for individual permission names
-const permissionLabels: Record<string, string> = {
-    'dashboard.view': 'Visualizar Painel',
+// What each permission lets a person see or do, in plain language.
+const permissionLabels: Record<string, PermissionText> = {
+    'dashboard.view': {
+        label: 'Ver o painel inicial',
+        description:
+            'Vê a agenda do dia, os aniversariantes dos próximos 7 dias, as evoluções pendentes e os números do mês.',
+        warning: 'Os números do mês incluem o faturamento da clínica.',
+    },
 
-    'patients.manage.view': 'Visualizar Pacientes',
-    'patients.manage.create': 'Cadastrar Pacientes',
-    'patients.manage.edit': 'Editar Pacientes',
-    'patients.manage.delete': 'Excluir Pacientes',
+    'patients.manage.view': {
+        label: 'Ver pacientes',
+        description:
+            'Vê a lista de pacientes e abre a ficha: dados pessoais, contato, agendamentos e documentos. Também acessa a tela de aniversariantes.',
+        warning:
+            'A ficha mostra CPF, endereço e as observações de saúde do paciente.',
+    },
+    'patients.manage.create': {
+        label: 'Cadastrar pacientes',
+        description: 'Inclui novos pacientes no sistema.',
+    },
+    'patients.manage.edit': {
+        label: 'Editar pacientes',
+        description:
+            'Altera os dados da ficha, envia e apaga documentos (exames, laudos) e muda o texto das mensagens de aniversário e de lembrete de aula.',
+    },
+    'patients.manage.delete': {
+        label: 'Excluir pacientes',
+        description:
+            'Tira o paciente da lista. O histórico de atendimentos e cobranças é mantido.',
+    },
 
-    'appointments.manage.view': 'Visualizar Agenda',
-    'appointments.manage.create': 'Criar Agendamentos',
-    'appointments.manage.edit': 'Editar Agendamentos',
-    'appointments.manage.delete': 'Excluir Agendamentos',
+    'appointments.manage.view': {
+        label: 'Ver a agenda',
+        description:
+            'Vê a agenda de todos os profissionais, os detalhes de cada aula e a lista de lembretes para enviar por WhatsApp.',
+    },
+    'appointments.manage.create': {
+        label: 'Agendar',
+        description:
+            'Marca aulas e sessões avulsas e cria horários fixos (o mesmo horário toda semana).',
+    },
+    'appointments.manage.edit': {
+        label: 'Alterar agendamentos',
+        description:
+            'Reagenda, faz check-in, marca falta e registra que o paciente confirmou ou recebeu o lembrete.',
+    },
+    'appointments.manage.delete': {
+        label: 'Excluir agendamentos',
+        description:
+            'Cancela ou apaga aulas e encerra horários fixos, tirando as aulas futuras da agenda.',
+    },
+    'appointments.settings.manage': {
+        label: 'Configurar a agenda',
+        description:
+            'Define o horário de funcionamento, os intervalos, quantos alunos cabem por horário, as salas e a cor e os dias de atendimento de cada profissional.',
+    },
 
-    'group_classes.manage.view': 'Visualizar Turmas',
-    'group_classes.manage.create': 'Criar Turmas',
-    'group_classes.manage.edit': 'Editar Turmas',
-    'group_classes.manage.delete': 'Excluir Turmas',
+    'group_classes.manage.view': {
+        label: 'Ver turmas',
+        description: 'Vê as turmas, seus horários, alunos e faltas.',
+    },
+    'group_classes.manage.create': {
+        label: 'Criar turmas',
+        description: 'Monta novas turmas com dia, horário e alunos.',
+    },
+    'group_classes.manage.edit': {
+        label: 'Alterar turmas',
+        description:
+            'Troca alunos, horários e o profissional da turma e gera as aulas das próximas semanas.',
+    },
+    'group_classes.manage.delete': {
+        label: 'Excluir turmas',
+        description: 'Tira a turma da lista de turmas.',
+    },
 
-    'evolutions.manage.view': 'Visualizar Evoluções',
-    'evolutions.manage.create': 'Registrar Evoluções',
-    'evolutions.manage.edit': 'Editar Evoluções',
-    'evolutions.manage.delete': 'Excluir Evoluções',
+    'evolutions.manage.view': {
+        label: 'Ver o prontuário',
+        description:
+            'Lê as evoluções de todos os pacientes, inclusive na aba Prontuário da ficha, e gera o PDF.',
+        warning:
+            'É dado de saúde, protegido pela LGPD. Libere só para a equipe clínica.',
+    },
+    'evolutions.manage.create': {
+        label: 'Registrar evoluções',
+        description: 'Escreve a evolução de um atendimento.',
+    },
+    'evolutions.manage.edit': {
+        label: 'Alterar evoluções',
+        description: 'Corrige evoluções que já foram registradas.',
+        warning: 'Vale também para as evoluções de outros profissionais.',
+    },
+    'evolutions.manage.delete': {
+        label: 'Excluir evoluções',
+        description: 'Apaga evoluções do prontuário.',
+    },
 
-    'treatment_plans.manage.view': 'Visualizar Protocolos',
-    'treatment_plans.manage.create': 'Criar Protocolos',
-    'treatment_plans.manage.edit': 'Editar Protocolos',
-    'treatment_plans.manage.delete': 'Excluir Protocolos',
+    'treatment_plans.manage.view': {
+        label: 'Ver protocolos',
+        description:
+            'Vê os protocolos clínicos e pode escolher um ao registrar a evolução.',
+    },
+    'treatment_plans.manage.create': {
+        label: 'Criar protocolos',
+        description: 'Cadastra novos protocolos de tratamento.',
+    },
+    'treatment_plans.manage.edit': {
+        label: 'Alterar protocolos',
+        description: 'Muda o nome, a descrição e o número de sessões.',
+    },
+    'treatment_plans.manage.delete': {
+        label: 'Excluir protocolos',
+        description: 'Apaga protocolos.',
+    },
 
-    'memberships.manage.view': 'Visualizar Matrículas',
-    'memberships.manage.create': 'Criar Matrículas',
-    'memberships.manage.edit': 'Editar Matrículas',
-    'memberships.manage.delete': 'Excluir Matrículas',
+    'memberships.manage.view': {
+        label: 'Ver matrículas',
+        description:
+            'Vê a matrícula de cada paciente: plano, valor, vigência e sessões usadas no mês. Também a aba Matrículas da ficha.',
+    },
+    'memberships.manage.create': {
+        label: 'Matricular',
+        description: 'Matricula pacientes em um plano e renova matrículas.',
+        warning:
+            'As cobranças do plano são criadas automaticamente, mesmo sem permissão no Financeiro.',
+    },
+    'memberships.manage.edit': {
+        label: 'Alterar matrículas',
+        description:
+            'Muda plano, valor e datas e pausa ou retoma a matrícula (por férias ou lesão, por exemplo).',
+    },
+    'memberships.manage.delete': {
+        label: 'Excluir matrículas',
+        description: 'Apaga a matrícula.',
+        warning:
+            'As cobranças ainda não pagas dessa matrícula são apagadas junto.',
+    },
 
-    'commercial_plans.manage.view': 'Visualizar Planos',
-    'commercial_plans.manage.create': 'Criar Planos',
-    'commercial_plans.manage.edit': 'Editar Planos',
-    'commercial_plans.manage.delete': 'Excluir Planos',
+    'commercial_plans.manage.view': {
+        label: 'Ver planos e pacotes',
+        description: 'Vê os planos à venda e seus preços.',
+    },
+    'commercial_plans.manage.create': {
+        label: 'Criar planos',
+        description: 'Cadastra novos planos e pacotes.',
+    },
+    'commercial_plans.manage.edit': {
+        label: 'Alterar planos',
+        description:
+            'Muda preço, duração, número de sessões e de quanto em quanto tempo o plano é cobrado. Vale para as próximas matrículas.',
+    },
+    'commercial_plans.manage.delete': {
+        label: 'Excluir planos',
+        description: 'Tira o plano da tabela de preços.',
+    },
 
-    'financial.transactions.view': 'Visualizar Transações',
-    'financial.transactions.create': 'Registrar Transações',
-    'financial.transactions.edit': 'Editar Transações',
-    'financial.transactions.delete': 'Excluir Transações',
+    'financial.transactions.view': {
+        label: 'Ver o financeiro',
+        description:
+            'Vê receitas, despesas, contas a receber, ganhos por profissional e a aba Financeiro da ficha. Também emite recibos e mostra o PIX das cobranças.',
+    },
+    'financial.transactions.create': {
+        label: 'Lançar no financeiro',
+        description: 'Registra novas receitas e despesas avulsas.',
+    },
+    'financial.transactions.edit': {
+        label: 'Dar baixa e cobrar',
+        description:
+            'Confirma pagamentos, marca cobranças como perda ou em análise, envia lembretes de cobrança por WhatsApp e muda o texto dessas mensagens.',
+    },
+    'financial.transactions.delete': {
+        label: 'Excluir lançamentos',
+        description:
+            'Apaga receitas e despesas. A exclusão fica registrada no histórico.',
+    },
 
-    'recurring_expenses.manage.view': 'Visualizar Gastos Recorrentes',
-    'recurring_expenses.manage.create': 'Registrar Gastos Recorrentes',
-    'recurring_expenses.manage.edit': 'Editar Gastos Recorrentes',
-    'recurring_expenses.manage.delete': 'Excluir Gastos Recorrentes',
+    'recurring_expenses.manage.view': {
+        label: 'Ver gastos recorrentes',
+        description: 'Vê as despesas fixas cadastradas.',
+    },
+    'recurring_expenses.manage.create': {
+        label: 'Cadastrar gastos recorrentes',
+        description:
+            'Inclui despesas que se repetem (mensal, trimestral ou anual).',
+    },
+    'recurring_expenses.manage.edit': {
+        label: 'Alterar gastos recorrentes',
+        description:
+            'Muda valor, dia de vencimento e frequência, e ativa ou pausa o lançamento.',
+    },
+    'recurring_expenses.manage.delete': {
+        label: 'Excluir gastos recorrentes',
+        description:
+            'Para de lançar a despesa. Os lançamentos já feitos continuam no financeiro.',
+    },
 
-    'reports.manage.view': 'Visualizar Relatórios',
+    'reports.manage.view': {
+        label: 'Ver relatórios',
+        description:
+            'Vê quantos pacientes foram atendidos, sessões realizadas e canceladas, evoluções por mês e os pacientes mais frequentes, e exporta em PDF.',
+    },
 
-    'calendar.sync.manage': 'Gerenciar Sincronização',
+    'calendar.sync.manage': {
+        label: 'Sincronizar a própria agenda',
+        description:
+            'Gera um link que leva os próprios atendimentos para o Google Agenda, Apple ou Outlook do celular.',
+        warning:
+            'Os eventos mostram o nome dos pacientes no aplicativo de calendário.',
+    },
 
-    'settings.organization.manage': 'Gerenciar Perfil da Clínica, PIX e Plano',
-    'settings.users.view': 'Visualizar Usuários',
-    'settings.users.create': 'Cadastrar Usuários',
-    'settings.users.edit': 'Editar Usuários',
-    'settings.users.delete': 'Excluir Usuários',
-    'settings.roles.view': 'Visualizar Perfis de Acesso',
-    'settings.roles.create': 'Criar Perfis de Acesso',
-    'settings.roles.edit': 'Editar Perfis de Acesso',
-    'settings.roles.delete': 'Excluir Perfis de Acesso',
+    'professional.attend': {
+        label: 'Atende pacientes',
+        description:
+            'Marca a pessoa como profissional: ela aparece para ser escolhida ao agendar e montar turmas, ganha uma cor na agenda e entra nos ganhos por profissional.',
+    },
+
+    'settings.organization.manage': {
+        label: 'Gerenciar a clínica',
+        description:
+            'Altera os dados, o endereço e o logo da clínica e contrata ou troca o plano do sistema.',
+        warning:
+            'Inclui a chave PIX que recebe todas as cobranças. Libere só para quem cuida do negócio.',
+    },
+    'settings.users.view': {
+        label: 'Ver usuários',
+        description: 'Vê quem tem acesso ao sistema e com qual perfil.',
+    },
+    'settings.users.create': {
+        label: 'Cadastrar usuários',
+        description:
+            'Dá acesso a novas pessoas, escolhendo o perfil de cada uma.',
+        warning:
+            'Quem não é administrador só pode escolher perfis com permissões que ele mesmo tem.',
+    },
+    'settings.users.edit': {
+        label: 'Alterar usuários',
+        description: 'Muda nome, e-mail, senha e perfil de outros usuários.',
+        warning:
+            'Quem troca a senha de alguém consegue entrar como essa pessoa. Por isso só vale para usuários sem permissões além das suas.',
+    },
+    'settings.users.delete': {
+        label: 'Excluir usuários',
+        description:
+            'Remove o acesso de uma pessoa, desde que ela não tenha permissões além das suas.',
+    },
+    'settings.roles.view': {
+        label: 'Ver perfis de acesso',
+        description:
+            'Vê os perfis (como Recepcionista) e o que cada um libera.',
+    },
+    'settings.roles.create': {
+        label: 'Criar perfis de acesso',
+        description:
+            'Monta novos perfis, usando só permissões que a própria pessoa tem.',
+    },
+    'settings.roles.edit': {
+        label: 'Alterar perfis de acesso',
+        description:
+            'Muda o nome e as permissões de um perfil, dentro das permissões que a própria pessoa tem. Vale na hora para todos com esse perfil.',
+    },
+    'settings.roles.delete': {
+        label: 'Excluir perfis de acesso',
+        description: 'Apaga perfis que não estão em uso por nenhum usuário.',
+    },
 };
+
+/**
+ * What a permission allows, with a highlighted warning when it exposes
+ * sensitive data or is hard to undo.
+ */
+function PermissionDescription({ name }: { name: string }) {
+    const text = permissionLabels[name];
+
+    if (!text) {
+        return null;
+    }
+
+    return (
+        <>
+            <span className="block text-xs leading-snug text-muted-foreground">
+                {text.description}
+            </span>
+            {text.warning && (
+                <span className="mt-1 flex items-start gap-1 text-xs leading-snug text-amber-700 dark:text-amber-400">
+                    <AlertTriangle className="mt-px size-3 flex-shrink-0" />
+                    {text.warning}
+                </span>
+            )}
+        </>
+    );
+}
 
 function getModuleLabel(key: string): string {
-    return moduleLabels[key] || key.replace(/_/g, ' ');
+    return moduleLabels[key]?.label || key.replace(/_/g, ' ');
 }
 
 function getPermissionLabel(name: string): string {
-    return permissionLabels[name] || name.split('.').slice(1).join(' ');
+    return permissionLabels[name]?.label || name.split('.').slice(1).join(' ');
 }
 
 export default function RolesIndex({
@@ -317,9 +602,20 @@ export default function RolesIndex({
                             </div>
 
                             <div className="space-y-4">
-                                <h3 className="border-b border-border/50 pb-2 text-sm font-medium">
-                                    Permissões de Acesso
-                                </h3>
+                                <div className="border-b border-border/50 pb-2">
+                                    <h3 className="text-sm font-medium">
+                                        Permissões de Acesso
+                                    </h3>
+                                    <p className="text-xs text-muted-foreground">
+                                        Marque o que as pessoas com este perfil
+                                        podem ver e fazer. Para cadastrar,
+                                        alterar ou excluir, marque também o
+                                        “Ver” do mesmo módulo: sem ele a pessoa
+                                        não chega à tela. Os avisos em amarelo
+                                        indicam dados sensíveis ou ações
+                                        difíceis de desfazer.
+                                    </p>
+                                </div>
 
                                 <div className="grid max-h-[50vh] grid-cols-1 gap-6 overflow-y-auto p-1 md:grid-cols-2 lg:grid-cols-3">
                                     {Object.entries(groupedPermissions).map(
@@ -345,12 +641,26 @@ export default function RolesIndex({
                                                     key={module}
                                                     className="rounded-xl border border-border/50 bg-muted/30 p-4"
                                                 >
-                                                    <div className="mb-3 flex items-center justify-between">
-                                                        <h4 className="text-sm font-semibold text-primary">
-                                                            {getModuleLabel(
-                                                                module,
+                                                    <div className="mb-3 flex items-start justify-between gap-2">
+                                                        <div>
+                                                            <h4 className="text-sm font-semibold text-primary">
+                                                                {getModuleLabel(
+                                                                    module,
+                                                                )}
+                                                            </h4>
+                                                            {moduleLabels[
+                                                                module
+                                                            ] && (
+                                                                <p className="text-xs text-muted-foreground">
+                                                                    {
+                                                                        moduleLabels[
+                                                                            module
+                                                                        ]
+                                                                            .description
+                                                                    }
+                                                                </p>
                                                             )}
-                                                        </h4>
+                                                        </div>
                                                         <button
                                                             type="button"
                                                             onClick={() =>
@@ -371,13 +681,13 @@ export default function RolesIndex({
                                                                 : 'Marcar todos'}
                                                         </button>
                                                     </div>
-                                                    <div className="space-y-2">
+                                                    <div className="space-y-3">
                                                         {perms.map((p: any) => (
                                                             <label
                                                                 key={p.name}
-                                                                className="group flex cursor-pointer items-center gap-2"
+                                                                className="group flex cursor-pointer items-start gap-2"
                                                             >
-                                                                <div className="relative flex items-center">
+                                                                <div className="relative mt-0.5 flex items-center">
                                                                     <input
                                                                         type="checkbox"
                                                                         className="peer sr-only"
@@ -412,10 +722,17 @@ export default function RolesIndex({
                                                                         )}
                                                                     </div>
                                                                 </div>
-                                                                <span className="text-sm text-foreground transition-colors group-hover:text-primary">
-                                                                    {getPermissionLabel(
-                                                                        p.name,
-                                                                    )}
+                                                                <span className="min-w-0">
+                                                                    <span className="block text-sm text-foreground transition-colors group-hover:text-primary">
+                                                                        {getPermissionLabel(
+                                                                            p.name,
+                                                                        )}
+                                                                    </span>
+                                                                    <PermissionDescription
+                                                                        name={
+                                                                            p.name
+                                                                        }
+                                                                    />
                                                                 </span>
                                                             </label>
                                                         ))}

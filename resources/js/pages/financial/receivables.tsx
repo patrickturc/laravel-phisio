@@ -22,6 +22,7 @@ import {
 } from '@/components/charge-dialogs';
 import type { ChargeLike } from '@/components/charge-dialogs';
 import { useConfirmModal } from '@/components/confirm-modal';
+import { PatientLink } from '@/components/patient-link';
 import { usePermissions } from '@/hooks/use-permissions';
 import AppLayout from '@/layouts/app-layout';
 import { CHARGE_STATUS, paymentMethodLabel } from '@/lib/billing';
@@ -233,15 +234,15 @@ export default function Receivables({
                                             <div className="min-w-0 flex-1">
                                                 <div className="flex items-center gap-2">
                                                     {g.patient_id ? (
-                                                        <Link
-                                                            href={`/patients/${g.patient_id}?tab=financial`}
-                                                            onClick={(e) =>
-                                                                e.stopPropagation()
+                                                        <PatientLink
+                                                            patientId={
+                                                                g.patient_id
                                                             }
+                                                            tab="financial"
                                                             className="truncate font-semibold text-foreground hover:text-primary"
                                                         >
                                                             {g.patient_name}
-                                                        </Link>
+                                                        </PatientLink>
                                                     ) : (
                                                         <span className="truncate font-semibold text-muted-foreground">
                                                             {g.patient_name}
