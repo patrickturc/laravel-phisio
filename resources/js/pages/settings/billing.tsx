@@ -57,6 +57,7 @@ type TenantInfo = {
     plan_requested_at: string | null;
     has_pending_plan_request: boolean;
     seat_limit: number;
+    is_lifetime_free: boolean;
     seats_in_use: number;
     extra_users: number;
     profile_complete: boolean;
@@ -243,7 +244,9 @@ export default function Billing({
                         <div className="min-w-0 flex-1">
                             <div className="flex flex-wrap items-center gap-2">
                                 <h2 className="font-semibold text-foreground">
-                                    Plano {tenant.plan_name}
+                                    {tenant.is_lifetime_free
+                                        ? 'Acesso grátis e ilimitado'
+                                        : `Plano ${tenant.plan_name}`}
                                 </h2>
                                 <Badge
                                     variant={
@@ -254,26 +257,30 @@ export default function Billing({
                                               : 'default'
                                     }
                                 >
-                                    {tenant.is_trial_expired
-                                        ? 'Expirado'
-                                        : tenant.is_on_trial
-                                          ? 'Período de teste'
-                                          : 'Ativo'}
+                                    {tenant.is_lifetime_free
+                                        ? 'Cortesia'
+                                        : tenant.is_trial_expired
+                                          ? 'Expirado'
+                                          : tenant.is_on_trial
+                                            ? 'Período de teste'
+                                            : 'Ativo'}
                                 </Badge>
                             </div>
                             <p className="mt-1 text-sm text-muted-foreground">
-                                {tenant.is_trial_expired
-                                    ? 'Seu período de teste terminou. Escolha um plano abaixo para continuar.'
-                                    : tenant.is_on_trial
-                                      ? `Seu teste vai até ${trialEnd}. Faltam ${tenant.trial_days_left} dias.`
-                                      : `${tenant.seats_in_use} de ${tenant.seat_limit} usuários em uso.`}
+                                {tenant.is_lifetime_free
+                                    ? `Sua clínica tem acesso gratuito, sem vencimento e sem limite de usuários. ${tenant.seats_in_use} usuário(s) com acesso.`
+                                    : tenant.is_trial_expired
+                                      ? 'Seu período de teste terminou. Escolha um plano abaixo para continuar.'
+                                      : tenant.is_on_trial
+                                        ? `Seu teste vai até ${trialEnd}. Faltam ${tenant.trial_days_left} dias.`
+                                        : `${tenant.seats_in_use} de ${tenant.seat_limit} usuários em uso.`}
                             </p>
                         </div>
                     </div>
                 </div>
 
                 {/* Profile incomplete warning */}
-                {!tenant.profile_complete && (
+                {!tenant.profile_complete && !tenant.is_lifetime_free && (
                     <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 dark:border-amber-700/60 dark:bg-amber-950/40">
                         <div className="flex flex-wrap items-center justify-between gap-3">
                             <p className="text-sm text-amber-900 dark:text-amber-100">
@@ -311,229 +318,240 @@ export default function Billing({
                     </div>
                 )}
 
-                {/* Plan Selection */}
-                <form onSubmit={submit} className="space-y-6">
-                    <div className="space-y-4 rounded-xl border border-border bg-card p-6">
-                        <Heading
-                            variant="small"
-                            title="Escolha seu plano"
-                            description="Todos os planos dão acesso ao sistema completo. O que muda é a quantidade de usuários e armazenamento."
-                        />
+                {/* Plan Selection — nothing to buy with free unlimited access */}
+                {!tenant.is_lifetime_free && (
+                    <form onSubmit={submit} className="space-y-6">
+                        <div className="space-y-4 rounded-xl border border-border bg-card p-6">
+                            <Heading
+                                variant="small"
+                                title="Escolha seu plano"
+                                description="Todos os planos dão acesso ao sistema completo. O que muda é a quantidade de usuários e armazenamento."
+                            />
 
-                        <div className="grid gap-3 sm:grid-cols-3">
-                            {plans.map((plan) => {
-                                const active = data.requested_plan === plan.key;
-                                const current = tenant.plan === plan.key;
+                            <div className="grid gap-3 sm:grid-cols-3">
+                                {plans.map((plan) => {
+                                    const active =
+                                        data.requested_plan === plan.key;
+                                    const current = tenant.plan === plan.key;
 
-                                return (
-                                    <button
-                                        key={plan.key}
-                                        type="button"
-                                        onClick={() =>
-                                            setData('requested_plan', plan.key)
-                                        }
-                                        className={`flex flex-col rounded-xl border p-4 text-left transition-all ${
-                                            active
-                                                ? 'border-primary bg-primary/5 shadow-sm ring-2 ring-primary/20'
-                                                : 'border-border hover:border-primary/40'
-                                        }`}
-                                    >
-                                        <div className="flex items-center justify-between gap-2">
-                                            <h3 className="text-sm font-bold text-foreground">
-                                                {plan.name}
-                                            </h3>
-                                            <span
-                                                className={`flex size-4 shrink-0 items-center justify-center rounded-full border ${
-                                                    active
-                                                        ? 'border-primary bg-primary text-primary-foreground'
-                                                        : 'border-border'
-                                                }`}
-                                            >
-                                                {active && (
-                                                    <Check className="size-2.5" />
+                                    return (
+                                        <button
+                                            key={plan.key}
+                                            type="button"
+                                            onClick={() =>
+                                                setData(
+                                                    'requested_plan',
+                                                    plan.key,
+                                                )
+                                            }
+                                            className={`flex flex-col rounded-xl border p-4 text-left transition-all ${
+                                                active
+                                                    ? 'border-primary bg-primary/5 shadow-sm ring-2 ring-primary/20'
+                                                    : 'border-border hover:border-primary/40'
+                                            }`}
+                                        >
+                                            <div className="flex items-center justify-between gap-2">
+                                                <h3 className="text-sm font-bold text-foreground">
+                                                    {plan.name}
+                                                </h3>
+                                                <span
+                                                    className={`flex size-4 shrink-0 items-center justify-center rounded-full border ${
+                                                        active
+                                                            ? 'border-primary bg-primary text-primary-foreground'
+                                                            : 'border-border'
+                                                    }`}
+                                                >
+                                                    {active && (
+                                                        <Check className="size-2.5" />
+                                                    )}
+                                                </span>
+                                            </div>
+
+                                            {current && (
+                                                <span className="mt-1.5 w-fit rounded-full bg-secondary px-2 py-0.5 text-[10px] font-medium text-secondary-foreground">
+                                                    Plano atual
+                                                </span>
+                                            )}
+
+                                            <p className="mt-2 text-xs text-muted-foreground">
+                                                {plan.tagline}
+                                            </p>
+
+                                            <p className="mt-3 text-lg font-bold text-foreground">
+                                                {plan.price === null ? (
+                                                    <span className="text-sm font-semibold text-muted-foreground">
+                                                        Sob consulta
+                                                    </span>
+                                                ) : (
+                                                    <>
+                                                        {money(plan.price)}
+                                                        <span className="text-xs font-normal text-muted-foreground">
+                                                            /mês
+                                                        </span>
+                                                    </>
                                                 )}
-                                            </span>
+                                            </p>
+
+                                            <ul className="mt-3 space-y-1.5 border-t border-border pt-3">
+                                                <li className="flex items-center gap-1.5 text-xs text-foreground">
+                                                    <Users className="size-3.5 shrink-0 text-primary" />
+                                                    <strong>
+                                                        {plan.users} usuários
+                                                    </strong>
+                                                </li>
+                                                <li className="flex items-center gap-1.5 text-xs text-foreground">
+                                                    <HardDrive className="size-3.5 shrink-0 text-primary" />
+                                                    {storage(plan.storage_mb)}
+                                                </li>
+                                            </ul>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                            <InputError
+                                message={errors.requested_plan}
+                                className="mt-1"
+                            />
+
+                            {/* Extra seats */}
+                            {selected?.allows_extra_users && (
+                                <div className="mt-4 rounded-xl border border-border bg-muted/30 p-4">
+                                    <div className="flex flex-wrap items-center justify-between gap-4">
+                                        <div>
+                                            <h4 className="text-sm font-semibold text-foreground">
+                                                Usuários adicionais
+                                            </h4>
+                                            <p className="mt-0.5 text-xs text-muted-foreground">
+                                                O plano {selected.name} inclui{' '}
+                                                {selected.users} usuários. Cada
+                                                extra custa{' '}
+                                                {money(extraUserPrice)}
+                                                /mês.
+                                            </p>
                                         </div>
 
-                                        {current && (
-                                            <span className="mt-1.5 w-fit rounded-full bg-secondary px-2 py-0.5 text-[10px] font-medium text-secondary-foreground">
-                                                Plano atual
+                                        <div className="flex items-center gap-2">
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                size="icon"
+                                                className="size-8"
+                                                disabled={extras <= 0}
+                                                onClick={() =>
+                                                    setExtras(extras - 1)
+                                                }
+                                                aria-label="Remover um usuário adicional"
+                                            >
+                                                <Minus className="size-3.5" />
+                                            </Button>
+                                            <span className="w-8 text-center text-sm font-semibold text-foreground">
+                                                {extras}
                                             </span>
-                                        )}
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                size="icon"
+                                                className="size-8"
+                                                disabled={
+                                                    extras >= maxExtraUsers
+                                                }
+                                                onClick={() =>
+                                                    setExtras(extras + 1)
+                                                }
+                                                aria-label="Adicionar um usuário adicional"
+                                            >
+                                                <Plus className="size-3.5" />
+                                            </Button>
+                                        </div>
+                                    </div>
+                                    <InputError
+                                        message={errors.requested_extra_users}
+                                        className="mt-2"
+                                    />
 
-                                        <p className="mt-2 text-xs text-muted-foreground">
-                                            {plan.tagline}
+                                    <div className="mt-4 flex flex-wrap items-end justify-between gap-3 border-t border-border pt-4">
+                                        <p className="text-xs text-muted-foreground">
+                                            Total de{' '}
+                                            <strong className="text-foreground">
+                                                {totalSeats} usuários
+                                            </strong>{' '}
+                                            · {tenant.seats_in_use} em uso hoje
                                         </p>
-
-                                        <p className="mt-3 text-lg font-bold text-foreground">
-                                            {plan.price === null ? (
-                                                <span className="text-sm font-semibold text-muted-foreground">
-                                                    Sob consulta
-                                                </span>
-                                            ) : (
-                                                <>
-                                                    {money(plan.price)}
-                                                    <span className="text-xs font-normal text-muted-foreground">
-                                                        /mês
+                                        <div className="text-right">
+                                            <p className="text-[10px] text-muted-foreground">
+                                                Total mensal estimado
+                                            </p>
+                                            <p className="text-base font-bold text-foreground">
+                                                {monthlyTotal === null ? (
+                                                    <span className="text-sm text-muted-foreground">
+                                                        Sob consulta
+                                                        {extras > 0
+                                                            ? ` + ${money(extrasCost)}`
+                                                            : ''}
                                                     </span>
-                                                </>
-                                            )}
-                                        </p>
-
-                                        <ul className="mt-3 space-y-1.5 border-t border-border pt-3">
-                                            <li className="flex items-center gap-1.5 text-xs text-foreground">
-                                                <Users className="size-3.5 shrink-0 text-primary" />
-                                                <strong>
-                                                    {plan.users} usuários
-                                                </strong>
-                                            </li>
-                                            <li className="flex items-center gap-1.5 text-xs text-foreground">
-                                                <HardDrive className="size-3.5 shrink-0 text-primary" />
-                                                {storage(plan.storage_mb)}
-                                            </li>
-                                        </ul>
-                                    </button>
-                                );
-                            })}
-                        </div>
-                        <InputError
-                            message={errors.requested_plan}
-                            className="mt-1"
-                        />
-
-                        {/* Extra seats */}
-                        {selected?.allows_extra_users && (
-                            <div className="mt-4 rounded-xl border border-border bg-muted/30 p-4">
-                                <div className="flex flex-wrap items-center justify-between gap-4">
-                                    <div>
-                                        <h4 className="text-sm font-semibold text-foreground">
-                                            Usuários adicionais
-                                        </h4>
-                                        <p className="mt-0.5 text-xs text-muted-foreground">
-                                            O plano {selected.name} inclui{' '}
-                                            {selected.users} usuários. Cada
-                                            extra custa {money(extraUserPrice)}
-                                            /mês.
-                                        </p>
-                                    </div>
-
-                                    <div className="flex items-center gap-2">
-                                        <Button
-                                            type="button"
-                                            variant="outline"
-                                            size="icon"
-                                            className="size-8"
-                                            disabled={extras <= 0}
-                                            onClick={() =>
-                                                setExtras(extras - 1)
-                                            }
-                                            aria-label="Remover um usuário adicional"
-                                        >
-                                            <Minus className="size-3.5" />
-                                        </Button>
-                                        <span className="w-8 text-center text-sm font-semibold text-foreground">
-                                            {extras}
-                                        </span>
-                                        <Button
-                                            type="button"
-                                            variant="outline"
-                                            size="icon"
-                                            className="size-8"
-                                            disabled={extras >= maxExtraUsers}
-                                            onClick={() =>
-                                                setExtras(extras + 1)
-                                            }
-                                            aria-label="Adicionar um usuário adicional"
-                                        >
-                                            <Plus className="size-3.5" />
-                                        </Button>
+                                                ) : (
+                                                    money(monthlyTotal)
+                                                )}
+                                            </p>
+                                        </div>
                                     </div>
                                 </div>
-                                <InputError
-                                    message={errors.requested_extra_users}
-                                    className="mt-2"
-                                />
-
-                                <div className="mt-4 flex flex-wrap items-end justify-between gap-3 border-t border-border pt-4">
-                                    <p className="text-xs text-muted-foreground">
-                                        Total de{' '}
-                                        <strong className="text-foreground">
-                                            {totalSeats} usuários
-                                        </strong>{' '}
-                                        · {tenant.seats_in_use} em uso hoje
-                                    </p>
-                                    <div className="text-right">
-                                        <p className="text-[10px] text-muted-foreground">
-                                            Total mensal estimado
-                                        </p>
-                                        <p className="text-base font-bold text-foreground">
-                                            {monthlyTotal === null ? (
-                                                <span className="text-sm text-muted-foreground">
-                                                    Sob consulta
-                                                    {extras > 0
-                                                        ? ` + ${money(extrasCost)}`
-                                                        : ''}
-                                                </span>
-                                            ) : (
-                                                money(monthlyTotal)
-                                            )}
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Notes */}
-                        <div className="mt-4 grid gap-2">
-                            <Label htmlFor="plan_request_notes">
-                                Observações{' '}
-                                <span className="font-normal text-muted-foreground">
-                                    (opcional)
-                                </span>
-                            </Label>
-                            <textarea
-                                id="plan_request_notes"
-                                value={data.plan_request_notes}
-                                onChange={(e) =>
-                                    setData(
-                                        'plan_request_notes',
-                                        e.target.value,
-                                    )
-                                }
-                                rows={2}
-                                maxLength={2000}
-                                placeholder="Melhor horário para contato, forma de pagamento preferida..."
-                                className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
-                            />
-                            <InputError message={errors.plan_request_notes} />
-                        </div>
-
-                        {/* Submit */}
-                        <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center">
-                            <Button
-                                type="submit"
-                                disabled={processing}
-                                className="gap-2"
-                            >
-                                {processing && <Spinner className="mr-1" />}
-                                {tenant.has_pending_plan_request
-                                    ? 'Atualizar solicitação'
-                                    : 'Solicitar plano'}
-                                <ArrowRight className="size-4" />
-                            </Button>
-
-                            {contactEmail && (
-                                <a
-                                    href={`mailto:${contactEmail}?subject=${encodeURIComponent(`Contratação de plano - ${tenant.name}`)}`}
-                                    className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
-                                >
-                                    <Mail className="size-4" />
-                                    Falar com a equipe
-                                </a>
                             )}
+
+                            {/* Notes */}
+                            <div className="mt-4 grid gap-2">
+                                <Label htmlFor="plan_request_notes">
+                                    Observações{' '}
+                                    <span className="font-normal text-muted-foreground">
+                                        (opcional)
+                                    </span>
+                                </Label>
+                                <textarea
+                                    id="plan_request_notes"
+                                    value={data.plan_request_notes}
+                                    onChange={(e) =>
+                                        setData(
+                                            'plan_request_notes',
+                                            e.target.value,
+                                        )
+                                    }
+                                    rows={2}
+                                    maxLength={2000}
+                                    placeholder="Melhor horário para contato, forma de pagamento preferida..."
+                                    className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                                />
+                                <InputError
+                                    message={errors.plan_request_notes}
+                                />
+                            </div>
+
+                            {/* Submit */}
+                            <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center">
+                                <Button
+                                    type="submit"
+                                    disabled={processing}
+                                    className="gap-2"
+                                >
+                                    {processing && <Spinner className="mr-1" />}
+                                    {tenant.has_pending_plan_request
+                                        ? 'Atualizar solicitação'
+                                        : 'Solicitar plano'}
+                                    <ArrowRight className="size-4" />
+                                </Button>
+
+                                {contactEmail && (
+                                    <a
+                                        href={`mailto:${contactEmail}?subject=${encodeURIComponent(`Contratação de plano - ${tenant.name}`)}`}
+                                        className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
+                                    >
+                                        <Mail className="size-4" />
+                                        Falar com a equipe
+                                    </a>
+                                )}
+                            </div>
                         </div>
-                    </div>
-                </form>
+                    </form>
+                )}
 
                 {/* All plans include */}
                 <div className="rounded-xl border border-border bg-muted/30 p-5">

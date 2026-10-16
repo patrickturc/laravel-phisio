@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\RoleController;
+use App\Http\Controllers\Settings\AvatarController;
 use App\Http\Controllers\Settings\BillingController;
 use App\Http\Controllers\Settings\OrganizationController;
 use App\Http\Controllers\Settings\OrganizationImageController;
@@ -19,6 +20,12 @@ Route::middleware(['auth'])->group(function () {
         ->middleware('permission:calendar.sync.manage')
         ->name('profile.calendar-token.generate');
     Route::delete('settings/profile/calendar-token', [ProfileController::class, 'revokeCalendarToken'])->name('profile.calendar-token.revoke');
+
+    // Profile photo: each user changes their own; colleagues of the same
+    // clinic can see it.
+    Route::post('settings/profile/avatar', [AvatarController::class, 'store'])->name('profile.avatar.store');
+    Route::delete('settings/profile/avatar', [AvatarController::class, 'destroy'])->name('profile.avatar.destroy');
+    Route::get('users/{user}/avatar', [AvatarController::class, 'show'])->name('users.avatar');
 });
 
 Route::middleware(['auth', 'verified'])->group(function () {

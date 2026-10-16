@@ -1,9 +1,11 @@
 import { Transition } from '@headlessui/react';
 import { Form, Head, Link, usePage } from '@inertiajs/react';
+import { User as UserIcon } from 'lucide-react';
 import ProfileController from '@/actions/App/Http/Controllers/Settings/ProfileController';
 import CalendarSync from '@/components/calendar-sync';
 import DeleteUser from '@/components/delete-user';
 import Heading from '@/components/heading';
+import { ImageUpload } from '@/components/image-upload';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -44,6 +46,18 @@ export default function Profile({
                         variant="small"
                         title="Profile information"
                         description="Update your name and email address"
+                    />
+
+                    <ImageUpload
+                        endpoint="/settings/profile/avatar"
+                        label="Foto de perfil"
+                        hint="JPG ou PNG de até 2 MB. Aparece no menu e para a equipe da clínica."
+                        url={
+                            (auth.user as { avatar?: string | null }).avatar ??
+                            null
+                        }
+                        icon={UserIcon}
+                        rounded
                     />
 
                     <Form

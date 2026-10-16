@@ -10,6 +10,7 @@ use App\Http\Controllers\CommercialPlanController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DevAdmin\AnnouncementController;
 use App\Http\Controllers\DevAdmin\ImpersonationController;
+use App\Http\Controllers\DevAdmin\OnlineUserController;
 use App\Http\Controllers\DevAdmin\TenantController;
 use App\Http\Controllers\EvolutionController;
 use App\Http\Controllers\FinancialTransactionController;
@@ -104,6 +105,8 @@ Route::prefix('dev-admin')
         Route::resource('tenants', TenantController::class);
         Route::post('tenants/{tenant}/toggle-status', [TenantController::class, 'toggleStatus'])
             ->name('tenants.toggle-status');
+        Route::post('tenants/{tenant}/toggle-lifetime-free', [TenantController::class, 'toggleLifetimeFree'])
+            ->name('tenants.toggle-lifetime-free');
         Route::post('tenants/{tenant}/approve-plan', [TenantController::class, 'approvePlanRequest'])
             ->name('tenants.approve-plan');
         Route::post('tenants/{tenant}/reject-plan', [TenantController::class, 'rejectPlanRequest'])
@@ -118,6 +121,8 @@ Route::prefix('dev-admin')
             ->name('tenants.users.store');
         Route::post('tenants/{tenant}/users/{user}/reset-password', [TenantController::class, 'resetUserPassword'])
             ->name('tenants.users.reset-password');
+        Route::get('online', [OnlineUserController::class, 'index'])
+            ->name('online.index');
         Route::get('announcements', [AnnouncementController::class, 'index'])
             ->name('announcements.index');
         Route::post('announcements', [AnnouncementController::class, 'store'])

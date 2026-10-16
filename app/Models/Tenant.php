@@ -81,6 +81,7 @@ class Tenant extends Model
         'has_pending_plan_request',
         'access_status',
         'seat_limit',
+        'is_lifetime_free',
         'profile_complete',
         'missing_profile_fields',
     ];
@@ -311,15 +312,27 @@ class Tenant extends Model
             'self_registered' => 'boolean',
             'extra_users' => 'integer',
             'requested_extra_users' => 'integer',
+            'lifetime_free_at' => 'datetime',
         ];
     }
 
     /**
-     * A paid plan grants access regardless of the trial window.
+     * A paid plan grants access regardless of the trial window. So does free,
+     * unlimited access granted by a dev admin.
      */
     public function hasPaidPlan(): bool
     {
-        return in_array($this->plan, self::paidPlans(), true);
+        return in_array($this->plan, self::paidPlans(), true) || $this->isLifetimeFree();
+    }
+
+    /**
+     * Free, unlimited access granted by a dev admin: never expires, never has
+     * to request a plan and has no user limit. Read from the raw attributes so
+     * partial selects that did not load the column simply answer "no".
+     */
+    public function isLifetimeFree(): bool
+    {
+        return ($this->attributes['lifetime_free_at'] ?? null) !== null;
     }
 
     /**
@@ -349,6 +362,10 @@ class Tenant extends Model
 
     public function hasSeatAvailable(): bool
     {
+        if ($this->isLifetimeFree()) {
+            return true;
+        }
+
         return $this->seatsInUse() < $this->seatLimit();
     }
 
@@ -457,6 +474,10 @@ class Tenant extends Model
             return $this->status;
         }
 
+        if ($this->isLifetimeFree()) {
+            return 'lifetime_free';
+        }
+
         if ($this->isTrialExpired()) {
             return 'trial_expired';
         }
@@ -529,6 +550,11 @@ class Tenant extends Model
         return $this->loaded('status', 'plan', 'trial_ends_at') ? $this->accessStatus() : null;
     }
 
+    public function getIsLifetimeFreeAttribute(): bool
+    {
+        return $this->isLifetimeFree();
+    }
+
     public function getSeatLimitAttribute(): ?int
     {
         return $this->loaded('max_users') ? $this->seatLimit() : null;
@@ -553,6 +579,7 @@ class Tenant extends Model
     public function scopeOnTrial(Builder $query): void
     {
         $query->whereNotIn('plan', self::paidPlans())
+            ->whereNull('lifetime_free_at')
             ->whereNotNull('trial_ends_at')
             ->where('trial_ends_at', '>', now());
     }
@@ -563,6 +590,7 @@ class Tenant extends Model
     public function scopeTrialExpired(Builder $query): void
     {
         $query->whereNotIn('plan', self::paidPlans())
+            ->whereNull('lifetime_free_at')
             ->whereNotNull('trial_ends_at')
             ->where('trial_ends_at', '<=', now());
     }
@@ -573,7 +601,8 @@ class Tenant extends Model
     public function scopePendingPlanRequest(Builder $query): void
     {
         $query->whereNotNull('plan_requested_at')
-            ->whereNotIn('plan', self::paidPlans());
+            ->whereNotIn('plan', self::paidPlans())
+            ->whereNull('lifetime_free_at');
     }
 
     /**

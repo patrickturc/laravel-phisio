@@ -17,6 +17,7 @@ use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
@@ -315,6 +316,30 @@ class TenantController extends Controller
         ]);
 
         return back()->with('success', "Trial estendido em {$validated['days']} dias.");
+    }
+
+    /**
+     * Turn free, unlimited access on or off: the clinic never expires, never
+     * has to request a plan and has no user limit while it is on.
+     */
+    public function toggleLifetimeFree(Request $request, Tenant $tenant)
+    {
+        $enable = ! $tenant->isLifetimeFree();
+
+        $tenant->forceFill(array_merge(
+            ['lifetime_free_at' => $enable ? now() : null],
+            // A pending request makes no sense once access is free.
+            $enable ? ['requested_plan' => null, 'requested_extra_users' => 0, 'plan_requested_at' => null, 'plan_request_notes' => null] : [],
+        ))->save();
+
+        Log::notice($enable ? 'Dev admin granted free unlimited access' : 'Dev admin removed free unlimited access', [
+            'dev_admin_id' => $request->user()->id,
+            'tenant_id' => $tenant->id,
+        ]);
+
+        return back()->with('success', $enable
+            ? "{$tenant->name} agora tem acesso grátis e ilimitado."
+            : "Acesso grátis e ilimitado removido de {$tenant->name}. Vale de novo o plano {$tenant->plan}.");
     }
 
     public function toggleStatus(Tenant $tenant)

@@ -180,6 +180,20 @@ export default function Show({
         }
     };
 
+    const handleToggleLifetimeFree = () => {
+        const message = tenant.is_lifetime_free
+            ? `Remover o acesso grátis e ilimitado de "${tenant.name}"? Volta a valer o plano atual e o limite de usuários dele.`
+            : `Dar acesso grátis e ilimitado para "${tenant.name}"? A clínica não expira, não precisa contratar plano e não tem limite de usuários.`;
+
+        if (confirm(message)) {
+            router.post(
+                `/dev-admin/tenants/${tenant.id}/toggle-lifetime-free`,
+                {},
+                { preserveScroll: true },
+            );
+        }
+    };
+
     const handleExtendTrial = (days: number) => {
         router.post(
             `/dev-admin/tenants/${tenant.id}/extend-trial`,
@@ -286,10 +300,15 @@ export default function Show({
                                 Plano atual
                             </p>
                             <p className="font-medium">
-                                {plans[tenant.plan]?.name ?? tenant.plan}
+                                {tenant.is_lifetime_free
+                                    ? 'Grátis ilimitado'
+                                    : (plans[tenant.plan]?.name ?? tenant.plan)}
                             </p>
                             <p className="text-xs text-muted-foreground">
-                                {tenant.users?.length ?? 0}/{tenant.max_users}{' '}
+                                {tenant.users?.length ?? 0}/
+                                {tenant.is_lifetime_free
+                                    ? '∞'
+                                    : tenant.max_users}{' '}
                                 usuários
                                 {tenant.extra_users > 0
                                     ? ` (${tenant.extra_users} adicionais)`
@@ -355,6 +374,35 @@ export default function Show({
                             </div>
                         </div>
                     )}
+
+                    <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-4">
+                        <div>
+                            <p className="text-sm font-semibold text-foreground">
+                                Grátis ilimitado
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                                {tenant.is_lifetime_free
+                                    ? `Ativo desde ${new Date(tenant.lifetime_free_at).toLocaleDateString('pt-BR')}: a clínica não expira, não paga e não tem limite de usuários.`
+                                    : 'Para parceiros e cortesias: a clínica não expira, não precisa contratar plano e não tem limite de usuários.'}
+                            </p>
+                        </div>
+                        <Button
+                            size="sm"
+                            variant={
+                                tenant.is_lifetime_free ? 'outline' : 'default'
+                            }
+                            className={
+                                tenant.is_lifetime_free
+                                    ? ''
+                                    : 'bg-emerald-600 text-white hover:bg-emerald-700'
+                            }
+                            onClick={handleToggleLifetimeFree}
+                        >
+                            {tenant.is_lifetime_free
+                                ? 'Remover grátis ilimitado'
+                                : 'Ativar grátis ilimitado'}
+                        </Button>
+                    </div>
 
                     <div className="border-t pt-4">
                         <p className="mb-2 text-sm text-muted-foreground">

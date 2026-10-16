@@ -35,6 +35,7 @@ class BillingController extends Controller
                 'plan_requested_at' => $tenant->plan_requested_at?->toIso8601String(),
                 'has_pending_plan_request' => $tenant->hasPendingPlanRequest(),
                 'seat_limit' => $tenant->seatLimit(),
+                'is_lifetime_free' => $tenant->isLifetimeFree(),
                 'seats_in_use' => $tenant->seatsInUse(),
                 'extra_users' => $tenant->extra_users,
                 'profile_complete' => $tenant->isProfileComplete(),

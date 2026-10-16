@@ -1,5 +1,5 @@
 import { Link, usePage } from '@inertiajs/react';
-import { AlertTriangle, ArrowRight } from 'lucide-react';
+import { ArrowRight, Info } from 'lucide-react';
 
 interface ProfileCompletion {
     complete: boolean;
@@ -22,9 +22,10 @@ const fieldLabels: Record<string, string> = {
 };
 
 /**
- * Persistent reminder to finish the organization registration. Deliberately
- * not dismissible: the missing data is needed for billing and for the clinic's
- * own documents, and it disappears on its own once the form is completed.
+ * Quiet, one-line reminder to finish the organization registration. Not
+ * dismissible: the data is needed for billing and the clinic's documents, and
+ * the line disappears on its own once the form is completed. Hovering it lists
+ * the missing fields.
  */
 export function ProfileCompletionBanner() {
     const { profileCompletion } = usePage<{
@@ -36,48 +37,36 @@ export function ProfileCompletionBanner() {
     }
 
     const { missing, missing_count, percent, can_edit } = profileCompletion;
-    const preview = missing
-        .slice(0, 3)
-        .map((field) => fieldLabels[field] ?? field);
-    const rest = missing_count - preview.length;
+    const missingList = missing
+        .map((field) => fieldLabels[field] ?? field)
+        .join(', ');
 
     return (
-        <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-amber-900 dark:border-amber-700/60 dark:bg-amber-950/40 dark:text-amber-100">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-                <div className="flex min-w-0 items-start gap-3">
-                    <AlertTriangle className="mt-0.5 size-5 shrink-0" />
-                    <div className="min-w-0">
-                        <p className="text-sm font-semibold">
-                            Cadastro incompleto — faltam {missing_count}{' '}
-                            {missing_count === 1 ? 'informação' : 'informações'}
-                        </p>
-                        <p className="mt-1 text-sm text-amber-900/80 dark:text-amber-100/80">
-                            {can_edit
-                                ? 'Complete os dados da clínica para emitir documentos e contratar um plano.'
-                                : 'Peça ao administrador da conta para completar os dados da clínica.'}{' '}
-                            Falta preencher: {preview.join(', ')}
-                            {rest > 0 ? ` e mais ${rest}` : ''}.
-                        </p>
-                    </div>
-                </div>
-
-                {can_edit && (
-                    <Link
-                        href="/settings/organization"
-                        className="inline-flex shrink-0 items-center gap-1.5 rounded-md bg-amber-900 px-3 py-1.5 text-xs font-semibold text-amber-50 transition-colors hover:bg-amber-800"
-                    >
-                        Completar cadastro
-                        <ArrowRight className="size-3.5" />
-                    </Link>
-                )}
-            </div>
-
-            <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-amber-200 dark:bg-amber-900/60">
-                <div
-                    className="h-full rounded-full bg-amber-600 transition-[width] duration-500 dark:bg-amber-400"
+        <div
+            className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-md border border-border/60 bg-muted/30 px-3 py-1.5 text-xs text-muted-foreground"
+            title={`Falta preencher: ${missingList}`}
+        >
+            <Info className="size-3.5 shrink-0 text-amber-500" />
+            <span className="min-w-0 flex-1">
+                Cadastro da clínica {percent}% completo · faltam {missing_count}{' '}
+                {missing_count === 1 ? 'informação' : 'informações'}
+                {!can_edit && ' (peça ao administrador da conta)'}
+            </span>
+            <span className="hidden h-1 w-20 overflow-hidden rounded-full bg-border sm:block">
+                <span
+                    className="block h-full rounded-full bg-amber-500 transition-[width] duration-500"
                     style={{ width: `${percent}%` }}
                 />
-            </div>
+            </span>
+            {can_edit && (
+                <Link
+                    href="/settings/organization"
+                    className="inline-flex shrink-0 items-center gap-1 font-medium text-foreground hover:text-primary hover:underline"
+                >
+                    Completar
+                    <ArrowRight className="size-3" />
+                </Link>
+            )}
         </div>
     );
 }

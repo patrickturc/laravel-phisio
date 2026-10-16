@@ -10,7 +10,9 @@ const ACCEPTED = ['image/jpeg', 'image/png'];
 
 interface Props {
     /** Image key in /settings/organization/images/{image}. */
-    image: 'logo' | 'owner-photo';
+    image?: 'logo' | 'owner-photo';
+    /** Where to POST (upload) and DELETE (remove); defaults to the clinic image. */
+    endpoint?: string;
     label: string;
     hint: string;
     url: string | null;
@@ -19,11 +21,12 @@ interface Props {
 }
 
 /**
- * Uploads (or removes) a clinic image right away, separate from the profile
- * form, keeping whatever was typed in the form untouched.
+ * Uploads (or removes) an image right away, separate from any form on the
+ * page, keeping whatever was typed in it untouched.
  */
 export function ImageUpload({
     image,
+    endpoint = `/settings/organization/images/${image}`,
     label,
     hint,
     url,
@@ -56,7 +59,7 @@ export function ImageUpload({
 
         setError(null);
         router.post(
-            `/settings/organization/images/${image}`,
+            endpoint,
             { image: file },
             {
                 ...visitOptions,
@@ -71,7 +74,7 @@ export function ImageUpload({
 
     function remove() {
         setError(null);
-        router.delete(`/settings/organization/images/${image}`, visitOptions);
+        router.delete(endpoint, visitOptions);
     }
 
     const shape = rounded ? 'rounded-full' : 'rounded-xl';

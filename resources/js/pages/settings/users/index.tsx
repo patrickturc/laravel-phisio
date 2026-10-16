@@ -121,9 +121,17 @@ export default function UsersIndex({
                                 >
                                     <td className="px-5 py-3.5">
                                         <div className="flex items-center gap-3">
-                                            <div className="flex size-8 items-center justify-center rounded-full bg-primary/10 text-primary">
-                                                <UserIcon className="size-4" />
-                                            </div>
+                                            {user.avatar ? (
+                                                <img
+                                                    src={user.avatar}
+                                                    alt=""
+                                                    className="size-8 rounded-full object-cover"
+                                                />
+                                            ) : (
+                                                <div className="flex size-8 items-center justify-center rounded-full bg-primary/10 text-primary">
+                                                    <UserIcon className="size-4" />
+                                                </div>
+                                            )}
                                             <span className="font-medium text-foreground">
                                                 {user.name}
                                             </span>

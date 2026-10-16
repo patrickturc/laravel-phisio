@@ -45,7 +45,13 @@ class User extends Authenticatable
         'remember_token',
         'calendar_token',
         'is_dev_admin',
+        'avatar_path',
     ];
+
+    /**
+     * @var list<string>
+     */
+    protected $appends = ['avatar'];
 
     /**
      * Get the attributes that should be cast.
@@ -60,7 +66,22 @@ class User extends Authenticatable
             'two_factor_confirmed_at' => 'datetime',
             'is_dev_admin' => 'boolean',
             'agenda_availability' => 'array',
+            'last_seen_at' => 'datetime',
         ];
+    }
+
+    /**
+     * URL of the profile photo, versioned by its path so a new photo is never
+     * served from the browser cache. Null without a photo (the initials show).
+     * Read from the raw attributes so partial selects simply answer null.
+     */
+    public function getAvatarAttribute(): ?string
+    {
+        $path = $this->attributes['avatar_path'] ?? null;
+
+        return $path && $this->getKey()
+            ? route('users.avatar', $this->getKey()).'?v='.substr(md5($path), 0, 8)
+            : null;
     }
 
     /**

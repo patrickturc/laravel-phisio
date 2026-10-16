@@ -1,5 +1,5 @@
 import { usePage, Link } from '@inertiajs/react';
-import { Home, Users, Megaphone } from 'lucide-react';
+import { Activity, Home, Users, Megaphone } from 'lucide-react';
 import { useEffect } from 'react';
 import { Toaster, toast } from 'sonner';
 import { AppContent } from '@/components/app-content';
@@ -50,6 +50,14 @@ export default function DevAdminLayout({ children }: AppLayoutProps) {
                                     <Link href="/dev-admin/tenants">
                                         <Users className="h-4 w-4" />{' '}
                                         <span>Tenants</span>
+                                    </Link>
+                                </SidebarMenuButton>
+                            </SidebarMenuItem>
+                            <SidebarMenuItem>
+                                <SidebarMenuButton asChild>
+                                    <Link href="/dev-admin/online">
+                                        <Activity className="h-4 w-4" />{' '}
+                                        <span>Usuários online</span>
                                     </Link>
                                 </SidebarMenuButton>
                             </SidebarMenuItem>

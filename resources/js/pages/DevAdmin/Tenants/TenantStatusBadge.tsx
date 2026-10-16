@@ -7,6 +7,8 @@ export interface TenantStatusInfo {
 
 const styles: Record<string, string> = {
     active: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
+    lifetime_free:
+        'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300',
     trial: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300',
     trial_expired:
         'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300',
@@ -28,11 +30,13 @@ export function TenantStatusBadge({ tenant }: { tenant: TenantStatusInfo }) {
             ? `Trial · ${tenant.trial_days_left ?? 0}d`
             : state === 'trial_expired'
               ? 'Trial expirado'
-              : state === 'active'
-                ? 'Ativa'
-                : state === 'suspended'
-                  ? 'Suspensa'
-                  : 'Inativa';
+              : state === 'lifetime_free'
+                ? 'Grátis ilimitado'
+                : state === 'active'
+                  ? 'Ativa'
+                  : state === 'suspended'
+                    ? 'Suspensa'
+                    : 'Inativa';
 
     return (
         <span
